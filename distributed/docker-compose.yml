@@ -1,0 +1,174 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      - SERVICE_PORT=8001
+      - DATABASE_URL=mysql://user:password@auth-db:3306/auth_db
+    depends_on:
+      - auth-db
+    networks:
+      - tournament-network
+
+  tournament-service:
+    build: ./tournament-service
+    ports:
+      - "8002:8002"
+    environment:
+      - SERVICE_PORT=8002
+      - DATABASE_URL=mysql://user:password@tournament-db:3306/tournament_db
+    depends_on:
+      - tournament-db
+      - auth-service
+    networks:
+      - tournament-network
+
+  team-service:
+    build: ./team-service
+    ports:
+      - "8003:8003"
+    environment:
+      - SERVICE_PORT=8003
+      - DATABASE_URL=mysql://user:password@team-db:3306/team_db
+    depends_on:
+      - team-db
+      - auth-service
+    networks:
+      - tournament-network
+
+  match-service:
+    build: ./match-service
+    ports:
+      - "8004:8004"
+    environment:
+      - SERVICE_PORT=8004
+      - DATABASE_URL=mysql://user:password@match-db:3306/match_db
+    depends_on:
+      - match-db
+      - auth-service
+      - tournament-service
+      - team-service
+    networks:
+      - tournament-network
+
+  results-service:
+    build: ./results-service
+    ports:
+      - "8005:8005"
+    environment:
+      - SERVICE_PORT=8005
+      - DATABASE_URL=mysql://user:password@results-db:3306/results_db
+    depends_on:
+      - results-db
+      - auth-service
+      - match-service
+    networks:
+      - tournament-network
+
+  gateway-service:
+    build: ./gateway-service
+    ports:
+      - "8000:8000"
+    environment:
+      - SERVICE_PORT=8000
+    depends_on:
+      - auth-service
+      - tournament-service
+      - team-service
+      - match-service
+      - results-service
+    networks:
+      - tournament-network
+
+  # Databases
+  auth-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=auth_db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - auth_db_data:/var/lib/mysql
+    networks:
+      - tournament-network
+
+  tournament-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=tournament_db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - tournament_db_data:/var/lib/mysql
+    networks:
+      - tournament-network
+
+  team-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=team_db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - team_db_data:/var/lib/mysql
+    networks:
+      - tournament-network
+
+  match-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=match_db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - match_db_data:/var/lib/mysql
+    networks:
+      - tournament-network
+
+  results-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=results_db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+      - MYSQL_ROOT_PASSWORD=rootpassword
+    volumes:
+      - results_db_data:/var/lib/mysql
+    networks:
+      - tournament-network
+
+  # phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=auth-db
+      - PMA_USER=root
+      - PMA_PASSWORD=rootpassword
+    depends_on:
+      - auth-db
+      - tournament-db
+      - team-db
+      - match-db
+      - results-db
+    networks:
+      - tournament-network
+
+volumes:
+  auth_db_data:
+  tournament_db_data:
+  team_db_data:
+  match_db_data:
+  results_db_data:
+
+networks:
+  tournament-network:
+    driver: bridge

@@ -35,13 +35,13 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
 # Expose port
-EXPOSE 8002
+EXPOSE 8003
 
 # Create startup script to run migrations and start server
 RUN echo '#!/bin/bash\n\
 php artisan migrate --force\n\
 php artisan db:seed --force\n\
-php artisan serve --host=0.0.0.0 --port=8002' > /var/www/html/start.sh && \
+php artisan serve --host=0.0.0.0 --port=8003' > /var/www/html/start.sh && \
 chmod +x /var/www/html/start.sh
 
 # Run the startup script

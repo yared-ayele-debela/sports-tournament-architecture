@@ -12,13 +12,13 @@ use App\Http\Controllers\Api\VenueController;
 | Tournament Service API Routes
 |--------------------------------------------------------------------------
 |
-| All routes require JWT authentication from the Auth Service.
+| All routes require Passport authentication from Auth Service.
 | Routes are organized by resource type with proper RESTful conventions.
 |
 */
 
-// JWT Authentication middleware for all API routes
-Route::middleware(['auth.jwt'])->group(function () {
+// Passport Authentication middleware for all API routes
+Route::middleware(['auth.passport'])->group(function () {
     
     /*
     |--------------------------------------------------------------------------
@@ -56,6 +56,7 @@ Route::middleware(['auth.jwt'])->group(function () {
         Route::put('{id}', [TournamentController::class, 'update']);         // PUT /api/tournaments/{id}
         Route::delete('{id}', [TournamentController::class, 'destroy']);      // DELETE /api/tournaments/{id}
         Route::patch('{id}/status', [TournamentController::class, 'updateStatus']); // PATCH /api/tournaments/{id}/status
+        Route::get('{id}/validate', [TournamentController::class, 'validate']); // GET /api/tournaments/{id}/validate
     });
     
     /*
@@ -126,7 +127,7 @@ Route::prefix('health')->group(function () {
                 'tournaments_management' => true,
                 'venues_management' => true,
                 'event_publishing' => true,
-                'jwt_authentication' => true
+                'passport_authentication' => true
             ],
             'endpoints' => [
                 'sports' => '/api/sports',

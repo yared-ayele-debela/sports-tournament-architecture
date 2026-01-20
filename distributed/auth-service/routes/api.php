@@ -2,79 +2,92 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserServiceController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes - Authentication Service
+| API Routes - Authentication Service (v1)
 |--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider and all of them will
-| be assigned to the "api" middleware group. Make something great!
-|
 */
+    /*
+    |--------------------------------------------------------------------------
+    | Public Authentication Routes
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('auth')->group(function () {
+        Route::post('register', [AuthController::class, 'register']);
+        Route::post('login', [AuthController::class, 'login']);
+    });
 
-// Public routes (no authentication required)
-Route::prefix('auth')->group(function () {
-    Route::post('register', [AuthController::class, 'register']);
-    Route::post('login', [AuthController::class, 'login']);
-});
+    /*
+    |--------------------------------------------------------------------------
+    | Protected Authentication Routes (Passport required)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('auth:api')->prefix('auth')->group(function () {
+        Route::post('logout', [AuthController::class, 'logout']);
+        Route::post('refresh', [AuthController::class, 'refresh']);
+        Route::get('me', [AuthController::class, 'me']);
+    });
 
-// Protected routes (JWT authentication required)
-Route::middleware('auth:api')->prefix('auth')->group(function () {
-    Route::post('logout', [AuthController::class, 'logout']);
-    Route::post('refresh', [AuthController::class, 'refresh']);
-    Route::get('me', [AuthController::class, 'me']);
-});
+    /*
+    |--------------------------------------------------------------------------
+    | Internal User Service Routes (Passport required)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('auth:api')->prefix('users')->group(function () {
+        Route::get('{id}', [UserServiceController::class, 'getUserById']);
+        Route::get('{id}/validate', [UserServiceController::class, 'validateUserById']);
+        Route::post('{id}/roles', [UserServiceController::class, 'assignRole']);
+        Route::get('{id}/permissions', [UserServiceController::class, 'getUserPermissions']);
+        Route::post('validate', [UserServiceController::class, 'validateUser']);
+    });
 
-// Internal routes (service-to-service communication with JWT auth)
-Route::middleware('auth:api')->prefix('users')->group(function () {
-    Route::get('{id}', [UserServiceController::class, 'getUserById']);
-    Route::post('{id}/roles', [UserServiceController::class, 'assignRole']);
-    Route::get('{id}/permissions', [UserServiceController::class, 'getUserPermissions']);
-});
+    /*
+    |--------------------------------------------------------------------------
+    | Health Check (Public)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('health', function () {
+        return response()->json([
+            'success' => true,
+            'message' => 'Authentication Service is running',
+            'service' => 'auth-service',
+            'version' => '1.0.0',
+            'timestamp' => now()->toISOString()
+        ]);
+    });
 
-// User validation route (service-to-service)
-Route::middleware('auth:api')->post('users/validate', [UserServiceController::class, 'validateUser']);
-
-// Health check endpoint (no auth required)
-Route::get('health', function () {
-    return response()->json([
-        'success' => true,
-        'message' => 'Authentication Service is running',
-        'service' => 'auth-service',
-        'version' => '1.0.0',
-        'timestamp' => now()->toISOString()
-    ]);
-});
-
-// Service info endpoint (no auth required)
-Route::get('info', function () {
-    return response()->json([
-        'success' => true,
-        'service' => 'auth-service',
-        'description' => 'Authentication and Authorization Service',
-        'version' => '1.0.0',
-        'endpoints' => [
-            'public' => [
-                'POST /api/auth/register' => 'Register new user',
-                'POST /api/auth/login' => 'User login',
-                'GET /api/health' => 'Health check',
-                'GET /api/info' => 'Service information'
-            ],
-            'protected' => [
-                'POST /api/auth/logout' => 'User logout',
-                'POST /api/auth/refresh' => 'Refresh JWT token',
-                'GET /api/auth/me' => 'Get authenticated user profile'
-            ],
-            'internal' => [
-                'GET /api/users/{id}' => 'Get user details',
-                'POST /api/users/{id}/roles' => 'Assign role to user',
-                'GET /api/users/{id}/permissions' => 'Get user permissions',
-                'POST /api/users/validate' => 'Validate user existence'
+    /*
+    |--------------------------------------------------------------------------
+    | Service Info (Public)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('info', function () {
+        return response()->json([
+            'success' => true,
+            'service' => 'auth-service',
+            'description' => 'Authentication and Authorization Service',
+            'version' => '1.0.0',
+            'endpoints' => [
+                'public' => [
+                    'POST /api/v1/auth/register' => 'Register new user',
+                    'POST /api/v1/auth/login' => 'User login',
+                    'GET /api/v1/health' => 'Health check',
+                    'GET /api/v1/info' => 'Service information'
+                ],
+                'protected' => [
+                    'POST /api/v1/auth/logout' => 'User logout',
+                    'POST /api/v1/auth/refresh' => 'Refresh Passport token',
+                    'GET /api/v1/auth/me' => 'Get authenticated user profile'
+                ],
+                'internal' => [
+                    'GET /api/v1/users/{id}' => 'Get user details',
+                    'POST /api/v1/users/{id}/roles' => 'Assign role to user',
+                    'GET /api/v1/users/{id}/permissions' => 'Get user permissions',
+                    'POST /api/v1/users/validate' => 'Validate user existence'
+                ]
             ]
-        ]
-    ]);
-});
+        ]);
+    });
+

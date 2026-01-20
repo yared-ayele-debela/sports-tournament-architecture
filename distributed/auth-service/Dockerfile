@@ -1,4 +1,4 @@
-FROM php:8.2-fpm
+FROM php:8.3-fpm
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -13,9 +13,9 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
-    libredis-dev \
+    libssl-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql zip bcmath opcache redis
+    && docker-php-ext-install gd pdo pdo_mysql zip bcmath opcache
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -38,10 +38,10 @@ RUN chown -R www-data:www-data /var/www/html \
 EXPOSE 8001
 
 # Create startup script to run migrations and start server
-RUN echo '#!/bin/bash\n\
+RUN printf '#!/bin/bash\n\
 php artisan migrate --force\n\
 php artisan db:seed --force\n\
-php artisan serve --host=0.0.0.0 --port=8001' > /var/www/html/start.sh && \
+php artisan serve --host=0.0.0.0 --port=8001\n' > /var/www/html/start.sh && \
 chmod +x /var/www/html/start.sh
 
 # Run the startup script

@@ -4,39 +4,36 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sport;
-use App\Services\HttpClients\AuthServiceClient;
+use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 
 class SportController extends Controller
 {
-    protected AuthServiceClient $authClient;
+    protected AuthService $authService;
 
-    /**
-     * Create a new SportController instance.
-     */
-    public function __construct(AuthServiceClient $authClient)
+    public function __construct(AuthService $authService)
     {
-        $this->authClient = $authClient;
+        $this->authService = $authService;
     }
 
     /**
-     * Display a listing of all sports.
+     * Display a listing of sports.
      */
     public function index(): JsonResponse
     {
         try {
-            $sports = Sport::withCount('tournaments')->get();
+            $sports = Sport::all();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Sports retrieved successfully',
                 'data' => $sports
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving sports', [
+            Log::error('Failed to retrieve sports', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -55,13 +52,30 @@ class SportController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_sports')) {
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user');
+            $userRoles = $request->get('user_roles', []);
+            $userPermissions = $request->get('user_permissions', []);
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
+                    'message' => 'Unauthorized. User not authenticated.',
+                    'error' => 'No authenticated user'
+                ], 401);
+            }
+            
+            // Check if user has admin role OR manage_sports permission
+            $isAdmin = collect($userRoles)->contains('name', 'Administrator');
+            $canManageSports = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_sports');
+            
+            if (!$isAdmin && !$canManageSports) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Sports management access required.',
+                    'error' => 'Insufficient permissions',
+                    'user_roles' => $userRoles,
+                    'user_permissions' => $userPermissions
                 ], 403);
             }
 
@@ -77,7 +91,7 @@ class SportController extends Controller
             Log::info('Sport created successfully', [
                 'sport_id' => $sport->id,
                 'name' => $sport->name,
-                'user_id' => $userId
+                'user_id' => $user['id']
             ]);
 
             return response()->json([
@@ -85,17 +99,10 @@ class SportController extends Controller
                 'message' => 'Sport created successfully',
                 'data' => $sport
             ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
-            Log::error('Error creating sport', [
+            Log::error('Failed to create sport', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -112,7 +119,7 @@ class SportController extends Controller
     public function show(string $id): JsonResponse
     {
         try {
-            $sport = Sport::withCount('tournaments')->find($id);
+            $sport = Sport::find($id);
 
             if (!$sport) {
                 return response()->json([
@@ -126,9 +133,9 @@ class SportController extends Controller
                 'success' => true,
                 'message' => 'Sport retrieved successfully',
                 'data' => $sport
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving sport', [
+            Log::error('Failed to retrieve sport', [
                 'sport_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -148,13 +155,30 @@ class SportController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_sports')) {
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user');
+            $userRoles = $request->get('user_roles', []);
+            $userPermissions = $request->get('user_permissions', []);
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
+                    'message' => 'Unauthorized. User not authenticated.',
+                    'error' => 'No authenticated user'
+                ], 401);
+            }
+            
+            // Check if user has admin role OR manage_sports permission
+            $isAdmin = collect($userRoles)->contains('name', 'Administrator');
+            $canManageSports = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_sports');
+            
+            if (!$isAdmin && !$canManageSports) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Sports management access required.',
+                    'error' => 'Insufficient permissions',
+                    'user_roles' => $userRoles,
+                    'user_permissions' => $userPermissions
                 ], 403);
             }
 
@@ -169,13 +193,8 @@ class SportController extends Controller
             }
 
             $validated = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('sports')->ignore($sport->id)
-                ],
-                'team_based' => 'required|boolean',
+                'name' => 'sometimes|string|max:255|unique:sports,name,' . $id,
+                'team_based' => 'sometimes|boolean',
                 'rules' => 'nullable|string',
                 'description' => 'nullable|string|max:1000'
             ]);
@@ -185,26 +204,19 @@ class SportController extends Controller
             Log::info('Sport updated successfully', [
                 'sport_id' => $sport->id,
                 'name' => $sport->name,
-                'user_id' => $userId
+                'user_id' => $user['id']
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Sport updated successfully',
                 'data' => $sport
-            ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error updating sport', [
+            Log::error('Failed to update sport', [
                 'sport_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -218,16 +230,33 @@ class SportController extends Controller
     /**
      * Remove the specified sport (Admin only).
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = request()->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_sports')) {
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user');
+            $userRoles = $request->get('user_roles', []);
+            $userPermissions = $request->get('user_permissions', []);
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
+                    'message' => 'Unauthorized. User not authenticated.',
+                    'error' => 'No authenticated user'
+                ], 401);
+            }
+            
+            // Check if user has admin role OR manage_sports permission
+            $isAdmin = collect($userRoles)->contains('name', 'Administrator');
+            $canManageSports = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_sports');
+            
+            if (!$isAdmin && !$canManageSports) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Sports management access required.',
+                    'error' => 'Insufficient permissions',
+                    'user_roles' => $userRoles,
+                    'user_permissions' => $userPermissions
                 ], 403);
             }
 
@@ -241,37 +270,23 @@ class SportController extends Controller
                 ], 404);
             }
 
-            // Check if sport has tournaments
-            $tournamentCount = $sport->tournaments()->count();
-            if ($tournamentCount > 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Cannot delete sport with associated tournaments',
-                    'error' => 'Foreign key constraint',
-                    'data' => [
-                        'tournament_count' => $tournamentCount
-                    ]
-                ], 409);
-            }
-
             $sport->delete();
 
             Log::info('Sport deleted successfully', [
-                'sport_id' => $sport->id,
-                'name' => $sport->name,
-                'user_id' => $userId
+                'sport_id' => $id,
+                'sport_name' => $sport->name,
+                'user_id' => $user['id']
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Sport deleted successfully'
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error deleting sport', [
+            Log::error('Failed to delete sport', [
                 'sport_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([

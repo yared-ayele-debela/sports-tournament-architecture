@@ -8,43 +8,45 @@ use App\Models\Venue;
 
 class VenueSeeder extends Seeder
 {
+    use WithoutModelEvents;
+
     /**
-     * Run the database seeds.
+     * Run database seeds.
      */
     public function run(): void
     {
         $venues = [
             [
-                'name' => 'National Soccer Stadium',
-                'location' => '123 Main Street, Sports City, SC 12345',
+                'name' => 'National Stadium',
+                'location' => 'Addis Ababa, Ethiopia',
                 'capacity' => 15000,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Community Sports Complex',
-                'location' => '456 Park Avenue, Recreation Town, SC 67890',
+                'name' => 'City Sports Complex',
+                'location' => 'Addis Ababa, Ethiopia',
                 'capacity' => 8000,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'name' => 'University Athletic Field',
-                'location' => '789 Campus Drive, University City, SC 11111',
+                'name' => 'Mekelle Arena',
+                'location' => 'Mekelle, Ethiopia',
                 'capacity' => 12000,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Municipal Recreation Center',
-                'location' => '321 City Hall Plaza, Metro Area, SC 22222',
-                'capacity' => 5000,
+                'name' => 'Bahir Dar Sports Center',
+                'location' => 'Bahir Dar, Ethiopia',
+                'capacity' => 6000,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
             [
-                'name' => 'Regional Sports Arena',
-                'location' => '654 Arena Boulevard, Sports Hub, SC 33333',
+                'name' => 'Hawassa International Stadium',
+                'location' => 'Hawassa, Ethiopia',
                 'capacity' => 10000,
                 'created_at' => now(),
                 'updated_at' => now(),

@@ -10,21 +10,18 @@ class Venue extends Model
     protected $fillable = [
         'name',
         'location',
-        'capacity',
+        'capacity'
     ];
 
     protected $casts = [
-        'capacity' => 'integer',
+        'capacity' => 'integer'
     ];
 
     /**
-     * Get all matches for this venue (external reference).
-     * Note: Matches are managed by a separate service.
+     * Get matches for this venue (external reference).
      */
-    public function matches(): HasMany
-    {
-        // This will be implemented via API calls to Match Service
-        // For now, return an empty relationship
-        return $this->hasMany(Match::class);
-    }
+    // public function matches(): HasMany
+    // {
+    //     return $this->hasMany(Match::class);
+    // }
 }

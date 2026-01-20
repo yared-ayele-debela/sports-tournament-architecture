@@ -12,7 +12,7 @@ class TournamentSettings extends Model
         'match_duration',
         'win_rest_time',
         'daily_start_time',
-        'daily_end_time',
+        'daily_end_time'
     ];
 
     protected $casts = [
@@ -20,11 +20,11 @@ class TournamentSettings extends Model
         'win_rest_time' => 'integer',
         'daily_start_time' => 'datetime:H:i',
         'daily_end_time' => 'datetime:H:i',
-        'tournament_id' => 'integer',
+        'tournament_id' => 'integer'
     ];
 
     /**
-     * Get the tournament that owns the settings.
+     * Get tournament that owns these settings.
      */
     public function tournament(): BelongsTo
     {

@@ -13,9 +13,8 @@ return new class extends Migration
     {
         Schema::create('teams', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('tournament_id')->index();
             $table->string('name');
-            $table->string('coach_name');
             $table->string('logo')->nullable();
             $table->timestamps();
         });

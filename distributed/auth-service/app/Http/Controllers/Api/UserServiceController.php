@@ -173,14 +173,56 @@ class UserServiceController extends Controller
     }
 
     /**
-     * Validate if user exists.
+     * Validate if user exists by ID.
      *
-     * @param int $userId
+     * @param int $id
      * @return JsonResponse
      */
-    public function validateUser($userId): JsonResponse
+    public function validateUserById($id): JsonResponse
     {
         try {
+            $user = User::find($id);
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found',
+                    'exists' => false
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'User exists',
+                'exists' => true,
+                'data' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'is_active' => !is_null($user->email_verified_at)
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error validating user by ID: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Internal server error',
+                'exists' => false
+            ], 500);
+        }
+    }
+
+    /**
+     * Validate if user exists.
+     *
+     * @param Request $request
+     * @return JsonResponse
+     */
+    public function validateUser(Request $request): JsonResponse
+    {
+        try {
+            $userId = $request->input('user_id');
             $user = User::find($userId);
             
             if (!$user) {

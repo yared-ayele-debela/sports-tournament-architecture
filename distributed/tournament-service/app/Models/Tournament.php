@@ -4,8 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Tournament extends Model
 {
@@ -16,16 +16,17 @@ class Tournament extends Model
         'start_date',
         'end_date',
         'status',
+        'created_by'
     ];
 
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
-        'sport_id' => 'integer',
+        'sport_id' => 'integer'
     ];
 
     /**
-     * Get the sport that owns the tournament.
+     * Get the sport that owns this tournament.
      */
     public function sport(): BelongsTo
     {
@@ -33,7 +34,7 @@ class Tournament extends Model
     }
 
     /**
-     * Get the settings associated with the tournament.
+     * Get the settings for this tournament.
      */
     public function settings(): HasOne
     {
@@ -41,25 +42,18 @@ class Tournament extends Model
     }
 
     /**
-     * Get all teams for this tournament (external reference).
-     * Note: Teams are managed by a separate service.
+     * Get teams for this tournament (external reference).
      */
     public function teams(): HasMany
     {
-        // This will be implemented via API calls to Team Service
-        // For now, return an empty relationship
-        return $this->hasMany(Team::class);
+        return $this->hasMany('App\Models\Team');
     }
 
     /**
-     * Get all matches for this tournament (external reference).
-     * Note: Matches are managed by a separate service.
+     * Get matches for this tournament (external reference).
      */
     public function matches(): HasMany
     {
-        // This will be implemented via API calls to Match Service
-        // For now, return an empty relationship
-        return $this->hasMany(Match::class);
-    
+        return $this->hasMany('App\Models\Match');
     }
 }

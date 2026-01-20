@@ -7,7 +7,12 @@ services:
       - "8001:8001"
     environment:
       - SERVICE_PORT=8001
-      - DATABASE_URL=mysql://user:password@auth-db:3306/auth_db
+      - DB_CONNECTION=mysql
+      - DB_HOST=auth-db
+      - DB_PORT=3306
+      - DB_DATABASE=auth_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpassword
     depends_on:
       - auth-db
     networks:
@@ -19,7 +24,12 @@ services:
       - "8002:8002"
     environment:
       - SERVICE_PORT=8002
-      - DATABASE_URL=mysql://user:password@tournament-db:3306/tournament_db
+      - DB_CONNECTION=mysql
+      - DB_HOST=tournament-db
+      - DB_PORT=3306
+      - DB_DATABASE=tournament_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpassword
     depends_on:
       - tournament-db
       - auth-service
@@ -150,7 +160,7 @@ services:
     ports:
       - "8080:80"
     environment:
-      - PMA_HOST=auth-db
+      - PMA_HOSTS=auth-db,tournament-db,team-db,match-db,results-db
       - PMA_USER=root
       - PMA_PASSWORD=rootpassword
     depends_on:

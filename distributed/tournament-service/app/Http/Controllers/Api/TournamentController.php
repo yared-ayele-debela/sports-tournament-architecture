@@ -4,25 +4,22 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
-use App\Models\Sport;
-use App\Services\HttpClients\AuthServiceClient;
+use App\Models\TournamentSettings;
+use App\Services\AuthService;
 use App\Services\EventPublisher;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 
 class TournamentController extends Controller
 {
-    protected AuthServiceClient $authClient;
+    protected AuthService $authService;
     protected EventPublisher $eventPublisher;
 
-    /**
-     * Create a new TournamentController instance.
-     */
-    public function __construct(AuthServiceClient $authClient, EventPublisher $eventPublisher)
+    public function __construct(AuthService $authService, EventPublisher $eventPublisher)
     {
-        $this->authClient = $authClient;
+        $this->authService = $authService;
         $this->eventPublisher = $eventPublisher;
     }
 
@@ -36,30 +33,22 @@ class TournamentController extends Controller
 
             // Apply filters
             if ($request->has('status')) {
-                $query->where('status', $request->get('status'));
+                $query->where('status', $request->status);
             }
 
             if ($request->has('sport_id')) {
-                $query->where('sport_id', $request->get('sport_id'));
+                $query->where('sport_id', $request->sport_id);
             }
 
-            if ($request->has('start_date_from')) {
-                $query->where('start_date', '>=', $request->get('start_date_from'));
-            }
-
-            if ($request->has('start_date_to')) {
-                $query->where('start_date', '<=', $request->get('start_date_to'));
-            }
-
-            $tournaments = $query->orderBy('created_at', 'desc')->paginate(15);
+            $tournaments = $query->get();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tournaments retrieved successfully',
                 'data' => $tournaments
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving tournaments', [
+            Log::error('Failed to retrieve tournaments', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -78,64 +67,64 @@ class TournamentController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_tournaments')) {
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user');
+            $userRoles = $request->get('user_roles', []);
+            $userPermissions = $request->get('user_permissions', []);
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
-                ], 403);
-            }
-
-            // Validate user exists via Auth service
-            if (!$this->authClient->validateUser($userId)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User validation failed',
-                    'error' => 'Invalid user'
+                    'message' => 'Unauthorized. User not authenticated.',
+                    'error' => 'No authenticated user'
                 ], 401);
+            }
+            
+            // Check if user has admin role OR manage_tournaments permission
+            $isAdmin = collect($userRoles)->contains('name', 'Administrator');
+            $canManageTournaments = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_tournaments');
+            
+            if (!$isAdmin && !$canManageTournaments) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Tournament management access required.',
+                    'error' => 'Insufficient permissions',
+                    'user_roles' => $userRoles,
+                    'user_permissions' => $userPermissions
+                ], 403);
             }
 
             $validated = $request->validate([
                 'sport_id' => 'required|exists:sports,id',
                 'name' => 'required|string|max:255',
-                'location' => 'required|string|max:500',
-                'start_date' => 'required|date|after:today',
+                'location' => 'nullable|string|max:500',
+                'start_date' => 'required|date|after_or_equal:today',
                 'end_date' => 'required|date|after:start_date',
-                'status' => 'nullable|in:planning,active,completed,cancelled'
+                'status' => 'sometimes|in:planned,ongoing,completed,cancelled'
             ]);
 
-            $tournament = Tournament::create($validated);
+            $validated['created_by'] = $user['id'];
 
-            // Publish tournament created event
-            $this->eventPublisher->publishTournamentCreated(
-                $tournament->load(['sport', 'settings'])->toArray(),
-                $userId
-            );
+            $tournament = Tournament::create($validated);
 
             Log::info('Tournament created successfully', [
                 'tournament_id' => $tournament->id,
                 'name' => $tournament->name,
-                'user_id' => $userId
+                'user_id' => $user['id']
             ]);
+
+            // Publish tournament created event
+            $this->eventPublisher->publishTournamentCreated($tournament->load(['sport', 'settings'])->toArray());
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tournament created successfully',
                 'data' => $tournament->load(['sport', 'settings'])
             ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
-            Log::error('Error creating tournament', [
+            Log::error('Failed to create tournament', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -166,9 +155,9 @@ class TournamentController extends Controller
                 'success' => true,
                 'message' => 'Tournament retrieved successfully',
                 'data' => $tournament
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving tournament', [
+            Log::error('Failed to retrieve tournament', [
                 'tournament_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -188,16 +177,6 @@ class TournamentController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_tournaments')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
-                ], 403);
-            }
-
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
@@ -209,52 +188,38 @@ class TournamentController extends Controller
             }
 
             $validated = $request->validate([
-                'sport_id' => 'required|exists:sports,id',
-                'name' => 'required|string|max:255',
-                'location' => 'required|string|max:500',
-                'start_date' => 'required|date',
-                'end_date' => 'required|date|after:start_date',
-                'status' => 'nullable|in:planning,active,completed,cancelled'
+                'sport_id' => 'sometimes|exists:sports,id',
+                'name' => 'sometimes|string|max:255',
+                'location' => 'nullable|string|max:500',
+                'start_date' => 'sometimes|date|after_or_equal:today',
+                'end_date' => 'sometimes|date|after:start_date',
+                'status' => 'sometimes|in:planned,ongoing,completed,cancelled'
             ]);
 
             $oldData = $tournament->toArray();
             $tournament->update($validated);
-            $newData = $tournament->fresh()->toArray();
 
-            // Calculate changes for event payload
-            $changes = $this->calculateChanges($oldData, $newData);
+            Log::info('Tournament updated successfully', [
+                'tournament_id' => $tournament->id,
+                'name' => $tournament->name
+            ]);
 
             // Publish tournament updated event
             $this->eventPublisher->publishTournamentUpdated(
                 $tournament->load(['sport', 'settings'])->toArray(),
-                $userId,
-                $changes
+                $oldData
             );
-
-            Log::info('Tournament updated successfully', [
-                'tournament_id' => $tournament->id,
-                'name' => $tournament->name,
-                'user_id' => $userId,
-                'changes_count' => count($changes)
-            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tournament updated successfully',
                 'data' => $tournament->load(['sport', 'settings'])
-            ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error updating tournament', [
+            Log::error('Failed to update tournament', [
                 'tournament_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -271,16 +236,6 @@ class TournamentController extends Controller
     public function destroy(string $id): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = request()->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_tournaments')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
-                ], 403);
-            }
-
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
@@ -294,21 +249,19 @@ class TournamentController extends Controller
             $tournament->delete();
 
             Log::info('Tournament deleted successfully', [
-                'tournament_id' => $tournament->id,
-                'name' => $tournament->name,
-                'user_id' => $userId
+                'tournament_id' => $id,
+                'tournament_name' => $tournament->name
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tournament deleted successfully'
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error deleting tournament', [
+            Log::error('Failed to delete tournament', [
                 'tournament_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -320,21 +273,11 @@ class TournamentController extends Controller
     }
 
     /**
-     * Change tournament status (planning → active → completed).
+     * Update tournament status.
      */
     public function updateStatus(Request $request, string $id): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_tournaments')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
-                ], 403);
-            }
-
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
@@ -346,47 +289,47 @@ class TournamentController extends Controller
             }
 
             $validated = $request->validate([
-                'status' => 'required|in:planning,active,completed,cancelled'
+                'status' => 'required|in:planned,ongoing,completed,cancelled'
             ]);
 
-            $oldStatus = $tournament->status;
-            $tournament->update(['status' => $validated['status']]);
+            // Validate status transition
+            $currentStatus = $tournament->status;
+            $newStatus = $validated['status'];
+
+            if (!$this->isValidStatusTransition($currentStatus, $newStatus)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid status transition',
+                    'error' => "Cannot transition from {$currentStatus} to {$newStatus}",
+                    'current_status' => $currentStatus,
+                    'requested_status' => $newStatus
+                ], 400);
+            }
+
+            $tournament->update(['status' => $newStatus]);
+
+            Log::info('Tournament status updated successfully', [
+                'tournament_id' => $tournament->id,
+                'old_status' => $currentStatus,
+                'new_status' => $newStatus
+            ]);
 
             // Publish tournament status changed event
             $this->eventPublisher->publishTournamentStatusChanged(
                 $tournament->load(['sport', 'settings'])->toArray(),
-                $oldStatus,
-                $validated['status'],
-                $userId
+                $currentStatus
             );
-
-            Log::info('Tournament status updated', [
-                'tournament_id' => $tournament->id,
-                'old_status' => $oldStatus,
-                'new_status' => $validated['status'],
-                'user_id' => $userId
-            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tournament status updated successfully',
-                'data' => [
-                    'old_status' => $oldStatus,
-                    'new_status' => $validated['status']
-                ]
-            ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
+                'data' => $tournament
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error updating tournament status', [
+            Log::error('Failed to update tournament status', [
                 'tournament_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -398,27 +341,58 @@ class TournamentController extends Controller
     }
 
     /**
-     * Calculate changes between old and new data.
-     *
-     * @param array $oldData
-     * @param array $newData
-     * @return array
+     * Validate if a tournament exists and is accessible.
      */
-    protected function calculateChanges(array $oldData, array $newData): array
+    public function validate(string $id): JsonResponse
     {
-        $changes = [];
-        
-        foreach ($newData as $key => $newValue) {
-            $oldValue = $oldData[$key] ?? null;
-            
-            if ($oldValue !== $newValue) {
-                $changes[$key] = [
-                    'old' => $oldValue,
-                    'new' => $newValue
-                ];
+        try {
+            $tournament = Tournament::find($id);
+
+            if (!$tournament) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Tournament not found',
+                    'error' => 'Resource not found'
+                ], 404);
             }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tournament is valid',
+                'data' => [
+                    'id' => $tournament->id,
+                    'name' => $tournament->name,
+                    'status' => $tournament->status,
+                    'sport_id' => $tournament->sport_id
+                ]
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to validate tournament', [
+                'tournament_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to validate tournament',
+                'error' => 'Internal server error'
+            ], 500);
         }
-        
-        return $changes;
+    }
+
+    /**
+     * Validate if status transition is allowed.
+     */
+    private function isValidStatusTransition(string $from, string $to): bool
+    {
+        $validTransitions = [
+            'planned' => ['ongoing', 'cancelled'],
+            'ongoing' => ['completed', 'cancelled'],
+            'completed' => [], // No transitions from completed
+            'cancelled' => ['planned'] // Can restart cancelled tournaments
+        ];
+
+        return in_array($to, $validTransitions[$from] ?? []);
     }
 }

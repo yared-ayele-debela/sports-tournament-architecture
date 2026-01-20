@@ -3,33 +3,24 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Tournament;
 use App\Models\TournamentSettings;
-use App\Services\HttpClients\AuthServiceClient;
+use App\Models\Tournament;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class TournamentSettingsController extends Controller
 {
-    protected AuthServiceClient $authClient;
-
-    /**
-     * Create a new TournamentSettingsController instance.
-     */
-    public function __construct(AuthServiceClient $authClient)
-    {
-        $this->authClient = $authClient;
-    }
-
     /**
      * Display tournament settings.
      */
     public function show(string $tournamentId): JsonResponse
     {
         try {
+            // Verify tournament exists
             $tournament = Tournament::find($tournamentId);
-
+            
             if (!$tournament) {
                 return response()->json([
                     'success' => false,
@@ -38,23 +29,15 @@ class TournamentSettingsController extends Controller
                 ], 404);
             }
 
-            $settings = $tournament->settings;
-
-            if (!$settings) {
-                return response()->json([
-                    'success' => true,
-                    'message' => 'No settings found for tournament',
-                    'data' => null
-                ], 200);
-            }
+            $settings = TournamentSettings::where('tournament_id', $tournamentId)->first();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tournament settings retrieved successfully',
                 'data' => $settings
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving tournament settings', [
+            Log::error('Failed to retrieve tournament settings', [
                 'tournament_id' => $tournamentId,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -74,18 +57,9 @@ class TournamentSettingsController extends Controller
     public function store(Request $request, string $tournamentId): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_tournaments')) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
-                ], 403);
-            }
-
+            // Verify tournament exists
             $tournament = Tournament::find($tournamentId);
-
+            
             if (!$tournament) {
                 return response()->json([
                     'success' => false,
@@ -95,41 +69,33 @@ class TournamentSettingsController extends Controller
             }
 
             $validated = $request->validate([
-                'match_duration' => 'required|integer|min:1|max:480', // Max 8 hours
-                'win_rest_time' => 'required|integer|min:0|max:120', // Max 2 hours
-                'daily_start_time' => 'required|date_format:H:i',
-                'daily_end_time' => 'required|date_format:H:i|after:daily_start_time'
+                'match_duration' => 'nullable|integer|min:1|max:480',
+                'win_rest_time' => 'nullable|integer|min:0|max:1440',
+                'daily_start_time' => 'nullable|date_format:H:i',
+                'daily_end_time' => 'nullable|date_format:H:i|after:daily_start_time'
             ]);
 
-            // Update or create settings
-            $settings = $tournament->settings()->updateOrCreate(
+            // Use updateOrCreate to handle both create and update scenarios
+            $settings = TournamentSettings::updateOrCreate(
                 ['tournament_id' => $tournamentId],
                 $validated
             );
 
             Log::info('Tournament settings saved successfully', [
                 'tournament_id' => $tournamentId,
-                'settings_id' => $settings->id,
-                'user_id' => $userId
+                'settings_id' => $settings->id
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Tournament settings saved successfully',
                 'data' => $settings
-            ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error saving tournament settings', [
+            Log::error('Failed to save tournament settings', [
                 'tournament_id' => $tournamentId,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([

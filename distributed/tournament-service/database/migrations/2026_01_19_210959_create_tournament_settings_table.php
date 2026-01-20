@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('tournament_settings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
-            $table->integer('match_duration'); // in minutes
-            $table->integer('win_rest_time'); // in minutes
-            $table->time('daily_start_time');
-            $table->time('daily_end_time');
+            $table->foreignId('tournament_id')->unique()->constrained()->onDelete('cascade');
+            $table->integer('match_duration')->nullable();
+            $table->integer('win_rest_time')->nullable();
+            $table->time('daily_start_time')->nullable();
+            $table->time('daily_end_time')->nullable();
             $table->timestamps();
-        });
+                    });
     }
 
     /**

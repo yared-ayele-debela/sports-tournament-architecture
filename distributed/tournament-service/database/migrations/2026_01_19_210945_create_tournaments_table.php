@@ -15,11 +15,15 @@ return new class extends Migration
             $table->id();
             $table->foreignId('sport_id')->constrained()->onDelete('cascade');
             $table->string('name');
-            $table->string('location');
+            $table->string('location')->nullable();
             $table->date('start_date');
             $table->date('end_date');
-            $table->enum('status', ['planning', 'active', 'completed', 'cancelled'])->default('planning');
+            $table->enum('status', ['planned', 'ongoing', 'completed', 'cancelled'])->default('planned');
+            $table->unsignedBigInteger('created_by')->nullable();
             $table->timestamps();
+            
+            $table->index(['sport_id', 'status']);
+            $table->index(['start_date', 'end_date']);
         });
     }
 

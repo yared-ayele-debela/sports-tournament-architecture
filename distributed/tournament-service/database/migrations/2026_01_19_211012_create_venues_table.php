@@ -11,12 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('team_coach', function (Blueprint $table) {
+        Schema::create('venues', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('team_id')->constrained()->onDelete('cascade');
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('name');
+            $table->string('location')->nullable();
+            $table->integer('capacity')->nullable();
             $table->timestamps();
-        });
+                    });
     }
 
     /**
@@ -24,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('team_coach');
+        Schema::dropIfExists('venues');
     }
 };

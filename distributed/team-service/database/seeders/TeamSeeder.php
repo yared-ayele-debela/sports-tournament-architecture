@@ -2,65 +2,64 @@
 
 namespace Database\Seeders;
 
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
 use App\Models\Team;
-use App\Models\TeamCoach;
+use App\Services\TournamentServiceClient;
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\DB;
 
 class TeamSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         // Clear existing data
         DB::table('team_coach')->delete();
         Team::query()->delete();
 
-        // Tournament IDs (assuming these exist in Tournament Service)
-        $tournamentIds = [1, 2];
-
-        // Coach user IDs (assuming these exist in Auth Service)
-        $coachUserIds = range(1, 20); // coach1@test.com to coach20@test.com
-
-        $teamNames = [
-            'Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta',
-            'Iota', 'Kappa', 'Lambda', 'Mu', 'Nu', 'Xi', 'Omicron', 'Pi'
-        ];
-
-        $coachNames = [
-            'John Smith', 'Maria Garcia', 'Chen Wei', 'Ahmed Hassan', 'Emma Wilson',
-            'Luis Rodriguez', 'Priya Sharma', 'James Brown', 'Sophie Martin', 'Carlos Silva',
-            'Yuki Tanaka', 'Anna Petrov', 'Mohammed Ali', 'Sarah Johnson', 'David Kim',
-            'Elena Rodriguez', 'Michael Chen', 'Fatima Al-Rashid', 'Robert Taylor', 'Lisa Wang'
-        ];
-
-        $teamIndex = 0;
-        $coachIndex = 0;
-
-        foreach ($tournamentIds as $tournamentId) {
-            for ($i = 0; $i < 8; $i++) {
-                $team = Team::create([
-                    'tournament_id' => $tournamentId,
-                    'name' => "Team {$teamNames[$teamIndex]}",
-                    'coach_name' => $coachNames[$coachIndex],
-                    'logo' => "https://picsum.photos/seed/team{$teamIndex}/200/200.jpg"
-                ]);
-
-                // Assign coach to team
-                TeamCoach::create([
-                    'team_id' => $team->id,
-                    'user_id' => $coachUserIds[$coachIndex]
-                ]);
-
-                $teamIndex++;
-                $coachIndex++;
+        // Fetch tournaments from Tournament Service
+        try {
+            $response = Http::get(config('services.tournament.url') . '/api/tournaments');
+            
+            if ($response->status() !== 200) {
+                $this->command->error('Failed to fetch tournaments from Tournament Service');
+                return;
             }
-        }
 
-        $this->command->info('Team seeder completed successfully!');
-        $this->command->info('Created 16 teams across 2 tournaments with assigned coaches.');
+            $tournaments = $response->json()['data'] ?? [];
+            
+            if (empty($tournaments)) {
+                $this->command->error('No tournaments found');
+                return;
+            }
+
+            // Take only first 2 tournaments
+            $tournaments = array_slice($tournaments, 0, 2);
+
+            $teamNames = [
+                'Team Alpha', 'Team Beta', 'Team Gamma', 'Team Delta',
+                'Team Epsilon', 'Team Zeta', 'Team Eta', 'Team Theta'
+            ];
+
+            foreach ($tournaments as $tournament) {
+                $this->command->info("Creating teams for tournament: {$tournament['name']}");
+                
+                foreach ($teamNames as $index => $teamName) {
+                    $team = Team::create([
+                        'tournament_id' => $tournament['id'],
+                        'name' => $teamName,
+                        'logo' => "https://via.placeholder.com/150x150/4F46E5/FFFFFF?text=" . substr($teamName, -1),
+                    ]);
+
+                    // Assign random coach (user_id 4-21)
+                    $coachId = rand(4, 21);
+                    $team->coaches()->attach($coachId);
+
+                    $this->command->info("Created {$teamName} with coach ID: {$coachId}");
+                }
+            }
+
+        } catch (\Exception $e) {
+            $this->command->error('Error creating teams: ' . $e->getMessage());
+        }
     }
 }

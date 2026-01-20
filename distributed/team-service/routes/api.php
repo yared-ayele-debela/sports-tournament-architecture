@@ -2,8 +2,8 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\TeamController;
-use App\Http\Controllers\PlayerController;
+use App\Http\Controllers\Api\TeamController;
+use App\Http\Controllers\Api\PlayerController;
 
 /*
 |--------------------------------------------------------------------------
@@ -16,9 +16,24 @@ use App\Http\Controllers\PlayerController;
 |
 */
 
-Route::middleware('auth:sanctum')->group(function () {
+/*
+|--------------------------------------------------------------------------
+| Health Check (Public)
+|--------------------------------------------------------------------------
+*/
+Route::get('health', function () {
+    return response()->json([
+        'success' => true,
+        'message' => 'Team Service is running',
+        'service' => 'team-service',
+        'version' => '1.0.0',
+        'timestamp' => now()->toISOString()
+    ]);
+});
+
+Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
     
-    // Team Routes
+    // Teams Routes
     Route::get('/tournaments/{tournamentId}/teams', [TeamController::class, 'index']);
     Route::post('/teams', [TeamController::class, 'store']);
     Route::get('/teams/{id}', [TeamController::class, 'show']);
@@ -26,18 +41,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/teams/{id}', [TeamController::class, 'destroy']);
     Route::get('/teams/{id}/players', [PlayerController::class, 'index']);
     
-    // Player Routes
+    // Players Routes
     Route::get('/players', [PlayerController::class, 'index']);
     Route::post('/players', [PlayerController::class, 'store']);
     Route::get('/players/{id}', [PlayerController::class, 'show']);
     Route::put('/players/{id}', [PlayerController::class, 'update']);
     Route::delete('/players/{id}', [PlayerController::class, 'destroy']);
-});
-
-Route::get('/health', function () {
-    return response()->json([
-        'success' => true,
-        'message' => 'Team Service is running',
-        'timestamp' => now()->toISOString()
-    ]);
+    
 });

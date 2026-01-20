@@ -11,17 +11,15 @@ class Sport extends Model
         'name',
         'team_based',
         'rules',
-        'description',
+        'description'
     ];
 
     protected $casts = [
-        'team_based' => 'boolean',
-        'rules' => 'text',
-        'description' => 'text',
+        'team_based' => 'boolean'
     ];
 
     /**
-     * Get all tournaments for this sport.
+     * Get tournaments for this sport.
      */
     public function tournaments(): HasMany
     {

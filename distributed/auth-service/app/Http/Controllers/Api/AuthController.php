@@ -9,7 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
-use Tymon\JWTAuth\Facades\JWTAuth;
+use Laravel\Passport\Token;
 
 class AuthController extends Controller
 {
@@ -42,7 +42,7 @@ class AuthController extends Controller
                 'password' => Hash::make($request->password),
             ]);
 
-            $token = JWTAuth::fromUser($user);
+            $token = $user->createToken('Personal Access Token')->accessToken;
 
             return response()->json([
                 'success' => true,
@@ -57,8 +57,7 @@ class AuthController extends Controller
                         'updated_at' => $user->updated_at,
                     ],
                     'token' => $token,
-                    'token_type' => 'bearer',
-                    'expires_in' => auth()->factory()->getTTL() * 60
+                    'token_type' => 'Bearer',
                 ]
             ], 201);
         } catch (\Exception $e) {
@@ -96,7 +95,7 @@ class AuthController extends Controller
 
             $credentials = $request->only('email', 'password');
 
-            if (!$token = JWTAuth::attempt($credentials)) {
+            if (!auth()->attempt($credentials)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid credentials',
@@ -105,6 +104,7 @@ class AuthController extends Controller
             }
 
             $user = auth()->user();
+            $token = $user->createToken('Personal Access Token')->accessToken;
 
             return response()->json([
                 'success' => true,
@@ -119,8 +119,7 @@ class AuthController extends Controller
                         'updated_at' => $user->updated_at,
                     ],
                     'token' => $token,
-                    'token_type' => 'bearer',
-                    'expires_in' => auth()->factory()->getTTL() * 60
+                    'token_type' => 'Bearer',
                 ]
             ]);
         } catch (\Exception $e) {
@@ -142,7 +141,7 @@ class AuthController extends Controller
     public function logout(): JsonResponse
     {
         try {
-            auth()->logout();
+            auth()->user()->token()->revoke();
 
             return response()->json([
                 'success' => true,
@@ -167,8 +166,9 @@ class AuthController extends Controller
     public function refresh(): JsonResponse
     {
         try {
-            $newToken = auth()->refresh();
             $user = auth()->user();
+            $user->token()->revoke();
+            $newToken = $user->createToken('Personal Access Token')->accessToken;
 
             return response()->json([
                 'success' => true,
@@ -183,8 +183,7 @@ class AuthController extends Controller
                         'updated_at' => $user->updated_at,
                     ],
                     'token' => $newToken,
-                    'token_type' => 'bearer',
-                    'expires_in' => auth()->factory()->getTTL() * 60
+                    'token_type' => 'Bearer',
                 ]
             ]);
         } catch (\Exception $e) {
@@ -206,7 +205,7 @@ class AuthController extends Controller
     public function me(): JsonResponse
     {
         try {
-            $user = auth()->user();
+            $user = auth('api')->user();
             
             if (!$user) {
                 return response()->json([

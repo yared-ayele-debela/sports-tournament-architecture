@@ -11,12 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('sports', function (Blueprint $table) {
-            $table->id();
-            $table->string('name')->unique();
-            $table->boolean('team_based')->default(true);
-            $table->text('rules')->nullable();
-            $table->text('description')->nullable();
+        Schema::create('team_coach', function (Blueprint $table) {
+            $table->unsignedBigInteger('team_id');
+            $table->unsignedBigInteger('user_id');
+            $table->primary(['team_id', 'user_id']);
+            $table->foreign('team_id')->references('id')->on('teams')->onDelete('cascade');
             $table->timestamps();
         });
     }
@@ -26,6 +25,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('sports');
+        Schema::dropIfExists('team_coach');
     }
 };

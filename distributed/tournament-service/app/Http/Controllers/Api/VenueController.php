@@ -4,39 +4,35 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Venue;
-use App\Services\HttpClients\AuthServiceClient;
+use App\Services\AuthService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Validator;
 
 class VenueController extends Controller
 {
-    protected AuthServiceClient $authClient;
+    protected AuthService $authService;
 
-    /**
-     * Create a new VenueController instance.
-     */
-    public function __construct(AuthServiceClient $authClient)
+    public function __construct(AuthService $authService)
     {
-        $this->authClient = $authClient;
+        $this->authService = $authService;
     }
-
     /**
      * Display a listing of venues.
      */
     public function index(): JsonResponse
     {
         try {
-            $venues = Venue::withCount('matches')->orderBy('name')->paginate(20);
+            $venues = Venue::all();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Venues retrieved successfully',
                 'data' => $venues
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving venues', [
+            Log::error('Failed to retrieve venues', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -55,20 +51,36 @@ class VenueController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_venues')) {
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user');
+            $userRoles = $request->get('user_roles', []);
+            $userPermissions = $request->get('user_permissions', []);
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
+                    'message' => 'Unauthorized. User not authenticated.',
+                    'error' => 'No authenticated user'
+                ], 401);
+            }
+            
+            // Check if user has admin role OR manage_venues permission
+            $isAdmin = collect($userRoles)->contains('name', 'Administrator');
+            $canManageVenues = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_venues');
+            
+            if (!$isAdmin && !$canManageVenues) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Venue management access required.',
+                    'error' => 'Insufficient permissions',
+                    'user_roles' => $userRoles,
+                    'user_permissions' => $userPermissions
                 ], 403);
             }
-
             $validated = $request->validate([
                 'name' => 'required|string|max:255',
-                'location' => 'required|string|max:500',
-                'capacity' => 'required|integer|min:1|max:1000000'
+                'location' => 'nullable|string|max:500',
+                'capacity' => 'nullable|integer|min:1'
             ]);
 
             $venue = Venue::create($validated);
@@ -76,7 +88,7 @@ class VenueController extends Controller
             Log::info('Venue created successfully', [
                 'venue_id' => $venue->id,
                 'name' => $venue->name,
-                'user_id' => $userId
+                'user_id' => $user['id']
             ]);
 
             return response()->json([
@@ -84,17 +96,10 @@ class VenueController extends Controller
                 'message' => 'Venue created successfully',
                 'data' => $venue
             ], 201);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
         } catch (\Exception $e) {
-            Log::error('Error creating venue', [
+            Log::error('Failed to create venue', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -111,7 +116,7 @@ class VenueController extends Controller
     public function show(string $id): JsonResponse
     {
         try {
-            $venue = Venue::withCount('matches')->find($id);
+            $venue = Venue::find($id);
 
             if (!$venue) {
                 return response()->json([
@@ -125,9 +130,9 @@ class VenueController extends Controller
                 'success' => true,
                 'message' => 'Venue retrieved successfully',
                 'data' => $venue
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error retrieving venue', [
+            Log::error('Failed to retrieve venue', [
                 'venue_id' => $id,
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -147,16 +152,32 @@ class VenueController extends Controller
     public function update(Request $request, string $id): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = $request->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_venues')) {
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user');
+            $userRoles = $request->get('user_roles', []);
+            $userPermissions = $request->get('user_permissions', []);
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
+                    'message' => 'Unauthorized. User not authenticated.',
+                    'error' => 'No authenticated user'
+                ], 401);
+            }
+            
+            // Check if user has admin role OR manage_venues permission
+            $isAdmin = collect($userRoles)->contains('name', 'Administrator');
+            $canManageVenues = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_venues');
+            
+            if (!$isAdmin && !$canManageVenues) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Venue management access required.',
+                    'error' => 'Insufficient permissions',
+                    'user_roles' => $userRoles,
+                    'user_permissions' => $userPermissions
                 ], 403);
             }
-
             $venue = Venue::find($id);
 
             if (!$venue) {
@@ -168,14 +189,9 @@ class VenueController extends Controller
             }
 
             $validated = $request->validate([
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    Rule::unique('venues')->ignore($venue->id)
-                ],
-                'location' => 'required|string|max:500',
-                'capacity' => 'required|integer|min:1|max:1000000'
+                'name' => 'sometimes|string|max:255',
+                'location' => 'nullable|string|max:500',
+                'capacity' => 'nullable|integer|min:1'
             ]);
 
             $venue->update($validated);
@@ -183,26 +199,19 @@ class VenueController extends Controller
             Log::info('Venue updated successfully', [
                 'venue_id' => $venue->id,
                 'name' => $venue->name,
-                'user_id' => $userId
+                'user_id' => $user['id']
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Venue updated successfully',
                 'data' => $venue
-            ], 200);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error updating venue', [
+            Log::error('Failed to update venue', [
                 'venue_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
@@ -216,19 +225,35 @@ class VenueController extends Controller
     /**
      * Remove the specified venue (Admin only).
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         try {
-            // Check if user has admin permissions
-            $userId = request()->user()?->id;
-            if (!$userId || !$this->authClient->userHasPermission($userId, 'manage_venues')) {
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user');
+            $userRoles = $request->get('user_roles', []);
+            $userPermissions = $request->get('user_permissions', []);
+            
+            if (!$user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized. Admin access required.',
-                    'error' => 'Insufficient permissions'
+                    'message' => 'Unauthorized. User not authenticated.',
+                    'error' => 'No authenticated user'
+                ], 401);
+            }
+            
+            // Check if user has admin role OR manage_venues permission
+            $isAdmin = collect($userRoles)->contains('name', 'Administrator');
+            $canManageVenues = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_venues');
+            
+            if (!$isAdmin && !$canManageVenues) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Venue management access required.',
+                    'error' => 'Insufficient permissions',
+                    'user_roles' => $userRoles,
+                    'user_permissions' => $userPermissions
                 ], 403);
             }
-
             $venue = Venue::find($id);
 
             if (!$venue) {
@@ -239,28 +264,23 @@ class VenueController extends Controller
                 ], 404);
             }
 
-            // Check if venue has associated matches (external reference)
-            // This would need to be implemented via API call to Match Service
-            // For now, we'll allow deletion with a warning
-
             $venue->delete();
 
             Log::info('Venue deleted successfully', [
-                'venue_id' => $venue->id,
-                'name' => $venue->name,
-                'user_id' => $userId
+                'venue_id' => $id,
+                'venue_name' => $venue->name,
+                'user_id' => $user['id']
             ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Venue deleted successfully'
-            ], 200);
+            ]);
         } catch (\Exception $e) {
-            Log::error('Error deleting venue', [
+            Log::error('Failed to delete venue', [
                 'venue_id' => $id,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => $userId ?? null
+                'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([

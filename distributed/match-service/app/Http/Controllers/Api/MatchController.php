@@ -15,7 +15,6 @@ class MatchController extends Controller
 
     public function __construct(MatchScheduler $matchScheduler)
     {
-        $this->middleware('auth:api');
         $this->matchScheduler = $matchScheduler;
     }
 

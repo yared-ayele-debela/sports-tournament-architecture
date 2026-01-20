@@ -18,7 +18,6 @@ class MatchEventController extends Controller
 
     public function __construct(TeamServiceClient $teamService, EventPublisher $eventPublisher)
     {
-        $this->middleware('auth:api');
         $this->teamService = $teamService;
         $this->eventPublisher = $eventPublisher;
     }
@@ -95,6 +94,6 @@ class MatchEventController extends Controller
     protected function validatePlayerTeam(int $playerId, int $teamId): bool
     {
         $response = $this->teamService->validatePlayer($playerId, $teamId);
-        return $response && isset($response['valid']) && $response['valid'] === true;
+        return $response && isset($response['success']) && $response['success'] === true;
     }
 }

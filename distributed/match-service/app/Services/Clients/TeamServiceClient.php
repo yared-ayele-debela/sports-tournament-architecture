@@ -6,7 +6,7 @@ class TeamServiceClient extends ServiceClient
 {
     public function __construct()
     {
-        parent::__construct('http://localhost:8002');
+        parent::__construct('http://localhost:8003');
     }
 
     public function getTeam($teamId)

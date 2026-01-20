@@ -202,6 +202,26 @@ class PlayerController extends Controller
         }
     }
 
+    public function validatePlayer(string $teamId, string $playerId): JsonResponse
+    {
+        $player = Player::where('id', $playerId)
+            ->where('team_id', $teamId)
+            ->first();
+
+        if (!$player) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Player not found or does not belong to this team'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Player validated successfully',
+            'data' => $player
+        ]);
+    }
+
     public function destroy(string $id): JsonResponse
     {
         $player = Player::with('team')->find($id);

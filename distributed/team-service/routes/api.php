@@ -40,6 +40,7 @@ Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])
     Route::put('/teams/{id}', [TeamController::class, 'update']);
     Route::delete('/teams/{id}', [TeamController::class, 'destroy']);
     Route::get('/teams/{id}/players', [PlayerController::class, 'index']);
+    Route::get('/teams/{teamId}/players/{playerId}/validate', [PlayerController::class, 'validatePlayer']);
     
     // Players Routes
     Route::get('/players', [PlayerController::class, 'index']);

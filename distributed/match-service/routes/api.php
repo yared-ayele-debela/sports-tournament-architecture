@@ -32,7 +32,7 @@ Route::get('health', function () {
     ]);
 });
 
-Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
+Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
     
     // Matches Routes
     Route::get('/tournaments/{tournamentId}/matches', [MatchController::class, 'index']);

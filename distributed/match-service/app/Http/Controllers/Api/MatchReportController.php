@@ -8,6 +8,7 @@ use App\Models\MatchReport;
 use App\Services\EventPublisher;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class MatchReportController extends Controller
 {
@@ -15,7 +16,6 @@ class MatchReportController extends Controller
 
     public function __construct(EventPublisher $eventPublisher)
     {
-        $this->middleware('auth:api');
         $this->eventPublisher = $eventPublisher;
     }
 
@@ -32,17 +32,20 @@ class MatchReportController extends Controller
     {
         $match = MatchGame::findOrFail($matchId);
 
+        Log::alert(['in match',$match]);
         $validated = $request->validate([
             'summary' => 'required|string|max:2000',
             'referee' => 'required|string|max:255',
-            'attendance' => 'required|string|max:100',
+    'attendance' => 'required|integer|min:0',
         ]);
 
+        Log::alert("before store");
         // Create or update report
         $report = MatchReport::updateOrCreate(
             ['match_id' => $matchId],
             $validated
         );
+        Log::alert("after store");
 
         // Mark match as completed
         $match->status = 'completed';

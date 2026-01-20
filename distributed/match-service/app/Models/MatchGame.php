@@ -56,7 +56,7 @@ class MatchGame extends Model
 
     public function getTournament()
     {
-        $response = Http::get("http://localhost:8005/api/tournaments/{$this->tournament_id}");
+        $response = Http::get("http://localhost:8003/api/tournaments/{$this->tournament_id}");
         return $response->successful() ? $response->json() : null;
     }
 

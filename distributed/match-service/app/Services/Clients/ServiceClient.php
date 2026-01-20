@@ -27,8 +27,19 @@ abstract class ServiceClient
     protected function get(string $endpoint, array $query = [])
     {
         try {
+            $headers = [
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ];
+
+            // Add authorization header if token is available in current request
+            if (request()->bearerToken()) {
+                $headers['Authorization'] = 'Bearer ' . request()->bearerToken();
+            }
+
             $response = $this->client->get($endpoint, [
                 'query' => $query,
+                'headers' => $headers,
             ]);
 
             return json_decode($response->getBody()->getContents(), true);
@@ -46,8 +57,19 @@ abstract class ServiceClient
     protected function post(string $endpoint, array $data = [])
     {
         try {
+            $headers = [
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ];
+
+            // Add authorization header if token is available in current request
+            if (request()->bearerToken()) {
+                $headers['Authorization'] = 'Bearer ' . request()->bearerToken();
+            }
+
             $response = $this->client->post($endpoint, [
                 'json' => $data,
+                'headers' => $headers,
             ]);
 
             return json_decode($response->getBody()->getContents(), true);
@@ -65,8 +87,19 @@ abstract class ServiceClient
     protected function put(string $endpoint, array $data = [])
     {
         try {
+            $headers = [
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ];
+
+            // Add authorization header if token is available in current request
+            if (request()->bearerToken()) {
+                $headers['Authorization'] = 'Bearer ' . request()->bearerToken();
+            }
+
             $response = $this->client->put($endpoint, [
                 'json' => $data,
+                'headers' => $headers,
             ]);
 
             return json_decode($response->getBody()->getContents(), true);
@@ -84,7 +117,19 @@ abstract class ServiceClient
     protected function delete(string $endpoint)
     {
         try {
-            $response = $this->client->delete($endpoint);
+            $headers = [
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json',
+            ];
+
+            // Add authorization header if token is available in current request
+            if (request()->bearerToken()) {
+                $headers['Authorization'] = 'Bearer ' . request()->bearerToken();
+            }
+
+            $response = $this->client->delete($endpoint, [
+                'headers' => $headers,
+            ]);
 
             return json_decode($response->getBody()->getContents(), true);
         } catch (RequestException $e) {

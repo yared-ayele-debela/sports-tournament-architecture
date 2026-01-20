@@ -10,6 +10,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class TeamUpdated
 {
@@ -22,6 +23,12 @@ class TeamUpdated
     {
         $this->team = $team;
         $this->updatedBy = $updatedBy;
+
+         Log::info('TeamCreated event updated', [
+            'team_id' => $team->id,
+            'team_name' => $team->name,
+            'coach_id' => $updatedBy,
+        ]);
     }
 
     public function broadcastOn()

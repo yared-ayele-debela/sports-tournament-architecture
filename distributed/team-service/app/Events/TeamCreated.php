@@ -10,6 +10,7 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class TeamCreated
 {
@@ -22,6 +23,12 @@ class TeamCreated
     {
         $this->team = $team;
         $this->coachId = $coachId;
+
+          Log::info('TeamCreated event instantiated', [
+            'team_id' => $team->id,
+            'team_name' => $team->name,
+            'coach_id' => $coachId,
+        ]);
     }
 
     public function broadcastOn()

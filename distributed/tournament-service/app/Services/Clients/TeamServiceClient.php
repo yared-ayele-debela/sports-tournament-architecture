@@ -31,7 +31,7 @@ class TeamServiceClient
     public function getTournamentTeams(int $tournamentId): array
     {
         try {
-            $response = $this->httpClient->get("/api/tournaments/{$tournamentId}/teams");
+            $response = $this->httpClient->get("/api/public/tournaments/{$tournamentId}/teams");
             $responseContent = $response->getBody()->getContents();
             
             Log::info("Fetched tournament teams from TeamService", [

@@ -290,6 +290,14 @@ class TournamentController extends Controller
     public function updateStatus(Request $request, string $id): JsonResponse
     {
         try {
+            // Log incoming request data for debugging
+            Log::info('Tournament status update request', [
+                'tournament_id' => $id,
+                'request_data' => $request->all(),
+                'request_method' => $request->method(),
+                'request_headers' => $request->headers->all()
+            ]);
+
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
@@ -300,8 +308,32 @@ class TournamentController extends Controller
                 ], 404);
             }
 
+            // Log the status value being validated
+            $statusValue = $request->input('status');
+            Log::info('Validating tournament status', [
+                'tournament_id' => $id,
+                'status_value' => $statusValue,
+                'status_type' => gettype($statusValue),
+                'allowed_values' => ['planned', 'ongoing', 'completed', 'cancelled']
+            ]);
+
+            // Normalize the status value - trim whitespace and convert to lowercase
+            if (is_string($statusValue)) {
+                $normalizedStatus = strtolower(trim($statusValue));
+                $request->merge(['status' => $normalizedStatus]);
+                
+                Log::info('Normalized tournament status', [
+                    'original_status' => $statusValue,
+                    'normalized_status' => $normalizedStatus
+                ]);
+            }
+
             $validated = $request->validate([
-                'status' => 'required|in:planned,ongoing,completed,cancelled'
+                'status' => 'required|string|in:planned,ongoing,completed,cancelled'
+            ], [
+                'status.required' => 'The status field is required.',
+                'status.string' => 'The status must be a string.',
+                'status.in' => 'The selected status is invalid. Allowed values are: planned, ongoing, completed, cancelled.'
             ]);
 
             // Validate status transition
@@ -337,6 +369,22 @@ class TournamentController extends Controller
                 'message' => 'Tournament status updated successfully',
                 'data' => $tournament
             ]);
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // Log detailed validation error information
+            Log::error('Tournament status validation failed', [
+                'tournament_id' => $id,
+                'request_data' => $request->all(),
+                'validation_errors' => $e->errors(),
+                'failed_rules' => $e->validator->failed()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'error' => 'Invalid status value provided',
+                'validation_errors' => $e->errors(),
+                'allowed_statuses' => ['planned', 'ongoing', 'completed', 'cancelled']
+            ], 422);
         } catch (\Exception $e) {
             Log::error('Failed to update tournament status', [
                 'tournament_id' => $id,

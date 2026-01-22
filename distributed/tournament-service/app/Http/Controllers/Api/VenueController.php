@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Venue;
 use App\Services\AuthService;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -20,17 +21,18 @@ class VenueController extends Controller
     }
     /**
      * Display a listing of venues.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
-            $venues = Venue::all();
+            $perPage = (int) $request->query('per_page', 20);
+            $perPage = max(1, min(100, $perPage));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Venues retrieved successfully',
-                'data' => $venues
-            ]);
+            $venues = Venue::orderByDesc('id')->paginate($perPage);
+
+            return ApiResponse::paginated($venues, 'Venues retrieved successfully');
         } catch (\Exception $e) {
             Log::error('Failed to retrieve venues', [
                 'error' => $e->getMessage(),

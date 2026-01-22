@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Sport;
 use App\Services\AuthService;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -21,17 +22,18 @@ class SportController extends Controller
 
     /**
      * Display a listing of sports.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         try {
-            $sports = Sport::all();
+            $perPage = (int) $request->query('per_page', 20);
+            $perPage = max(1, min(100, $perPage));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Sports retrieved successfully',
-                'data' => $sports
-            ]);
+            $sports = Sport::orderByDesc('id')->paginate($perPage);
+
+            return ApiResponse::paginated($sports, 'Sports retrieved successfully');
         } catch (\Exception $e) {
             Log::error('Failed to retrieve sports', [
                 'error' => $e->getMessage(),

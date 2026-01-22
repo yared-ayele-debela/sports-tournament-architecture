@@ -22,6 +22,17 @@ class MatchEventController extends Controller
         $this->eventPublisher = $eventPublisher;
     }
 
+    public function match_event_index(string $matchId): JsonResponse
+    {
+        $events = MatchEvent::where('match_id', $matchId)
+            ->with('match')
+            ->orderBy('minute')
+            ->get();
+
+        return response()->json($events);
+    }
+
+
     public function index(string $matchId): JsonResponse
     {
         $events = MatchEvent::where('match_id', $matchId)

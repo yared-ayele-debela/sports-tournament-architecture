@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MatchGame;
 use App\Services\MatchScheduler;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class MatchController extends Controller
 {
@@ -18,6 +20,11 @@ class MatchController extends Controller
         $this->matchScheduler = $matchScheduler;
     }
 
+    /**
+     * Display a listing of matches.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
     public function index(Request $request): JsonResponse
     {
         $query = MatchGame::with(['matchEvents', 'matchReport']);
@@ -38,17 +45,12 @@ class MatchController extends Controller
             });
         }
 
-        $matches = $query->orderBy('match_date')->paginate(20);
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = max(1, min(100, $perPage));
 
-        return response()->json([
-            'data' => $matches->items(),
-            'meta' => [
-                'current_page' => $matches->currentPage(),
-                'last_page' => $matches->lastPage(),
-                'per_page' => $matches->perPage(),
-                'total' => $matches->total(),
-            ]
-        ]);
+        $matches = $query->orderBy('match_date')->paginate($perPage);
+
+        return ApiResponse::paginated($matches, 'Matches retrieved successfully');
     }
 
     public function store(Request $request): JsonResponse
@@ -69,6 +71,20 @@ class MatchController extends Controller
     }
 
     public function show(string $id): JsonResponse
+    {
+        $match = MatchGame::with(['matchEvents', 'matchReport'])
+            ->findOrFail($id);
+
+        // Load external data
+        $match->home_team = $match->getHomeTeam();
+        $match->away_team = $match->getAwayTeam();
+        $match->tournament = $match->getTournament();
+        $match->venue = $match->getVenue();
+
+        return response()->json($match);
+    }
+
+    public function publicShow(string $id): JsonResponse
     {
         $match = MatchGame::with(['matchEvents', 'matchReport'])
             ->findOrFail($id);
@@ -132,6 +148,141 @@ class MatchController extends Controller
                 'error' => 'Failed to generate schedule',
                 'message' => $e->getMessage()
             ], 400);
+        }
+    }
+
+    /**
+     * Get currently live/recent matches.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
+    public function liveMatches(Request $request): JsonResponse
+    {
+        $query = MatchGame::with(['matchEvents', 'matchReport'])
+            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->where('match_date', '>=', now()->subHours(2))
+            ->orderBy('match_date');
+
+        $perPage = (int) $request->query('per_page', 10);
+        $perPage = max(1, min(100, $perPage));
+
+        $matches = $query->paginate($perPage);
+
+        return ApiResponse::paginated($matches, 'Live matches retrieved successfully');
+    }
+
+    /**
+     * Get upcoming matches.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
+    public function upcomingMatches(Request $request): JsonResponse
+    {
+        $query = MatchGame::with(['matchEvents', 'matchReport'])
+            ->whereIn('status', ['scheduled'])
+            ->where('match_date', '>', now());
+
+        // Apply filters
+        if ($request->has('tournament_id')) {
+            $query->where('tournament_id', $request->tournament_id);
+        }
+
+        if ($request->has('team_id')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('home_team_id', $request->team_id)
+                  ->orWhere('away_team_id', $request->team_id);
+            });
+        }
+
+        $perPage = (int) $request->query('per_page', 15);
+        $perPage = max(1, min(100, $perPage));
+
+        $matches = $query->orderBy('match_date')->paginate($perPage);
+
+        return ApiResponse::paginated($matches, 'Upcoming matches retrieved successfully');
+    }
+
+    /**
+     * Get completed matches.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
+    public function completedMatches(Request $request): JsonResponse
+    {
+        $query = MatchGame::with(['matchEvents', 'matchReport'])
+            ->where('status', 'completed');
+
+        // Apply filters
+        if ($request->has('tournament_id')) {
+            $query->where('tournament_id', $request->tournament_id);
+        }
+
+        if ($request->has('team_id')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('home_team_id', $request->team_id)
+                  ->orWhere('away_team_id', $request->team_id);
+            });
+        }
+
+        $perPage = (int) $request->query('per_page', 15);
+        $perPage = max(1, min(100, $perPage));
+
+        $matches = $query->orderBy('match_date', 'desc')->paginate($perPage);
+
+        return ApiResponse::paginated($matches, 'Completed matches retrieved successfully');
+    }
+
+    /**
+     * Get matches for a given date.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
+    public function matchesByDate(Request $request, string $date): JsonResponse
+    {
+        try {
+            // Validate date format
+            $validatedDate = \DateTime::createFromFormat('Y-m-d', $date);
+            if (!$validatedDate) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid date format. Use Y-m-d format.',
+                    'error' => 'Validation error'
+                ], 400);
+            }
+
+            $query = MatchGame::with(['matchEvents', 'matchReport'])
+                ->whereDate('match_date', $date);
+
+            // Apply optional filters
+            if ($request->has('tournament_id')) {
+                $query->where('tournament_id', $request->tournament_id);
+            }
+
+            if ($request->has('team_id')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('home_team_id', $request->team_id)
+                      ->orWhere('away_team_id', $request->team_id);
+                });
+            }
+
+            $perPage = (int) $request->query('per_page', 20);
+            $perPage = max(1, min(100, $perPage));
+
+            $matches = $query->orderBy('match_date')->paginate($perPage);
+
+            return ApiResponse::paginated($matches, "Matches for {$date} retrieved successfully");
+        } catch (\Exception $e) {
+            Log::error('Failed to retrieve matches by date', [
+                'date' => $date,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve matches by date',
+                'error' => 'Internal server error'
+            ], 500);
         }
     }
 }

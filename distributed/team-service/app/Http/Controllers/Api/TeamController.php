@@ -10,8 +10,11 @@ use App\Services\TournamentServiceClient;
 use App\Events\TeamCreated;
 use App\Events\TeamUpdated;
 use App\Helpers\AuthHelper;
+use App\Models\MatchGame;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 
@@ -26,6 +29,11 @@ class TeamController extends Controller
         $this->tournamentService = $tournamentService;
     }
 
+    /**
+     * Display a listing of teams.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
     public function index(Request $request): JsonResponse
     {
         $query = Team::with(['players', 'coaches']);
@@ -41,12 +49,12 @@ class TeamController extends Controller
             });
         }
 
-        $teams = $query->get();
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = max(1, min(100, $perPage));
 
-        return response()->json([
-            'success' => true,
-            'data' => $teams
-        ]);
+        $teams = $query->orderByDesc('id')->paginate($perPage);
+
+        return ApiResponse::paginated($teams, 'Teams retrieved successfully');
     }
 
     public function store(Request $request): JsonResponse
@@ -242,6 +250,168 @@ class TeamController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to delete team: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get team overview
+     */
+    public function overview(string $id): JsonResponse
+    {
+        try {
+            $team = Team::with(['players', 'coaches'])
+                ->findOrFail($id);
+
+            // Calculate team statistics
+            $totalPlayers = $team->players->count();
+            $activePlayers = $team->players()->count(); // Remove status filter for now
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Team overview retrieved successfully',
+                'data' => [
+                    'team' => $team,
+                    'statistics' => [
+                        'total_players' => $totalPlayers,
+                        'active_players' => $activePlayers,
+                    ]
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve team overview',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get team squad
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
+    public function squad(Request $request, string $id): JsonResponse
+    {
+        try {
+            $team = Team::findOrFail($id);
+
+            $perPage = (int) $request->query('per_page', 20);
+            $perPage = max(1, min(100, $perPage));
+
+            $players = $team->players()->orderByDesc('id')->paginate($perPage);
+
+            return ApiResponse::paginated($players, 'Team squad retrieved successfully');
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve team squad',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get team matches
+     */
+    public function matches(Request $request, string $id): JsonResponse
+    {
+        try {
+            $team = Team::findOrFail($id);
+            
+            // Call match service to get team matches
+            $matchServiceUrl = config('services.match_service.url', 'http://localhost:8004');
+            $response = Http::get("{$matchServiceUrl}/api/public/matches", [
+                'team_id' => $id,
+                'per_page' => 50
+            ]);
+            
+            if (!$response->successful()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to retrieve matches from match service',
+                    'error' => 'Match service unavailable'
+                ], 503);
+            }
+            
+            $matchData = $response->json();
+            
+            // Enrich match data with team information
+            $matches = collect($matchData['data'] ?? [])->map(function ($match) use ($team) {
+                $match['is_home'] = $match['home_team_id'] == $team->id;
+                $match['opponent'] = $match['is_home'] ? 
+                    ($match['away_team'] ?? ['name' => 'Unknown Team']) : 
+                    ($match['home_team'] ?? ['name' => 'Unknown Team']);
+                $match['team_score'] = $match['is_home'] ? $match['home_score'] : $match['away_score'];
+                $match['opponent_score'] = $match['is_home'] ? $match['away_score'] : $match['home_score'];
+                $match['result'] = $this->determineMatchResult($match['team_score'], $match['opponent_score'], $match['status']);
+                return $match;
+            });
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Team matches retrieved successfully',
+                'data' => $matches,
+                'meta' => $matchData['meta'] ?? [],
+                'team' => [
+                    'id' => $team->id,
+                    'name' => $team->name,
+                    'short_name' => $team->short_name
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve team matches',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * Determine match result for the team
+     */
+    private function determineMatchResult(?int $teamScore, ?int $opponentScore, string $status): string
+    {
+        if ($status !== 'completed' || is_null($teamScore) || is_null($opponentScore)) {
+            return 'pending';
+        }
+        
+        if ($teamScore > $opponentScore) {
+            return 'win';
+        } elseif ($teamScore < $opponentScore) {
+            return 'loss';
+        } else {
+            return 'draw';
+        }
+    }
+
+    /**
+     * Get team statistics
+     */
+    public function statistics(string $id): JsonResponse
+    {
+        try {
+            $team = Team::findOrFail($id);
+            
+            // Simple statistics based on players count
+            $totalPlayers = $team->players()->count();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'Team statistics retrieved successfully',
+                'data' => [
+                    'team_id' => (int)$id,
+                    'total_players' => $totalPlayers,
+                    'team_name' => $team->name,
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve team statistics',
+                'error' => $e->getMessage()
             ], 500);
         }
     }

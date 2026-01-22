@@ -8,6 +8,7 @@ use App\Models\Team;
 use App\Events\PlayerCreated;
 use App\Events\PlayerUpdated;
 use App\Helpers\AuthHelper;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
@@ -19,6 +20,11 @@ class PlayerController extends Controller
     {
     }
 
+    /**
+     * Display a listing of players.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
     public function index(Request $request): JsonResponse
     {
         $query = Player::with('team');
@@ -36,12 +42,12 @@ class PlayerController extends Controller
             });
         }
 
-        $players = $query->get();
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = max(1, min(100, $perPage));
 
-        return response()->json([
-            'success' => true,
-            'data' => $players
-        ]);
+        $players = $query->orderByDesc('id')->paginate($perPage);
+
+        return ApiResponse::paginated($players, 'Players retrieved successfully');
     }
 
     public function store(Request $request): JsonResponse

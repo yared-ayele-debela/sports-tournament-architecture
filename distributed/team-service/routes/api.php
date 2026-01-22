@@ -31,6 +31,15 @@ Route::get('health', function () {
     ]);
 });
 
+// Public routes for basic team information
+Route::get('public/teams/{id}', [TeamController::class, 'show']);
+Route::get('public/teams/{id}/overview', [TeamController::class, 'overview']);
+Route::get('public/teams/{id}/squad', [TeamController::class, 'squad']);
+Route::get('public/teams/{id}/matches', [TeamController::class, 'matches']);
+Route::get('public/teams/{id}/statistics', [TeamController::class, 'statistics']);
+
+
+
 Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
     
     // Teams Routes
@@ -46,6 +55,7 @@ Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])
     Route::get('/players', [PlayerController::class, 'index']);
     Route::post('/players', [PlayerController::class, 'store']);
     Route::get('/players/{id}', [PlayerController::class, 'show']);
+    Route::get('/players/{id}/statistics', [PlayerController::class, 'statistics']);
     Route::put('/players/{id}', [PlayerController::class, 'update']);
     Route::delete('/players/{id}', [PlayerController::class, 'destroy']);
     

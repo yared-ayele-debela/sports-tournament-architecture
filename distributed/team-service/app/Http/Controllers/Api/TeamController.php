@@ -29,6 +29,21 @@ class TeamController extends Controller
         $this->tournamentService = $tournamentService;
     }
 
+    public function public_index(Request $request): JsonResponse
+    {
+        $query = Team::with(['players', 'coaches']);
+
+        if ($request->has('tournament_id')) {
+            $query->where('tournament_id', $request->tournament_id);
+        }
+
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = max(1, min(100, $perPage));
+
+        $teams = $query->orderByDesc('id')->paginate($perPage);
+
+        return ApiResponse::paginated($teams, 'Teams retrieved successfully');
+    }
     /**
      * Display a listing of teams.
      *

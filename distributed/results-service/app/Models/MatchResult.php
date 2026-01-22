@@ -7,6 +7,11 @@ use App\Services\Clients\TeamServiceClient;
 
 class MatchResult extends Model
 {
+    protected $appends = [
+        'homeTeam',
+        'awayTeam',
+    ];
+
     protected $fillable = [
         'match_id',
         'tournament_id',
@@ -33,9 +38,19 @@ class MatchResult extends Model
         return $teamService->getTeam($this->home_team_id);
     }
 
+    public function getHomeTeamAttribute()
+    {
+        return $this->getHomeTeam();
+    }
+
     public function getAwayTeam()
     {
         $teamService = new TeamServiceClient();
         return $teamService->getTeam($this->away_team_id);
+    }
+
+    public function getAwayTeamAttribute()
+    {
+        return $this->getAwayTeam();
     }
 }

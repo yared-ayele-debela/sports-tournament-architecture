@@ -16,7 +16,7 @@ class MatchServiceClient extends ServiceClient
 
     public function getCompletedMatches($tournamentId)
     {
-        $response = $this->get("/api/tournaments/{$tournamentId}/matches?status=completed");
+        $response = $this->get("/api/public/tournaments/{$tournamentId}/matches?status=completed");
         
         // Handle paginated response - extract data if paginated
         if (is_array($response) && isset($response['data'])) {

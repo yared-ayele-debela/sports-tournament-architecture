@@ -32,19 +32,24 @@ Route::get('health', function () {
     ]);
 });
 
+// Public routes for basic tournament statistics and standings
+Route::prefix('tournaments')->group(function () {
+    Route::get('{tournamentId}/standings', [StandingsController::class, 'index']);
+    Route::get('{tournamentId}/statistics', [StatisticsController::class, 'tournamentStatistics']);
+});
+
+
 Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
     
-    // Standings Routes
-    Route::get('/tournaments/{tournamentId}/standings', [StandingsController::class, 'index']);
+    // Standings Routes (Protected)
     Route::post('/standings/recalculate/{tournamentId}', [StandingsController::class, 'recalculate']);
     
-    // Match Results Routes
+    // Match Results Routes (Protected)
     Route::get('/tournaments/{tournamentId}/results', [MatchResultController::class, 'index']);
     Route::get('/results/{id}', [MatchResultController::class, 'show']);
     Route::post('/matches/{matchId}/finalize', [MatchResultController::class, 'finalize']);
     
-    // Statistics Routes
+    // Statistics Routes (Protected)
     Route::get('/teams/{teamId}/statistics', [StatisticsController::class, 'teamStatistics']);
-    Route::get('/tournaments/{tournamentId}/statistics', [StatisticsController::class, 'tournamentStatistics']);
     
 });

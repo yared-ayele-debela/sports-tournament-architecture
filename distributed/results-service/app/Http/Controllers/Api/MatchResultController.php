@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MatchResult;
 use App\Services\Clients\MatchServiceClient;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -17,10 +18,14 @@ class MatchResultController extends Controller
         $this->matchService = $matchService;
     }
 
+    /**
+     * List match results for a tournament.
+     *
+     * This endpoint returns a gateway-compatible paginated response.
+     */
     public function index(Request $request, int $tournamentId): JsonResponse
     {
         $query = MatchResult::where('tournament_id', $tournamentId)
-            ->with(['homeTeam', 'awayTeam'])
             ->orderBy('completed_at', 'desc');
 
         if ($request->has('team_id')) {
@@ -30,17 +35,17 @@ class MatchResultController extends Controller
             });
         }
 
-        $results = $query->get();
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = max(1, min(100, $perPage));
 
-        return response()->json([
-            'success' => true,
-            'data' => $results,
-        ]);
+        $results = $query->paginate($perPage);
+
+        return ApiResponse::paginated($results, 'Match results retrieved successfully');
     }
 
     public function show(int $id): JsonResponse
     {
-        $result = MatchResult::with(['homeTeam', 'awayTeam'])->find($id);
+        $result = MatchResult::find($id);
 
         if (!$result) {
             return response()->json([

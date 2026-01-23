@@ -67,7 +67,7 @@ class MatchController extends Controller
 
         $match = MatchGame::create($validated);
 
-        return response()->json($match->load(['matchEvents', 'matchReport']), 201);
+        return ApiResponse::created($match->load(['matchEvents', 'matchReport']));
     }
 
     public function show(string $id): JsonResponse
@@ -81,7 +81,7 @@ class MatchController extends Controller
         $match->tournament = $match->getTournament();
         $match->venue = $match->getVenue();
 
-        return response()->json($match);
+        return ApiResponse::success($match);
     }
 
     public function publicShow(string $id): JsonResponse
@@ -95,7 +95,7 @@ class MatchController extends Controller
         $match->tournament = $match->getTournament();
         $match->venue = $match->getVenue();
 
-        return response()->json($match);
+        return ApiResponse::success($match);
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -114,7 +114,7 @@ class MatchController extends Controller
 
         $match->update($validated);
 
-        return response()->json($match->load(['matchEvents', 'matchReport']));
+        return ApiResponse::success($match->load(['matchEvents', 'matchReport']));
     }
 
     public function destroy(string $id): JsonResponse
@@ -122,7 +122,7 @@ class MatchController extends Controller
         $match = MatchGame::findOrFail($id);
         $match->delete();
 
-        return response()->json(null, 204);
+        return ApiResponse::success(null, 'Match deleted successfully', 204);
     }
 
     public function updateStatus(Request $request, string $id): JsonResponse
@@ -135,19 +135,16 @@ class MatchController extends Controller
         $match = MatchGame::findOrFail($id);
         $match->update($validated);
 
-        return response()->json($match);
+        return ApiResponse::success($match);
     }
 
     public function generateSchedule(string $tournamentId): JsonResponse
     {
         try {
             $schedule = $this->matchScheduler->generateRoundRobin((int)$tournamentId);
-            return response()->json($schedule, 201);
+            return ApiResponse::created($schedule, 'Schedule generated successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to generate schedule',
-                'message' => $e->getMessage()
-            ], 400);
+            return ApiResponse::badRequest('Failed to generate schedule: ' . $e->getMessage(), $e);
         }
     }
 
@@ -243,11 +240,7 @@ class MatchController extends Controller
             // Validate date format
             $validatedDate = \DateTime::createFromFormat('Y-m-d', $date);
             if (!$validatedDate) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid date format. Use Y-m-d format.',
-                    'error' => 'Validation error'
-                ], 400);
+                return ApiResponse::badRequest('Invalid date format. Use Y-m-d format.');
             }
 
             $query = MatchGame::with(['matchEvents', 'matchReport'])
@@ -278,11 +271,7 @@ class MatchController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve matches by date',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve matches by date', $e);
         }
     }
 }

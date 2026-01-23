@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MatchGame;
 use App\Models\MatchReport;
 use App\Services\EventPublisher;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,7 @@ class MatchReportController extends Controller
             ->with('match')
             ->firstOrFail();
 
-        return response()->json($report);
+        return ApiResponse::success($report);
     }
 
     public function store(Request $request, string $matchId): JsonResponse
@@ -57,6 +58,6 @@ class MatchReportController extends Controller
             $report->toArray()
         );
 
-        return response()->json($report->load('match'), 201);
+        return ApiResponse::created($report->load('match'));
     }
 }

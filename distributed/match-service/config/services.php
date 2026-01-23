@@ -37,7 +37,7 @@ return [
 
     'auth' => [
         'url' => env('AUTH_SERVICE_URL', 'http://localhost:8001'),
-        
+
     ],
 
 ];

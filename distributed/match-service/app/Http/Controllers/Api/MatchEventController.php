@@ -7,6 +7,7 @@ use App\Models\MatchGame;
 use App\Models\MatchEvent;
 use App\Services\Clients\TeamServiceClient;
 use App\Services\EventPublisher;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Redis;
@@ -29,7 +30,7 @@ class MatchEventController extends Controller
             ->orderBy('minute')
             ->get();
 
-        return response()->json($events);
+        return ApiResponse::success($events);
     }
 
 
@@ -40,7 +41,7 @@ class MatchEventController extends Controller
             ->orderBy('minute')
             ->get();
 
-        return response()->json($events);
+        return ApiResponse::success($events);
     }
 
     public function store(Request $request, string $matchId): JsonResponse
@@ -57,16 +58,12 @@ class MatchEventController extends Controller
 
         // Validate player belongs to team
         if (!$this->validatePlayerTeam($validated['player_id'], $validated['team_id'])) {
-            return response()->json([
-                'error' => 'Player does not belong to the specified team'
-            ], 422);
+            return ApiResponse::error('Player does not belong to the specified team', 422);
         }
 
         // Validate team is participating in the match
         if (!in_array($validated['team_id'], [$match->home_team_id, $match->away_team_id])) {
-            return response()->json([
-                'error' => 'Team is not participating in this match'
-            ], 422);
+            return ApiResponse::error('Team is not participating in this match', 422);
         }
 
         $validated['match_id'] = $matchId;
@@ -91,7 +88,7 @@ class MatchEventController extends Controller
             $match->toArray()
         );
 
-        return response()->json($event->load('match'), 201);
+        return ApiResponse::created($event->load('match'));
     }
 
     public function destroy(string $id): JsonResponse
@@ -99,7 +96,7 @@ class MatchEventController extends Controller
         $event = MatchEvent::findOrFail($id);
         $event->delete();
 
-        return response()->json(null, 204);
+        return ApiResponse::success(null, 'Event deleted successfully', 204);
     }
 
     protected function validatePlayerTeam(int $playerId, int $teamId): bool

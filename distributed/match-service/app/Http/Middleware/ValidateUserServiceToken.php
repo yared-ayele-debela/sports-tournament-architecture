@@ -17,13 +17,9 @@ class ValidateUserServiceToken
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->bearerToken();
-        
+
         if (!$token) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Token required',
-                'error' => 'Unauthorized'
-            ], 401);
+            return \App\Support\ApiResponse::unauthorized('Token required');
         }
 
         // Validate token with auth service
@@ -32,11 +28,7 @@ class ValidateUserServiceToken
                 ->get(config('services.auth.url') . '/api/auth/me');
 
             if ($response->status() !== 200) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid token',
-                    'error' => 'Unauthorized'
-                ], 401);
+                return \App\Support\ApiResponse::unauthorized('Invalid token');
             }
 
             $responseData = $response->json();
@@ -50,11 +42,7 @@ class ValidateUserServiceToken
 
             return $next($request);
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Authentication service unavailable',
-                'error' => 'Service Unavailable'
-            ], 503);
+            return \App\Support\ApiResponse::serviceUnavailable('Authentication service unavailable', 'AUTH');
         }
     }
 }

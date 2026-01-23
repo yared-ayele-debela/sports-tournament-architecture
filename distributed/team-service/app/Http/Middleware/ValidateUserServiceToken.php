@@ -17,7 +17,7 @@ class ValidateUserServiceToken
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->bearerToken();
-        
+
         if (!$token) {
             return response()->json([
                 'success' => false,

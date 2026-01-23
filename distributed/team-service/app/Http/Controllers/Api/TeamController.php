@@ -82,30 +82,20 @@ class TeamController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+            return ApiResponse::validationError($validator->errors());
         }
 
         try {
             // Validate tournament exists
             $tournamentResponse = $this->tournamentService->validateTournament($request->tournament_id);
             if (!($tournamentResponse['success'] ?? false)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid tournament'
-                ], 400);
+                return ApiResponse::badRequest('Invalid tournament');
             }
 
             // Validate coach exists
             $coachResponse = $this->authService->validateUser($request->coach_id);
             if (!($coachResponse['success'] ?? false)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid coach'
-                ], 400);
+                return ApiResponse::badRequest('Invalid coach');
             }
 
             DB::beginTransaction();
@@ -128,19 +118,12 @@ class TeamController extends Controller
             // Fire event
             event(new TeamCreated($team, $request->coach_id));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Team created successfully',
-                'data' => $team
-            ], 201);
+            return ApiResponse::created($team, 'Team created successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create team: ' . $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to create team: ' . $e->getMessage(), $e);
         }
     }
 
@@ -149,24 +132,15 @@ class TeamController extends Controller
         $team = Team::with(['players', 'coaches'])->find($id);
 
         if (!$team) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Team not found'
-            ], 404);
+            return ApiResponse::notFound('Team not found');
         }
 
         // Check authorization for coaches
         if (AuthHelper::isCoach() && !$team->isCoach(AuthHelper::getCurrentUserId())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
+            return ApiResponse::forbidden('Unauthorized');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $team
-        ]);
+        return ApiResponse::success($team);
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -174,18 +148,12 @@ class TeamController extends Controller
         $team = Team::find($id);
 
         if (!$team) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Team not found'
-            ], 404);
+            return ApiResponse::notFound('Team not found');
         }
 
         // Check authorization
         if (!AuthHelper::canManageTeam($id)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
+            return ApiResponse::forbidden('Unauthorized');
         }
 
         $validator = Validator::make($request->all(), [
@@ -194,11 +162,7 @@ class TeamController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+            return ApiResponse::validationError($validator->errors());
         }
 
         try {
@@ -207,17 +171,10 @@ class TeamController extends Controller
             // Fire event
             event(new TeamUpdated($team, AuthHelper::getCurrentUserId()));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Team updated successfully',
-                'data' => $team->load('coaches')
-            ]);
+            return ApiResponse::success($team->load('coaches'), 'Team updated successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update team: ' . $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to update team: ' . $e->getMessage(), $e);
         }
     }
 
@@ -226,18 +183,12 @@ class TeamController extends Controller
         $team = Team::find($id);
 
         if (!$team) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Team not found'
-            ], 404);
+            return ApiResponse::notFound('Team not found');
         }
 
         // Only admin can delete teams
         if (!AuthHelper::isAdmin()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized. Only admin can delete teams.'
-            ], 403);
+            return ApiResponse::forbidden('Unauthorized. Only admin can delete teams.');
         }
 
         try {
@@ -254,18 +205,12 @@ class TeamController extends Controller
 
             DB::commit();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Team deleted successfully'
-            ]);
+            return ApiResponse::success(null, 'Team deleted successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete team: ' . $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to delete team: ' . $e->getMessage(), $e);
         }
     }
 
@@ -282,23 +227,15 @@ class TeamController extends Controller
             $totalPlayers = $team->players->count();
             $activePlayers = $team->players()->count(); // Remove status filter for now
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Team overview retrieved successfully',
-                'data' => [
-                    'team' => $team,
-                    'statistics' => [
-                        'total_players' => $totalPlayers,
-                        'active_players' => $activePlayers,
-                    ]
+            return ApiResponse::success([
+                'team' => $team,
+                'statistics' => [
+                    'total_players' => $totalPlayers,
+                    'active_players' => $activePlayers,
                 ]
-            ]);
+            ], 'Team overview retrieved successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve team overview',
-                'error' => $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve team overview', $e);
         }
     }
 
@@ -319,11 +256,7 @@ class TeamController extends Controller
 
             return ApiResponse::paginated($players, 'Team squad retrieved successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve team squad',
-                'error' => $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve team squad', $e);
         }
     }
 
@@ -343,11 +276,7 @@ class TeamController extends Controller
             ]);
             
             if (!$response->successful()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to retrieve matches from match service',
-                    'error' => 'Match service unavailable'
-                ], 503);
+                return ApiResponse::error('Failed to retrieve matches from match service', 503, 'Match service unavailable');
             }
             
             $matchData = $response->json();
@@ -364,23 +293,17 @@ class TeamController extends Controller
                 return $match;
             });
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Team matches retrieved successfully',
-                'data' => $matches,
+            return ApiResponse::success([
+                'matches' => $matches,
                 'meta' => $matchData['meta'] ?? [],
                 'team' => [
                     'id' => $team->id,
                     'name' => $team->name,
                     'short_name' => $team->short_name
                 ]
-            ]);
+            ], 'Team matches retrieved successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve team matches',
-                'error' => $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve team matches', $e);
         }
     }
     
@@ -413,21 +336,13 @@ class TeamController extends Controller
             // Simple statistics based on players count
             $totalPlayers = $team->players()->count();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'Team statistics retrieved successfully',
-                'data' => [
-                    'team_id' => (int)$id,
-                    'total_players' => $totalPlayers,
-                    'team_name' => $team->name,
-                ]
-            ]);
+            return ApiResponse::success([
+                'team_id' => (int)$id,
+                'total_players' => $totalPlayers,
+                'team_name' => $team->name,
+            ], 'Team statistics retrieved successfully');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve team statistics',
-                'error' => $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve team statistics', $e);
         }
     }
 }

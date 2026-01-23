@@ -60,19 +60,12 @@ class PlayerController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+            return ApiResponse::validationError($validator->errors());
         }
 
         // Check authorization - only admin or team coach can create players
         if (!AuthHelper::canManageTeam($request->team_id)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized to create players for this team'
-            ], 403);
+            return ApiResponse::forbidden('Unauthorized to create players for this team');
         }
 
         // Check jersey number uniqueness within team
@@ -81,10 +74,7 @@ class PlayerController extends Controller
             ->first();
 
         if ($existingPlayer) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Jersey number already taken in this team'
-            ], 422);
+            return ApiResponse::error('Jersey number already taken in this team', 422);
         }
 
         try {
@@ -101,17 +91,10 @@ class PlayerController extends Controller
             // Fire event
             event(new PlayerCreated($player, AuthHelper::getCurrentUserId()));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Player created successfully',
-                'data' => $player
-            ], 201);
+            return ApiResponse::created($player, 'Player created successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create player: ' . $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to create player: ' . $e->getMessage(), $e);
         }
     }
 
@@ -120,24 +103,15 @@ class PlayerController extends Controller
         $player = Player::with('team')->find($id);
 
         if (!$player) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Player not found'
-            ], 404);
+            return ApiResponse::notFound('Player not found');
         }
 
         // Check authorization for coaches
         if (AuthHelper::isCoach() && !$player->team->isCoach(AuthHelper::getCurrentUserId())) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized'
-            ], 403);
+            return ApiResponse::forbidden('Unauthorized');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $player
-        ]);
+        return ApiResponse::success($player);
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -145,18 +119,12 @@ class PlayerController extends Controller
         $player = Player::with('team')->find($id);
 
         if (!$player) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Player not found'
-            ], 404);
+            return ApiResponse::notFound('Player not found');
         }
 
         // Check authorization
         if (!AuthHelper::canManageTeam($player->team_id)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized to update this player'
-            ], 403);
+            return ApiResponse::forbidden('Unauthorized to update this player');
         }
 
         $validator = Validator::make($request->all(), [
@@ -166,11 +134,7 @@ class PlayerController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+            return ApiResponse::validationError($validator->errors());
         }
 
         try {
@@ -182,10 +146,7 @@ class PlayerController extends Controller
                     ->first();
 
                 if ($existingPlayer) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Jersey number already taken in this team'
-                    ], 422);
+                    return ApiResponse::error('Jersey number already taken in this team', 422);
                 }
             }
 
@@ -194,17 +155,10 @@ class PlayerController extends Controller
             // Fire event
             event(new PlayerUpdated($player, AuthHelper::getCurrentUserId()));
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Player updated successfully',
-                'data' => $player->load('team')
-            ]);
+            return ApiResponse::success($player->load('team'), 'Player updated successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update player: ' . $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to update player: ' . $e->getMessage(), $e);
         }
     }
 
@@ -215,17 +169,10 @@ class PlayerController extends Controller
             ->first();
 
         if (!$player) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Player not found or does not belong to this team'
-            ], 404);
+            return ApiResponse::notFound('Player not found or does not belong to this team');
         }
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Player validated successfully',
-            'data' => $player
-        ]);
+        return ApiResponse::success($player, 'Player validated successfully');
     }
 
     public function destroy(string $id): JsonResponse
@@ -233,33 +180,21 @@ class PlayerController extends Controller
         $player = Player::with('team')->find($id);
 
         if (!$player) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Player not found'
-            ], 404);
+            return ApiResponse::notFound('Player not found');
         }
 
         // Check authorization
         if (!AuthHelper::canManageTeam($player->team_id)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Unauthorized to delete this player'
-            ], 403);
+            return ApiResponse::forbidden('Unauthorized to delete this player');
         }
 
         try {
             $player->delete();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Player deleted successfully'
-            ]);
+            return ApiResponse::success(null, 'Player deleted successfully');
 
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete player: ' . $e->getMessage()
-            ], 500);
+            return ApiResponse::serverError('Failed to delete player: ' . $e->getMessage(), $e);
         }
     }
 }

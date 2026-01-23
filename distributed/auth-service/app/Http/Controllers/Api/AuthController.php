@@ -29,11 +29,7 @@ class AuthController extends Controller
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
+                return \App\Support\ApiResponse::validationError($validator->errors());
             }
 
             $user = User::create([
@@ -44,30 +40,20 @@ class AuthController extends Controller
 
             $token = $user->createToken('Personal Access Token')->accessToken;
 
-            return response()->json([
-                'success' => true,
-                'message' => 'User registered successfully',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'email_verified_at' => $user->email_verified_at,
-                        'created_at' => $user->created_at,
-                        'updated_at' => $user->updated_at,
-                    ],
-                    'token' => $token,
-                    'token_type' => 'Bearer',
-                ]
-            ], 201);
+            return \App\Support\ApiResponse::created([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'email_verified_at' => $user->email_verified_at,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ],
+                'token' => $token,
+                'token_type' => 'Bearer',
+            ], 'User registered successfully');
         } catch (\Exception $e) {
-            Log::error('User registration failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Registration failed',
-                'error' => 'Internal server error'
-            ], 500);
+            return \App\Support\ApiResponse::serverError('Registration failed', $e);
         }
     }
 
@@ -86,50 +72,32 @@ class AuthController extends Controller
             ]);
 
             if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
+                return \App\Support\ApiResponse::validationError($validator->errors());
             }
 
             $credentials = $request->only('email', 'password');
 
             if (!auth()->attempt($credentials)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid credentials',
-                    'error' => 'Unauthorized'
-                ], 401);
+                return \App\Support\ApiResponse::unauthorized('Invalid credentials');
             }
 
             $user = auth()->user();
             $token = $user->createToken('Personal Access Token')->accessToken;
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Login successful',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'email_verified_at' => $user->email_verified_at,
-                        'created_at' => $user->created_at,
-                        'updated_at' => $user->updated_at,
-                    ],
-                    'token' => $token,
-                    'token_type' => 'Bearer',
-                ]
-            ]);
+            return \App\Support\ApiResponse::success([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'email_verified_at' => $user->email_verified_at,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ],
+                'token' => $token,
+                'token_type' => 'Bearer',
+            ], 'Login successful');
         } catch (\Exception $e) {
-            Log::error('Login failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Login failed',
-                'error' => 'Internal server error'
-            ], 500);
+            return \App\Support\ApiResponse::serverError('Login failed', $e);
         }
     }
 
@@ -141,20 +109,44 @@ class AuthController extends Controller
     public function logout(): JsonResponse
     {
         try {
-            auth()->user()->token()->revoke();
+            $user = auth()->user();
+            $token = $user->token();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Successfully logged out'
-            ]);
+            // Revoke token
+            $token->revoke();
+
+            // Invalidate token cache in all services
+            // Note: In a production system, you'd use an event/message queue
+            // For now, we'll publish an event that other services can subscribe to
+            $this->invalidateTokenCache($token->id);
+
+            return \App\Support\ApiResponse::success(null, 'Successfully logged out');
         } catch (\Exception $e) {
-            Log::error('Logout failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Logout failed',
-                'error' => 'Internal server error'
-            ], 500);
+            return \App\Support\ApiResponse::serverError('Logout failed', $e);
+        }
+    }
+
+    /**
+     * Invalidate token cache across services
+     *
+     * @param string $tokenId
+     * @return void
+     */
+    protected function invalidateTokenCache(string $tokenId): void
+    {
+        // Publish event to Redis for cache invalidation
+        // Other services should subscribe to this event
+        try {
+            \Illuminate\Support\Facades\Redis::publish('token.revoked', json_encode([
+                'token_id' => $tokenId,
+                'user_id' => auth()->id(),
+                'timestamp' => now()->toISOString(),
+            ]));
+        } catch (\Exception $e) {
+            // Log but don't fail logout if cache invalidation fails
+            \Illuminate\Support\Facades\Log::warning('Failed to publish token revocation event', [
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
@@ -170,30 +162,20 @@ class AuthController extends Controller
             $user->token()->revoke();
             $newToken = $user->createToken('Personal Access Token')->accessToken;
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Token refreshed successfully',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'name' => $user->name,
-                        'email' => $user->email,
-                        'email_verified_at' => $user->email_verified_at,
-                        'created_at' => $user->created_at,
-                        'updated_at' => $user->updated_at,
-                    ],
-                    'token' => $newToken,
-                    'token_type' => 'Bearer',
-                ]
-            ]);
+            return \App\Support\ApiResponse::success([
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'email_verified_at' => $user->email_verified_at,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ],
+                'token' => $newToken,
+                'token_type' => 'Bearer',
+            ], 'Token refreshed successfully');
         } catch (\Exception $e) {
-            Log::error('Token refresh failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Token refresh failed',
-                'error' => 'Internal server error'
-            ], 500);
+            return \App\Support\ApiResponse::serverError('Token refresh failed', $e);
         }
     }
 
@@ -206,13 +188,9 @@ class AuthController extends Controller
     {
         try {
             $user = auth('api')->user();
-            
+
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not authenticated',
-                    'error' => 'Unauthorized'
-                ], 401);
+                return \App\Support\ApiResponse::unauthorized('User not authenticated');
             }
 
             // Load user with roles and permissions
@@ -231,36 +209,26 @@ class AuthController extends Controller
                     ];
                 });
 
-            return response()->json([
-                'success' => true,
-                'message' => 'User profile retrieved successfully',
-                'data' => [
-                    'user' => [
-                        'id' => $userWithRoles->id,
-                        'name' => $userWithRoles->name,
-                        'email' => $userWithRoles->email,
-                        'email_verified_at' => $userWithRoles->email_verified_at,
-                        'created_at' => $userWithRoles->created_at,
-                        'updated_at' => $userWithRoles->updated_at,
-                    ],
-                    'roles' => $userWithRoles->roles->map(function ($role) {
-                        return [
-                            'id' => $role->id,
-                            'name' => $role->name,
-                            'description' => $role->description
-                        ];
-                    }),
-                    'permissions' => $permissions
-                ]
-            ]);
+            return \App\Support\ApiResponse::success([
+                'user' => [
+                    'id' => $userWithRoles->id,
+                    'name' => $userWithRoles->name,
+                    'email' => $userWithRoles->email,
+                    'email_verified_at' => $userWithRoles->email_verified_at,
+                    'created_at' => $userWithRoles->created_at,
+                    'updated_at' => $userWithRoles->updated_at,
+                ],
+                'roles' => $userWithRoles->roles->map(function ($role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => $role->name,
+                        'description' => $role->description
+                    ];
+                }),
+                'permissions' => $permissions
+            ], 'User profile retrieved successfully');
         } catch (\Exception $e) {
-            Log::error('Get user profile failed: ' . $e->getMessage());
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve user profile',
-                'error' => 'Internal server error'
-            ], 500);
+            return \App\Support\ApiResponse::serverError('Failed to retrieve user profile', $e);
         }
     }
 }

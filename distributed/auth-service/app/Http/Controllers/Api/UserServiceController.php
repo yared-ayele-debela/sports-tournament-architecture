@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -23,44 +24,35 @@ class UserServiceController extends Controller
             $user = User::with('roles', 'roles.permissions')->find($id);
             
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
+                return ApiResponse::notFound('User not found');
             }
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'email_verified_at' => $user->email_verified_at,
-                    'created_at' => $user->created_at,
-                    'updated_at' => $user->updated_at,
-                    'roles' => $user->roles->map(function ($role) {
-                        return [
-                            'id' => $role->id,
-                            'name' => $role->name,
-                            'description' => $role->description,
-                            'permissions' => $role->permissions->map(function ($permission) {
-                                return [
-                                    'id' => $permission->id,
-                                    'name' => $permission->name,
-                                    'description' => $permission->description,
-                                ];
-                            })
-                        ];
-                    })
-                ]
+            return ApiResponse::success([
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'email_verified_at' => $user->email_verified_at,
+                'created_at' => $user->created_at,
+                'updated_at' => $user->updated_at,
+                'roles' => $user->roles->map(function ($role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => $role->name,
+                        'description' => $role->description,
+                        'permissions' => $role->permissions->map(function ($permission) {
+                            return [
+                                'id' => $permission->id,
+                                'name' => $permission->name,
+                                'description' => $permission->description,
+                            ];
+                        })
+                    ];
+                })
             ]);
         } catch (\Exception $e) {
             Log::error('Error getting user by ID: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Internal server error', $e);
         }
     }
 
@@ -80,46 +72,30 @@ class UserServiceController extends Controller
 
             $user = User::find($userId);
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
+                return ApiResponse::notFound('User not found');
             }
 
             $role = Role::find($request->role_id);
             if (!$role) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Role not found'
-                ], 404);
+                return ApiResponse::notFound('Role not found');
             }
 
             // Check if user already has this role
             if ($user->roles()->where('role_id', $role->id)->exists()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User already has this role'
-                ], 409);
+                return ApiResponse::error('User already has this role', 409);
             }
 
             $user->roles()->attach($role->id);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Role assigned successfully',
-                'data' => [
-                    'user_id' => $user->id,
-                    'role_id' => $role->id,
-                    'role_name' => $role->name
-                ]
-            ]);
+            return ApiResponse::success([
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+                'role_name' => $role->name
+            ], 'Role assigned successfully');
         } catch (\Exception $e) {
             Log::error('Error assigning role to user: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Internal server error', $e);
         }
     }
 
@@ -135,10 +111,7 @@ class UserServiceController extends Controller
             $user = User::find($userId);
             
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
+                return ApiResponse::notFound('User not found');
             }
 
             $permissions = $user->roles()
@@ -155,20 +128,14 @@ class UserServiceController extends Controller
                     ];
                 });
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'user_id' => $user->id,
-                    'permissions' => $permissions
-                ]
+            return ApiResponse::success([
+                'user_id' => $user->id,
+                'permissions' => $permissions
             ]);
         } catch (\Exception $e) {
             Log::error('Error getting user permissions: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Internal server error', $e);
         }
     }
 
@@ -184,32 +151,20 @@ class UserServiceController extends Controller
             $user = User::find($id);
             
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found',
-                    'exists' => false
-                ], 404);
+                return ApiResponse::error('User not found', 404, ['exists' => false]);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'User exists',
-                'exists' => true,
-                'data' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'is_active' => !is_null($user->email_verified_at)
-                ]
-            ]);
+            return ApiResponse::success([
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_active' => !is_null($user->email_verified_at),
+                'exists' => true
+            ], 'User exists');
         } catch (\Exception $e) {
             Log::error('Error validating user by ID: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal server error',
-                'exists' => false
-            ], 500);
+            return ApiResponse::serverError('Internal server error', $e, ['exists' => false]);
         }
     }
 
@@ -226,32 +181,20 @@ class UserServiceController extends Controller
             $user = User::find($userId);
             
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found',
-                    'exists' => false
-                ], 404);
+                return ApiResponse::error('User not found', 404, ['exists' => false]);
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'User exists',
-                'exists' => true,
-                'data' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'is_active' => !is_null($user->email_verified_at)
-                ]
-            ]);
+            return ApiResponse::success([
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_active' => !is_null($user->email_verified_at),
+                'exists' => true
+            ], 'User exists');
         } catch (\Exception $e) {
             Log::error('Error validating user: ' . $e->getMessage());
             
-            return response()->json([
-                'success' => false,
-                'message' => 'Internal server error',
-                'exists' => false
-            ], 500);
+            return ApiResponse::serverError('Internal server error', $e, ['exists' => false]);
         }
     }
 }

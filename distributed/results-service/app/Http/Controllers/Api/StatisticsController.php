@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Standing;
 use App\Models\MatchResult;
 use App\Services\Clients\TeamServiceClient;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -24,10 +25,7 @@ class StatisticsController extends Controller
         // Get team info
         $team = $this->teamService->getTeam($teamId);
         if (!$team) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Team not found',
-            ], 404);
+            return ApiResponse::notFound('Team not found');
         }
 
         // Calculate team statistics
@@ -59,22 +57,19 @@ class StatisticsController extends Controller
             }
         })->implode('');
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'team' => $team,
-                'statistics' => [
-                    'total_matches' => $totalMatches,
-                    'wins' => $totalWins,
-                    'draws' => $totalDraws,
-                    'losses' => $totalLosses,
-                    'goals_for' => $totalGoalsFor,
-                    'goals_against' => $totalGoalsAgainst,
-                    'goal_difference' => $totalGoalsFor - $totalGoalsAgainst,
-                    'points' => $totalPoints,
-                    'win_rate' => $winRate,
-                    'recent_form' => $recentResults,
-                ],
+        return ApiResponse::success([
+            'team' => $team,
+            'statistics' => [
+                'total_matches' => $totalMatches,
+                'wins' => $totalWins,
+                'draws' => $totalDraws,
+                'losses' => $totalLosses,
+                'goals_for' => $totalGoalsFor,
+                'goals_against' => $totalGoalsAgainst,
+                'goal_difference' => $totalGoalsFor - $totalGoalsAgainst,
+                'points' => $totalPoints,
+                'win_rate' => $winRate,
+                'recent_form' => $recentResults,
             ],
         ]);
     }
@@ -102,24 +97,21 @@ class StatisticsController extends Controller
         // Best attack (most goals scored)
         $bestAttack = $standings->sortByDesc('goals_for')->first();
 
-        return response()->json([
-            'success' => true,
-            'data' => [
-                'tournament_id' => $tournamentId,
-                'total_matches' => $totalMatches,
-                'total_goals' => $totalGoals,
-                'average_goals_per_match' => $totalMatches > 0 ? round($totalGoals / $totalMatches, 2) : 0,
-                'teams_participating' => $standings->count(),
-                'top_scorer' => $topScorer,
-                'best_defense' => $bestDefense ? [
-                    'team_id' => $bestDefense->team_id,
-                    'goals_conceded' => $bestDefense->goals_against,
-                ] : null,
-                'best_attack' => $bestAttack ? [
-                    'team_id' => $bestAttack->team_id,
-                    'goals_scored' => $bestAttack->goals_for,
-                ] : null,
-            ],
+        return ApiResponse::success([
+            'tournament_id' => $tournamentId,
+            'total_matches' => $totalMatches,
+            'total_goals' => $totalGoals,
+            'average_goals_per_match' => $totalMatches > 0 ? round($totalGoals / $totalMatches, 2) : 0,
+            'teams_participating' => $standings->count(),
+            'top_scorer' => $topScorer,
+            'best_defense' => $bestDefense ? [
+                'team_id' => $bestDefense->team_id,
+                'goals_conceded' => $bestDefense->goals_against,
+            ] : null,
+            'best_attack' => $bestAttack ? [
+                'team_id' => $bestAttack->team_id,
+                'goals_scored' => $bestAttack->goals_for,
+            ] : null,
         ]);
     }
 }

@@ -48,16 +48,10 @@ class MatchResultController extends Controller
         $result = MatchResult::find($id);
 
         if (!$result) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Match result not found',
-            ], 404);
+            return ApiResponse::notFound('Match result not found');
         }
 
-        return response()->json([
-            'success' => true,
-            'data' => $result,
-        ]);
+        return ApiResponse::success($result);
     }
 
     public function finalize(Request $request, int $matchId): JsonResponse
@@ -73,10 +67,7 @@ class MatchResultController extends Controller
         $matchData = $this->matchService->getMatch($matchId);
 
         if (!$matchData) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Match not found',
-            ], 404);
+            return ApiResponse::notFound('Match not found');
         }
 
         // Create or update match result
@@ -89,10 +80,6 @@ class MatchResultController extends Controller
             ])
         );
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Match result finalized successfully',
-            'data' => $result,
-        ]);
+        return ApiResponse::success($result, 'Match result finalized successfully');
     }
 }

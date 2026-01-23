@@ -55,9 +55,6 @@ class StandingsController extends Controller
         
         $this->standingsCalculator->recalculateForTournament($tournamentId);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Standings recalculated successfully',
-        ]);
+        return ApiResponse::success(null, 'Standings recalculated successfully');
     }
 }

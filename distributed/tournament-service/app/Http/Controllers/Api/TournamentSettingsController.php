@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\TournamentSettings;
 use App\Models\Tournament;
+use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -22,20 +23,12 @@ class TournamentSettingsController extends Controller
             $tournament = Tournament::find($tournamentId);
             
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
             $settings = TournamentSettings::where('tournament_id', $tournamentId)->first();
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament settings retrieved successfully',
-                'data' => $settings
-            ]);
+            return ApiResponse::success($settings, 'Tournament settings retrieved successfully');
         } catch (\Exception $e) {
             Log::error('Failed to retrieve tournament settings', [
                 'tournament_id' => $tournamentId,
@@ -43,11 +36,7 @@ class TournamentSettingsController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve tournament settings',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve tournament settings', $e);
         }
     }
 
@@ -61,11 +50,7 @@ class TournamentSettingsController extends Controller
             $tournament = Tournament::find($tournamentId);
             
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
             $validated = $request->validate([
@@ -86,11 +71,7 @@ class TournamentSettingsController extends Controller
                 'settings_id' => $settings->id
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament settings saved successfully',
-                'data' => $settings
-            ]);
+            return ApiResponse::success($settings, 'Tournament settings saved successfully');
         } catch (\Exception $e) {
             Log::error('Failed to save tournament settings', [
                 'tournament_id' => $tournamentId,
@@ -98,11 +79,7 @@ class TournamentSettingsController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to save tournament settings',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to save tournament settings', $e);
         }
     }
 }

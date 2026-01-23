@@ -65,11 +65,7 @@ class TournamentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve tournaments',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve tournaments', $e);
         }
     }
 
@@ -85,11 +81,7 @@ class TournamentController extends Controller
             $userPermissions = $request->get('user_permissions', []);
 
             if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. User not authenticated.',
-                    'error' => 'No authenticated user'
-                ], 401);
+                return ApiResponse::unauthorized('User not authenticated');
             }
 
             // Check if user has admin role OR manage_tournaments permission
@@ -97,13 +89,7 @@ class TournamentController extends Controller
             $canManageTournaments = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_tournaments');
 
             if (!$isAdmin && !$canManageTournaments) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. Tournament management access required.',
-                    'error' => 'Insufficient permissions',
-                    'user_roles' => $userRoles,
-                    'user_permissions' => $userPermissions
-                ], 403);
+                return ApiResponse::forbidden('Tournament management access required');
             }
 
             $validated = $request->validate([
@@ -128,22 +114,14 @@ class TournamentController extends Controller
             // Publish tournament created event
             $this->eventPublisher->publishTournamentCreated($tournament->load(['sport', 'settings'])->toArray());
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament created successfully',
-                'data' => $tournament->load(['sport', 'settings'])
-            ], 201);
+            return ApiResponse::created($tournament->load(['sport', 'settings']), 'Tournament created successfully');
         } catch (\Exception $e) {
             Log::error('Failed to create tournament', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create tournament',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to create tournament', $e);
         }
     }
 
@@ -156,18 +134,10 @@ class TournamentController extends Controller
             $tournament = Tournament::with(['sport', 'settings'])->find($id);
 
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament retrieved successfully',
-                'data' => $tournament
-            ]);
+            return ApiResponse::success($tournament, 'Tournament retrieved successfully');
         } catch (\Exception $e) {
             Log::error('Failed to retrieve tournament', [
                 'tournament_id' => $id,
@@ -175,11 +145,7 @@ class TournamentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve tournament',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve tournament', $e);
         }
     }
 
@@ -192,11 +158,7 @@ class TournamentController extends Controller
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
             $validated = $request->validate([
@@ -222,11 +184,7 @@ class TournamentController extends Controller
                 $oldData
             );
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament updated successfully',
-                'data' => $tournament->load(['sport', 'settings'])
-            ]);
+            return ApiResponse::success($tournament->load(['sport', 'settings']), 'Tournament updated successfully');
         } catch (\Exception $e) {
             Log::error('Failed to update tournament', [
                 'tournament_id' => $id,
@@ -234,11 +192,7 @@ class TournamentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update tournament',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to update tournament', $e);
         }
     }
 
@@ -251,11 +205,7 @@ class TournamentController extends Controller
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
             $tournament->delete();
@@ -265,10 +215,7 @@ class TournamentController extends Controller
                 'tournament_name' => $tournament->name
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament deleted successfully'
-            ]);
+            return ApiResponse::success(null, 'Tournament deleted successfully');
         } catch (\Exception $e) {
             Log::error('Failed to delete tournament', [
                 'tournament_id' => $id,
@@ -276,11 +223,7 @@ class TournamentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to delete tournament',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to delete tournament', $e);
         }
     }
 
@@ -301,11 +244,7 @@ class TournamentController extends Controller
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
             // Log the status value being validated
@@ -341,13 +280,10 @@ class TournamentController extends Controller
             $newStatus = $validated['status'];
 
             if (!$this->isValidStatusTransition($currentStatus, $newStatus)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid status transition',
-                    'error' => "Cannot transition from {$currentStatus} to {$newStatus}",
+                return ApiResponse::badRequest("Cannot transition from {$currentStatus} to {$newStatus}", [
                     'current_status' => $currentStatus,
                     'requested_status' => $newStatus
-                ], 400);
+                ]);
             }
 
             $tournament->update(['status' => $newStatus]);
@@ -364,11 +300,7 @@ class TournamentController extends Controller
                 $currentStatus
             );
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament status updated successfully',
-                'data' => $tournament
-            ]);
+            return ApiResponse::success($tournament, 'Tournament status updated successfully');
         } catch (\Illuminate\Validation\ValidationException $e) {
             // Log detailed validation error information
             Log::error('Tournament status validation failed', [
@@ -378,13 +310,7 @@ class TournamentController extends Controller
                 'failed_rules' => $e->validator->failed()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Validation failed',
-                'error' => 'Invalid status value provided',
-                'validation_errors' => $e->errors(),
-                'allowed_statuses' => ['planned', 'ongoing', 'completed', 'cancelled']
-            ], 422);
+            return ApiResponse::validationError($e->errors(), 'Invalid status value provided');
         } catch (\Exception $e) {
             Log::error('Failed to update tournament status', [
                 'tournament_id' => $id,
@@ -392,11 +318,7 @@ class TournamentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update tournament status',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to update tournament status', $e);
         }
     }
 
@@ -409,23 +331,15 @@ class TournamentController extends Controller
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Tournament is valid',
-                'data' => [
-                    'id' => $tournament->id,
-                    'name' => $tournament->name,
-                    'status' => $tournament->status,
-                    'sport_id' => $tournament->sport_id
-                ]
-            ]);
+            return ApiResponse::success([
+                'id' => $tournament->id,
+                'name' => $tournament->name,
+                'status' => $tournament->status,
+                'sport_id' => $tournament->sport_id
+            ], 'Tournament is valid');
         } catch (\Exception $e) {
             Log::error('Failed to validate tournament', [
                 'tournament_id' => $id,
@@ -433,11 +347,7 @@ class TournamentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to validate tournament',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to validate tournament', $e);
         }
     }
 
@@ -452,11 +362,7 @@ class TournamentController extends Controller
             $tournament = Tournament::find($id);
 
             if (!$tournament) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Tournament not found');
             }
 
             Log::info("Fetching tournament matches for tournament {$id}");
@@ -482,11 +388,7 @@ class TournamentController extends Controller
                     'error' => $matchesResponse['error']
                 ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to retrieve tournament matches',
-                    'error' => $matchesResponse['error']
-                ], $matchesResponse['status'] ?? 500);
+                return ApiResponse::error('Failed to retrieve tournament matches', $matchesResponse['status'] ?? 500, $matchesResponse['error']);
             }
 
             $matches = $matchesResponse['data']['data'] ?? [];
@@ -511,11 +413,7 @@ class TournamentController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve tournament matches',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve tournament matches', $e);
         }
     }
 

@@ -40,11 +40,7 @@ class SportController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve sports',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve sports', $e);
         }
     }
 
@@ -96,22 +92,14 @@ class SportController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Sport created successfully',
-                'data' => $sport
-            ], 201);
+            return ApiResponse::created($sport, 'Sport created successfully');
         } catch (\Exception $e) {
             Log::error('Failed to create sport', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create sport',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to create sport', $e);
         }
     }
 
@@ -124,18 +112,10 @@ class SportController extends Controller
             $sport = Sport::find($id);
 
             if (!$sport) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Sport not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Sport not found');
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Sport retrieved successfully',
-                'data' => $sport
-            ]);
+            return ApiResponse::success($sport, 'Sport retrieved successfully');
         } catch (\Exception $e) {
             Log::error('Failed to retrieve sport', [
                 'sport_id' => $id,
@@ -143,11 +123,7 @@ class SportController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve sport',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve sport', $e);
         }
     }
 

@@ -39,11 +39,7 @@ class VenueController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve venues',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve venues', $e);
         }
     }
 
@@ -93,22 +89,14 @@ class VenueController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Venue created successfully',
-                'data' => $venue
-            ], 201);
+            return ApiResponse::created($venue, 'Venue created successfully');
         } catch (\Exception $e) {
             Log::error('Failed to create venue', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to create venue',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to create venue', $e);
         }
     }
 
@@ -121,18 +109,10 @@ class VenueController extends Controller
             $venue = Venue::find($id);
 
             if (!$venue) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Venue not found',
-                    'error' => 'Resource not found'
-                ], 404);
+                return ApiResponse::notFound('Venue not found');
             }
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Venue retrieved successfully',
-                'data' => $venue
-            ]);
+            return ApiResponse::success($venue, 'Venue retrieved successfully');
         } catch (\Exception $e) {
             Log::error('Failed to retrieve venue', [
                 'venue_id' => $id,
@@ -140,11 +120,7 @@ class VenueController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
 
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to retrieve venue',
-                'error' => 'Internal server error'
-            ], 500);
+            return ApiResponse::serverError('Failed to retrieve venue', $e);
         }
     }
 

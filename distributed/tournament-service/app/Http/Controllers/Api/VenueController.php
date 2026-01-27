@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Venue;
 use App\Services\AuthService;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -14,10 +16,12 @@ use Illuminate\Support\Facades\Validator;
 class VenueController extends Controller
 {
     protected AuthService $authService;
+    protected EventPublisher $eventPublisher;
 
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, EventPublisher $eventPublisher)
     {
         $this->authService = $authService;
+        $this->eventPublisher = $eventPublisher;
     }
     /**
      * Display a listing of venues.
@@ -88,6 +92,9 @@ class VenueController extends Controller
                 'name' => $venue->name,
                 'user_id' => $user['id']
             ]);
+
+            // Publish venue created event
+            $this->publishVenueCreatedEvent($venue, $user);
 
             return ApiResponse::created($venue, 'Venue created successfully');
         } catch (\Exception $e) {
@@ -172,6 +179,7 @@ class VenueController extends Controller
                 'capacity' => 'nullable|integer|min:1'
             ]);
 
+            $oldData = $venue->toArray();
             $venue->update($validated);
 
             Log::info('Venue updated successfully', [
@@ -179,6 +187,9 @@ class VenueController extends Controller
                 'name' => $venue->name,
                 'user_id' => $user['id']
             ]);
+
+            // Publish venue updated event
+            $this->publishVenueUpdatedEvent($venue, $oldData);
 
             return response()->json([
                 'success' => true,
@@ -250,6 +261,9 @@ class VenueController extends Controller
                 'user_id' => $user['id']
             ]);
 
+            // Publish venue deleted event
+            $this->publishVenueDeletedEvent($venue, $user);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Venue deleted successfully'
@@ -266,6 +280,66 @@ class VenueController extends Controller
                 'message' => 'Failed to delete venue',
                 'error' => 'Internal server error'
             ], 500);
+        }
+    }
+
+    /**
+     * Publish venue created event
+     *
+     * @param Venue $venue
+     * @param array $user
+     * @return void
+     */
+    protected function publishVenueCreatedEvent(Venue $venue, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::venueCreated($venue, $user);
+            $this->eventPublisher->publish('sports.venue.created', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish venue created event', [
+                'venue_id' => $venue->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish venue updated event
+     *
+     * @param Venue $venue
+     * @param array $oldData
+     * @return void
+     */
+    protected function publishVenueUpdatedEvent(Venue $venue, array $oldData): void
+    {
+        try {
+            $payload = EventPayloadBuilder::venueUpdated($venue, $oldData);
+            $this->eventPublisher->publish('sports.venue.updated', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish venue updated event', [
+                'venue_id' => $venue->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish venue deleted event
+     *
+     * @param Venue $venue
+     * @param array $user
+     * @return void
+     */
+    protected function publishVenueDeletedEvent(Venue $venue, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::venueDeleted($venue, $user);
+            $this->eventPublisher->publish('sports.venue.deleted', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish venue deleted event', [
+                'venue_id' => $venue->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

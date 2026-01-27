@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Sport;
 use App\Services\AuthService;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -14,10 +16,12 @@ use Illuminate\Support\Facades\Validator;
 class SportController extends Controller
 {
     protected AuthService $authService;
+    protected EventPublisher $eventPublisher;
 
-    public function __construct(AuthService $authService)
+    public function __construct(AuthService $authService, EventPublisher $eventPublisher)
     {
         $this->authService = $authService;
+        $this->eventPublisher = $eventPublisher;
     }
 
     /**
@@ -91,6 +95,9 @@ class SportController extends Controller
                 'name' => $sport->name,
                 'user_id' => $user['id']
             ]);
+
+            // Publish sport created event
+            $this->publishSportCreatedEvent($sport, $user);
 
             return ApiResponse::created($sport, 'Sport created successfully');
         } catch (\Exception $e) {
@@ -177,6 +184,7 @@ class SportController extends Controller
                 'description' => 'nullable|string|max:1000'
             ]);
 
+            $oldData = $sport->toArray();
             $sport->update($validated);
 
             Log::info('Sport updated successfully', [
@@ -184,6 +192,9 @@ class SportController extends Controller
                 'name' => $sport->name,
                 'user_id' => $user['id']
             ]);
+
+            // Publish sport updated event
+            $this->publishSportUpdatedEvent($sport, $oldData);
 
             return response()->json([
                 'success' => true,
@@ -256,6 +267,9 @@ class SportController extends Controller
                 'user_id' => $user['id']
             ]);
 
+            // Publish sport deleted event
+            $this->publishSportDeletedEvent($sport, $user);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Sport deleted successfully'
@@ -272,6 +286,66 @@ class SportController extends Controller
                 'message' => 'Failed to delete sport',
                 'error' => 'Internal server error'
             ], 500);
+        }
+    }
+
+    /**
+     * Publish sport created event
+     *
+     * @param Sport $sport
+     * @param array $user
+     * @return void
+     */
+    protected function publishSportCreatedEvent(Sport $sport, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::sportCreated($sport, $user);
+            $this->eventPublisher->publish('sports.sport.created', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish sport created event', [
+                'sport_id' => $sport->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish sport updated event
+     *
+     * @param Sport $sport
+     * @param array $oldData
+     * @return void
+     */
+    protected function publishSportUpdatedEvent(Sport $sport, array $oldData): void
+    {
+        try {
+            $payload = EventPayloadBuilder::sportUpdated($sport, $oldData);
+            $this->eventPublisher->publish('sports.sport.updated', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish sport updated event', [
+                'sport_id' => $sport->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish sport deleted event
+     *
+     * @param Sport $sport
+     * @param array $user
+     * @return void
+     */
+    protected function publishSportDeletedEvent(Sport $sport, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::sportDeleted($sport, $user);
+            $this->eventPublisher->publish('sports.sport.deleted', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish sport deleted event', [
+                'sport_id' => $sport->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

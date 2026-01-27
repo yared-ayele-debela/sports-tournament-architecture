@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiResponse;
+
 use App\Models\Tournament;
 use App\Models\TournamentSettings;
 use App\Services\AuthService;
-use App\Services\EventPublisher;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Services\Clients\MatchServiceClient;
 use App\Services\Clients\ResultsServiceClient;
 use App\Services\Clients\TeamServiceClient;
-use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -112,7 +114,7 @@ class TournamentController extends Controller
             ]);
 
             // Publish tournament created event
-            $this->eventPublisher->publishTournamentCreated($tournament->load(['sport', 'settings'])->toArray());
+            $this->publishTournamentCreatedEvent($tournament, $user);
 
             return ApiResponse::created($tournament->load(['sport', 'settings']), 'Tournament created successfully');
         } catch (\Exception $e) {
@@ -133,6 +135,10 @@ class TournamentController extends Controller
         try {
             $tournament = Tournament::with(['sport', 'settings'])->find($id);
 
+            Log::info('Tournament retrieved successfully', [
+                'tournament_id' => $id,
+                'tournament_name' => $tournament ? $tournament->name : null
+            ]);
             if (!$tournament) {
                 return ApiResponse::notFound('Tournament not found');
             }
@@ -179,10 +185,7 @@ class TournamentController extends Controller
             ]);
 
             // Publish tournament updated event
-            $this->eventPublisher->publishTournamentUpdated(
-                $tournament->load(['sport', 'settings'])->toArray(),
-                $oldData
-            );
+            $this->publishTournamentUpdatedEvent($tournament, $oldData);
 
             return ApiResponse::success($tournament->load(['sport', 'settings']), 'Tournament updated successfully');
         } catch (\Exception $e) {
@@ -260,7 +263,7 @@ class TournamentController extends Controller
             if (is_string($statusValue)) {
                 $normalizedStatus = strtolower(trim($statusValue));
                 $request->merge(['status' => $normalizedStatus]);
-                
+
                 Log::info('Normalized tournament status', [
                     'original_status' => $statusValue,
                     'normalized_status' => $normalizedStatus
@@ -295,10 +298,7 @@ class TournamentController extends Controller
             ]);
 
             // Publish tournament status changed event
-            $this->eventPublisher->publishTournamentStatusChanged(
-                $tournament->load(['sport', 'settings'])->toArray(),
-                $currentStatus
-            );
+            $this->publishTournamentStatusChangedEvent($tournament, $currentStatus);
 
             return ApiResponse::success($tournament, 'Tournament status updated successfully');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -657,6 +657,78 @@ class TournamentController extends Controller
                 'message' => 'Failed to retrieve tournament standings',
                 'error' => 'Internal server error'
             ], 500);
+        }
+    }
+
+    /**
+     * Publish tournament created event
+     *
+     * @param Tournament $tournament
+     * @param array $user
+     * @return void
+     */
+    protected function publishTournamentCreatedEvent(Tournament $tournament, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::tournamentCreated(
+                $tournament->load(['sport', 'settings']),
+                $user
+            );
+
+            $this->eventPublisher->publish('sports.tournament.created', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish tournament created event', [
+                'tournament_id' => $tournament->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish tournament updated event
+     *
+     * @param Tournament $tournament
+     * @param array $oldData
+     * @return void
+     */
+    protected function publishTournamentUpdatedEvent(Tournament $tournament, array $oldData): void
+    {
+        try {
+            $payload = EventPayloadBuilder::tournamentUpdated(
+                $tournament->load(['sport', 'settings']),
+                $oldData
+            );
+
+            $this->eventPublisher->publish('sports.tournament.updated', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish tournament updated event', [
+                'tournament_id' => $tournament->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish tournament status changed event
+     *
+     * @param Tournament $tournament
+     * @param string $oldStatus
+     * @return void
+     */
+    protected function publishTournamentStatusChangedEvent(Tournament $tournament, string $oldStatus): void
+    {
+        try {
+            $payload = EventPayloadBuilder::tournamentStatusChanged(
+                $tournament->load(['sport', 'settings']),
+                $oldStatus
+            );
+
+            $this->eventPublisher->publish('sports.tournament.status.changed', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish tournament status changed event', [
+                'tournament_id' => $tournament->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 

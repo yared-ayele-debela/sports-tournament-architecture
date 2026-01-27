@@ -82,4 +82,14 @@ class User extends Authenticatable
             ->where('name', $permissionName)
             ->isNotEmpty();
     }
+
+    /**
+     * Get the names of all roles assigned to the user.
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public function getRoleNames()
+    {
+        return $this->roles()->pluck('name');
+    }
 }

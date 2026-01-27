@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -12,6 +14,12 @@ use Illuminate\Support\Facades\Log;
 
 class UserServiceController extends Controller
 {
+    protected EventPublisher $eventPublisher;
+
+    public function __construct(EventPublisher $eventPublisher)
+    {
+        $this->eventPublisher = $eventPublisher;
+    }
     /**
      * Get user details by ID.
      *
@@ -86,6 +94,9 @@ class UserServiceController extends Controller
             }
 
             $user->roles()->attach($role->id);
+
+            // Publish role assigned event
+            $this->publishRoleAssignedEvent($user, $role, $request);
 
             return ApiResponse::success([
                 'user_id' => $user->id,
@@ -169,32 +180,29 @@ class UserServiceController extends Controller
     }
 
     /**
-     * Validate if user exists.
+     * Publish role assigned event
      *
+     * @param User $user
+     * @param Role $role
      * @param Request $request
-     * @return JsonResponse
+     * @return void
      */
-    public function validateUser(Request $request): JsonResponse
+    protected function publishRoleAssignedEvent(User $user, Role $role, Request $request): void
     {
         try {
-            $userId = $request->input('user_id');
-            $user = User::find($userId);
-            
-            if (!$user) {
-                return ApiResponse::error('User not found', 404, ['exists' => false]);
-            }
+            $payload = EventPayloadBuilder::userRoleAssigned(
+                $user, 
+                $role->name, 
+                auth()->id() ?? 'system'
+            );
 
-            return ApiResponse::success([
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'is_active' => !is_null($user->email_verified_at),
-                'exists' => true
-            ], 'User exists');
+            $this->eventPublisher->publish('sports.auth.user.role.assigned', $payload);
         } catch (\Exception $e) {
-            Log::error('Error validating user: ' . $e->getMessage());
-            
-            return ApiResponse::serverError('Internal server error', $e, ['exists' => false]);
+            Log::warning('Failed to publish role assigned event', [
+                'user_id' => $user->id,
+                'role_id' => $role->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

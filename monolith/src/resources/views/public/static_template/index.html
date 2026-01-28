@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournament Hub - Home</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        accent: '#f59e0b',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <a href="index.html" class="flex items-center space-x-2">
+                        <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-trophy text-white"></i>
+                        </div>
+                        <span class="text-xl font-bold text-gray-800">Tournament Hub</span>
+                    </a>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="index.html" class="text-primary font-medium border-b-2 border-primary pb-1">Home</a>
+                    <a href="tournaments.html" class="text-gray-700 hover:text-primary transition font-medium">Tournaments</a>
+                    <a href="teams.html" class="text-gray-700 hover:text-primary transition font-medium">Teams</a>
+                    <a href="matches.html" class="text-gray-700 hover:text-primary transition font-medium">Matches</a>
+                    <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                        <i class="fas fa-user-circle mr-2"></i>Sign In
+                    </button>
+                </div>
+                
+                <button class="md:hidden text-gray-700" onclick="toggleMobileMenu()">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="hidden md:hidden pb-4" id="mobile-menu">
+                <div class="flex flex-col space-y-3">
+                    <a href="index.html" class="text-primary font-medium">Home</a>
+                    <a href="tournaments.html" class="text-gray-700 hover:text-primary transition font-medium">Tournaments</a>
+                    <a href="teams.html" class="text-gray-700 hover:text-primary transition font-medium">Teams</a>
+                    <a href="matches.html" class="text-gray-700 hover:text-primary transition font-medium">Matches</a>
+                    <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                        <i class="fas fa-user-circle mr-2"></i>Sign In
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="bg-gradient-to-r from-primary to-blue-600 text-white py-20">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+                <div>
+                    <h1 class="text-4xl md:text-5xl font-bold mb-4">Welcome to Tournament Hub</h1>
+                    <p class="text-xl mb-6 text-blue-100">Your one-stop destination for all sports tournaments, matches, and team information.</p>
+                    <div class="flex flex-col sm:flex-row gap-4">
+                        <a href="tournaments.html" class="bg-white text-primary px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition inline-flex items-center justify-center">
+                            <i class="fas fa-trophy mr-2"></i>View Tournaments
+                        </a>
+                        <a href="matches.html" class="bg-accent text-white px-6 py-3 rounded-lg font-semibold hover:bg-yellow-600 transition inline-flex items-center justify-center">
+                            <i class="fas fa-play-circle mr-2"></i>Live Matches
+                        </a>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <img src="https://picsum.photos/seed/sports-hero/600/400.jpg" alt="Sports Tournament" class="rounded-lg shadow-2xl">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Tournaments -->
+    <section class="py-16">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold">Featured Tournaments</h2>
+                <a href="tournaments.html" class="text-primary font-medium hover:underline">View All <i class="fas fa-arrow-right ml-1"></i></a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Tournament Card 1 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/seed/champions/400/250.jpg" alt="Champions League" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-2">
+                            <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-primary text-white">Football</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Champions League 2023</h3>
+                        <p class="text-gray-600 mb-4">Europe's premier club football tournament with the best teams competing for the trophy.</p>
+                        <div class="flex items-center text-sm text-gray-500 mb-4">
+                            <i class="far fa-calendar mr-2"></i>
+                            <span>June 10 - August 25, 2023</span>
+                        </div>
+                        <a href="tournament-detail.html" class="inline-flex items-center text-primary font-medium hover:underline">
+                            View Details <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Tournament Card 2 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/seed/nba-finals/400/250.jpg" alt="NBA Finals" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-2">
+                            <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-accent text-white">Basketball</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">NBA Finals 2023</h3>
+                        <p class="text-gray-600 mb-4">The championship series of the National Basketball Association, determining the season's champion.</p>
+                        <div class="flex items-center text-sm text-gray-500 mb-4">
+                            <i class="far fa-calendar mr-2"></i>
+                            <span>July 5 - July 20, 2023</span>
+                        </div>
+                        <a href="tournament-detail.html" class="inline-flex items-center text-primary font-medium hover:underline">
+                            View Details <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Tournament Card 3 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-shadow duration-300">
+                    <div class="h-48 overflow-hidden">
+                        <img src="https://picsum.photos/seed/wimbledon/400/250.jpg" alt="Wimbledon" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300">
+                    </div>
+                    <div class="p-6">
+                        <div class="mb-2">
+                            <span class="inline-block px-3 py-1 text-xs font-semibold rounded-full bg-success text-white">Tennis</span>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Wimbledon 2023</h3>
+                        <p class="text-gray-600 mb-4">The oldest tennis tournament in the world, held at the All England Club in London.</p>
+                        <div class="flex items-center text-sm text-gray-500 mb-4">
+                            <i class="far fa-calendar mr-2"></i>
+                            <span>July 3 - July 16, 2023</span>
+                        </div>
+                        <a href="tournament-detail.html" class="inline-flex items-center text-primary font-medium hover:underline">
+                            View Details <i class="fas fa-arrow-right ml-2"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Upcoming Matches -->
+    <section class="py-16 bg-gray-100">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center mb-8">
+                <h2 class="text-3xl font-bold">Upcoming Matches</h2>
+                <a href="matches.html" class="text-primary font-medium hover:underline">View All <i class="fas fa-arrow-right ml-1"></i></a>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Match Card 1 -->
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm text-gray-500">Tomorrow, 8:00 PM</span>
+                        <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Football</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <img src="https://picsum.photos/seed/team1/50/50.jpg" alt="Team 1" class="w-12 h-12 rounded-full">
+                            <span class="font-semibold">Real Madrid</span>
+                        </div>
+                        <span class="text-gray-400 font-bold">VS</span>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-semibold">Barcelona</span>
+                            <img src="https://picsum.photos/seed/team2/50/50.jpg" alt="Team 2" class="w-12 h-12 rounded-full">
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t">
+                        <div class="flex justify-between text-sm text-gray-500">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> Santiago Bernabeu</span>
+                            <span><i class="fas fa-tv mr-1"></i> Live</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Match Card 2 -->
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm text-gray-500">Today, 7:30 PM</span>
+                        <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Basketball</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <img src="https://picsum.photos/seed/team3/50/50.jpg" alt="Team 3" class="w-12 h-12 rounded-full">
+                            <span class="font-semibold">Lakers</span>
+                        </div>
+                        <span class="text-gray-400 font-bold">VS</span>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-semibold">Celtics</span>
+                            <img src="https://picsum.photos/seed/team4/50/50.jpg" alt="Team 4" class="w-12 h-12 rounded-full">
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t">
+                        <div class="flex justify-between text-sm text-gray-500">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> Staples Center</span>
+                            <span class="text-red-500 font-semibold"><i class="fas fa-circle mr-1"></i> LIVE</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Match Card 3 -->
+                <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-sm text-gray-500">Jul 15, 2:00 PM</span>
+                        <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Tennis</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <img src="https://picsum.photos/seed/player1/50/50.jpg" alt="Player 1" class="w-12 h-12 rounded-full">
+                            <span class="font-semibold">N. Djokovic</span>
+                        </div>
+                        <span class="text-gray-400 font-bold">VS</span>
+                        <div class="flex items-center space-x-3">
+                            <span class="font-semibold">C. Alcaraz</span>
+                            <img src="https://picsum.photos/seed/player2/50/50.jpg" alt="Player 2" class="w-12 h-12 rounded-full">
+                        </div>
+                    </div>
+                    <div class="mt-4 pt-4 border-t">
+                        <div class="flex justify-between text-sm text-gray-500">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> Centre Court</span>
+                            <span><i class="fas fa-tv mr-1"></i> ESPN</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="py-16">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+                <div>
+                    <div class="text-4xl font-bold text-primary mb-2">150+</div>
+                    <div class="text-gray-600">Tournaments</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold text-accent mb-2">500+</div>
+                    <div class="text-gray-600">Teams</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold text-success mb-2">2000+</div>
+                    <div class="text-gray-600">Matches</div>
+                </div>
+                <div>
+                    <div class="text-4xl font-bold text-danger mb-2">50K+</div>
+                    <div class="text-gray-600">Fans</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-xl font-bold mb-4">Tournament Hub</h3>
+                    <p class="text-gray-400">Your one-stop destination for all sports tournaments.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-3">Quick Links</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                        <li><a href="#" class="hover:text-white transition">Contact</a></li>
+                        <li><a href="#" class="hover:text-white transition">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-3">Sports</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Football</a></li>
+                        <li><a href="#" class="hover:text-white transition">Basketball</a></li>
+                        <li><a href="#" class="hover:text-white transition">Tennis</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-3">Follow Us</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-facebook-f text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-instagram text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-youtube text-xl"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                <p>&copy; 2023 Tournament Hub. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>

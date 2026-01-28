@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tournaments - Tournament Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#64748b',
+                        accent: '#f59e0b',
+                        success: '#10b981',
+                        danger: '#ef4444',
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+    <!-- Navbar -->
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <a href="index.html" class="flex items-center space-x-2">
+                        <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+                            <i class="fas fa-trophy text-white"></i>
+                        </div>
+                        <span class="text-xl font-bold text-gray-800">Tournament Hub</span>
+                    </a>
+                </div>
+                
+                <div class="hidden md:flex items-center space-x-6">
+                    <a href="index.html" class="text-gray-700 hover:text-primary transition font-medium">Home</a>
+                    <a href="tournaments.html" class="text-primary font-medium border-b-2 border-primary pb-1">Tournaments</a>
+                    <a href="teams.html" class="text-gray-700 hover:text-primary transition font-medium">Teams</a>
+                    <a href="matches.html" class="text-gray-700 hover:text-primary transition font-medium">Matches</a>
+                    <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                        <i class="fas fa-user-circle mr-2"></i>Sign In
+                    </button>
+                </div>
+                
+                <button class="md:hidden text-gray-700" onclick="toggleMobileMenu()">
+                    <i class="fas fa-bars text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="hidden md:hidden pb-4" id="mobile-menu">
+                <div class="flex flex-col space-y-3">
+                    <a href="index.html" class="text-gray-700 hover:text-primary transition font-medium">Home</a>
+                    <a href="tournaments.html" class="text-primary font-medium">Tournaments</a>
+                    <a href="teams.html" class="text-gray-700 hover:text-primary transition font-medium">Teams</a>
+                    <a href="matches.html" class="text-gray-700 hover:text-primary transition font-medium">Matches</a>
+                    <button class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
+                        <i class="fas fa-user-circle mr-2"></i>Sign In
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Header -->
+    <section class="bg-gradient-to-r from-primary to-blue-600 text-white py-12">
+        <div class="container mx-auto px-4">
+            <h1 class="text-4xl font-bold mb-4">All Tournaments</h1>
+            <p class="text-xl text-blue-100">Browse and discover exciting sports tournaments from around the world</p>
+        </div>
+    </section>
+
+    <!-- Filters Section -->
+    <section class="py-8 bg-white border-b">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="flex flex-wrap gap-3">
+                    <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option>All Status</option>
+                        <option>Upcoming</option>
+                        <option>Live</option>
+                        <option>Completed</option>
+                    </select>
+                    
+                    <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option>All Categories</option>
+                        <option>Football</option>
+                        <option>Basketball</option>
+                        <option>Tennis</option>
+                        <option>Cricket</option>
+                        <option>Baseball</option>
+                    </select>
+                    
+                    <select class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option>This Month</option>
+                        <option>Next Month</option>
+                        <option>This Year</option>
+                        <option>All Time</option>
+                    </select>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <input type="text" placeholder="Search tournaments..." class="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary">
+                        <i class="fas fa-search absolute left-3 top-3 text-gray-400"></i>
+                    </div>
+                    <button class="px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tournaments Grid -->
+    <section class="py-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Tournament Card 1 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/premier-league/400/250.jpg" alt="Premier League" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-green-500 text-white">Live</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-primary text-white">Football</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> Aug 2023</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">Premier League 2023/24</h3>
+                        <p class="text-sm text-gray-600 mb-3">England's top-tier football league featuring 20 teams.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> England</span>
+                            <span><i class="fas fa-users mr-1"></i> 20 Teams</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 2 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/euro-cup/400/250.jpg" alt="Euro Cup" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-white">Upcoming</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-primary text-white">Football</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> Jun 2024</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">Euro Cup 2024</h3>
+                        <p class="text-sm text-gray-600 mb-3">European Championship featuring national teams across Europe.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> Germany</span>
+                            <span><i class="fas fa-users mr-1"></i> 24 Teams</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 3 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/nba-playoffs/400/250.jpg" alt="NBA Playoffs" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-green-500 text-white">Live</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-accent text-white">Basketball</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> Jul 2023</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">NBA Playoffs 2023</h3>
+                        <p class="text-sm text-gray-600 mb-3">The postseason tournament of the National Basketball Association.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> USA</span>
+                            <span><i class="fas fa-users mr-1"></i> 16 Teams</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 4 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/french-open/400/250.jpg" alt="French Open" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-gray-500 text-white">Completed</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-success text-white">Tennis</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> May 2023</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">French Open 2023</h3>
+                        <p class="text-sm text-gray-600 mb-3">Premier clay court tennis tournament at Roland Garros.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> France</span>
+                            <span><i class="fas fa-users mr-1"></i> 128 Players</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 5 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/ipl/400/250.jpg" alt="IPL" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-white">Upcoming</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-danger text-white">Cricket</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> Mar 2024</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">IPL 2024</h3>
+                        <p class="text-sm text-gray-600 mb-3">Indian Premier League T20 cricket tournament.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> India</span>
+                            <span><i class="fas fa-users mr-1"></i> 10 Teams</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 6 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/mlb/400/250.jpg" alt="MLB" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-green-500 text-white">Live</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-purple-500 text-white">Baseball</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> Jul 2023</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">MLB Season 2023</h3>
+                        <p class="text-sm text-gray-600 mb-3">Major League Baseball regular season and playoffs.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> USA</span>
+                            <span><i class="fas fa-users mr-1"></i> 30 Teams</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 7 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/olympics/400/250.jpg" alt="Olympics" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-white">Upcoming</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-indigo-500 text-white">Multi-Sport</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> Jul 2024</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">Paris Olympics 2024</h3>
+                        <p class="text-sm text-gray-600 mb-3">Summer Olympic Games in Paris, France.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-map-marker-alt mr-1"></i> France</span>
+                            <span><i class="fas fa-users mr-1"></i> 206 Nations</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Tournament Card 8 -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
+                    <div class="relative">
+                        <img src="https://picsum.photos/seed/formula1/400/250.jpg" alt="Formula 1" class="w-full h-48 object-cover">
+                        <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full bg-green-500 text-white">Live</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-red-500 text-white">Motorsport</span>
+                            <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> 2023</span>
+                        </div>
+                        <h3 class="text-lg font-bold mb-2">Formula 1 2023</h3>
+                        <p class="text-sm text-gray-600 mb-3">World Championship of Formula 1 racing.</p>
+                        <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
+                            <span><i class="fas fa-globe mr-1"></i> Worldwide</span>
+                            <span><i class="fas fa-users mr-1"></i> 20 Drivers</span>
+                        </div>
+                        <a href="tournament-detail.html" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex justify-center mt-12">
+                <nav class="flex items-center space-x-2">
+                    <button class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-500 hover:bg-gray-50">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="px-3 py-2 rounded-md bg-primary text-white">1</button>
+                    <button class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">2</button>
+                    <button class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">3</button>
+                    <span class="px-2 text-gray-500">...</span>
+                    <button class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">10</button>
+                    <button class="px-3 py-2 rounded-md bg-white border border-gray-300 text-gray-500 hover:bg-gray-50">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </nav>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                <div>
+                    <h3 class="text-xl font-bold mb-4">Tournament Hub</h3>
+                    <p class="text-gray-400">Your one-stop destination for all sports tournaments.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-3">Quick Links</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">About Us</a></li>
+                        <li><a href="#" class="hover:text-white transition">Contact</a></li>
+                        <li><a href="#" class="hover:text-white transition">Privacy Policy</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-3">Sports</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li><a href="#" class="hover:text-white transition">Football</a></li>
+                        <li><a href="#" class="hover:text-white transition">Basketball</a></li>
+                        <li><a href="#" class="hover:text-white transition">Tennis</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-3">Follow Us</h4>
+                    <div class="flex space-x-4">
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-facebook-f text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-twitter text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-instagram text-xl"></i></a>
+                        <a href="#" class="text-gray-400 hover:text-white transition"><i class="fab fa-youtube text-xl"></i></a>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                <p>&copy; 2023 Tournament Hub. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            document.getElementById('mobile-menu').classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>

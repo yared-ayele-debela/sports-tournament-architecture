@@ -1,0 +1,60 @@
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# IDE / Editor files
+# =========================
+.idea/
+.vscode/
+*.iml
+
+# =========================
+# Environment files
+# =========================
+**/.env
+**/.env.*
+!**/.env.example
+
+# =========================
+# Laravel (all sub-projects)
+# =========================
+**/vendor/
+**/node_modules/
+
+**/storage/*.key
+**/storage/logs/
+**/storage/framework/cache/
+**/storage/framework/sessions/
+**/storage/framework/views/
+**/bootstrap/cache/
+
+# =========================
+# Node / Frontend
+# =========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Docker
+# =========================
+docker-compose.override.yml
+
+# =========================
+# Build / Cache
+# =========================
+dist/
+build/
+.cache/
+
+# =========================
+# Logs / Temp
+# =========================
+*.log
+*.tmp
+*.swp
+*.pid

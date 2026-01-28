@@ -1,90 +1,94 @@
-# Team-Based Soccer Tournament Management System
-## Software Architectures – Final Project
 
-**Course:** Software Architectures (CM0639-1)  
-**University:** Ca' Foscari University of Venice  
-**Department:** Environmental Sciences, Informatics and Statistics  
-**Academic Year:** 2025–2026  
+⚽ Soccer Tournament Management System
+A comprehensive software architecture comparison project implementing a team-based soccer tournament management system in both monolithic and distributed (microservices) architectures.
 
-**Student Name:** Yared Debela  
-**Student ID:** 913882  
-**Instructor:** Prof. Pietro Ferrara  
+🎯 Project Overview
+This system manages the complete lifecycle of soccer tournaments including:
 
----
-
-## Project Overview
-
-This project implements an IT system for managing team-based soccer tournaments.
-The system supports the full tournament lifecycle, including team and player
-registration, match scheduling, match event tracking, result recording, standings
-calculation, and public dissemination of tournament information.
-
-The main objective of the project is to **design, implement, and compare two different
-software architectures** that realize the same functional and non-functional requirements:
-
-- **Monolithic Architecture**
-- **Distributed (Service-Based) Architecture**
-
-This comparison allows an evaluation of architectural trade-offs related to scalability,
-performance, reliability, deployability, maintainability, and cost.
-
----
-
-## Project Organization
-
-This project was developed by a **single student as an individual assignment**.
-All architectural design, implementation, documentation, and deployment activities
-were performed by the same author.
-
-The Git history reflects this individual contribution through incremental,
-feature-based commits.
-
----
-
-## Architectural Approaches
-
-### 1. Monolithic Architecture
-The monolithic implementation is developed and deployed as a single application.
-It contains all business logic, data access, and user interfaces within one codebase
-and uses a single relational database.
-
-### 2. Distributed Architecture
-The distributed implementation decomposes the system into multiple independent
-services, each responsible for a specific domain concern. Services communicate
-through REST APIs and can be deployed and scaled independently.
-
-Both implementations satisfy the same requirements and expose equivalent system
-behavior.
-
----
-
-## Repository Structure
-
-- `monolith/`  
-  Contains the monolithic implementation of the system.
-
-- `distributed/`  
-  Contains the service-based distributed implementation.
-
-- `docs/`  
-  Contains architectural documentation and diagrams.
-
----
-
-## Technologies Used
-
-- Backend Framework: Laravel (PHP)
-- Database: MySQL
-- Containerization: Docker & Docker Compose
-- Communication (Distributed): REST / HTTP / JSON
-
-Only open-source technologies are used.
-
----
-
-## How to Run the System
-
-### Monolithic Architecture
-```bash
+🏆 Tournament creation and management
+👥 Team and player registration
+📅 Match scheduling and management
+⚽ Real-time match event tracking
+📊 Results recording and standings calculation
+🌐 Public tournament information dissemination
+🏗️ Architectural Comparison
+Monolithic Architecture (/monolith)
+Single deployable unit with all functionality in one codebase
+Unified database for all data operations
+Simplified deployment and development workflow
+Tight coupling between components
+Distributed Architecture (/distributed)
+6 microservices handling specific domains:
+🔐 auth-service (8001) - Authentication & authorization
+🏆 tournament-service (8002) - Tournament management
+👥 team-service (8003) - Team & player management
+⚽ match-service (8004) - Match scheduling & events
+📊 results-service (8005) - Results & statistics
+🌉 gateway-service (8000) - API Gateway & load balancing
+Independent deployment and scaling
+Service isolation and fault tolerance
+Inter-service communication via REST APIs
+🛠️ Technology Stack
+Backend: Laravel (PHP Framework)
+Database: MySQL
+Containerization: Docker & Docker Compose
+Communication: REST APIs / HTTP / JSON
+Frontend: Blade Templates with Tailwind CSS
+Testing: PHPUnit + Postman Collections
+🚀 Quick Start
+Monolithic Version
+bash
 cd monolith
 docker-compose up --build
+# Access: http://localhost:8000
+Distributed Version
+bash
+cd distributed
+docker-compose up --build
+# API Gateway: http://localhost:8000
+📚 Features
+Core Functionality
+✅ User authentication and role-based access control
+✅ Tournament creation with customizable settings
+✅ Team registration with player management
+✅ Automated match scheduling
+✅ Real-time match event tracking (goals, cards, substitutions)
+✅ Live standings and statistics
+✅ Public-facing tournament website
+User Roles
+👤 Public Users - View tournaments, teams, matches
+👨‍💼 Administrators - Full system management
+🏃 Coaches - Manage assigned teams and players
+🥅 Referees - Record match events and results
+🧪 Testing
+Each architecture includes comprehensive testing:
+
+Unit Tests (PHPUnit)
+Feature Tests
+API Tests (Postman Collections)
+Integration Tests
+📖 Documentation
+Architecture diagrams and design decisions
+API documentation for all services
+Setup guides for both architectures
+Performance comparison metrics
+
+🎓 Academic Project
+Course: Software Architectures (CM0639-1)
+University: Ca' Foscari University of Venice
+Student: Yared Debela (ID: 913882)
+Instructor: Prof. Pietro Ferrara
+Academic Year: 2025-2026
+
+🔍 Research Focus
+This project demonstrates and evaluates architectural trade-offs between monolithic and distributed systems:
+
+Scalability patterns and performance
+Development complexity vs operational simplicity
+Fault tolerance and system reliability
+Deployment strategies and maintainability
+Cost implications of different approaches
+📄 License
+This project uses only open-source technologies and is developed for educational purposes.
+
+Perfect for: Students learning software architecture, developers comparing system designs, or anyone interested in microservices vs monolithic architectures!

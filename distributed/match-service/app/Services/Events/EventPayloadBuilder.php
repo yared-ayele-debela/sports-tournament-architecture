@@ -208,6 +208,9 @@ class EventPayloadBuilder
      */
     public static function matchCompleted(MatchGame $match, MatchReport $report, array $user): array
     {
+        // Refresh the match model to get the latest scores
+        $match->refresh();
+        
         return [
             'match_id' => $match->id,
             'tournament_id' => $match->tournament_id,

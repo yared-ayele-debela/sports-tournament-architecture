@@ -57,7 +57,7 @@ class MatchReportController extends Controller
         $match->status = 'completed';
         $match->home_score = $validated['home_score'];
         $match->away_score = $validated['away_score'];
-        $match->save();
+        $match->save(); // Save first to ensure scores are in the database
 
         // Publish match completed event (CRITICAL for standings)
         $this->publishMatchCompletedEvent($match, $report, ['id' => Auth::id(), 'name' => 'Admin']);
@@ -81,8 +81,8 @@ class MatchReportController extends Controller
             
             Log::info('Match completed event published', [
                 'match_id' => $match->id,
-                'home_score' => $report->home_score,
-                'away_score' => $report->away_score,
+                'home_score' => $match->home_score,
+                'away_score' => $match->away_score,
                 'tournament_id' => $match->tournament_id
             ]);
         } catch (\Exception $e) {

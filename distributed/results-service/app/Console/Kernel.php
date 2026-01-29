@@ -21,7 +21,7 @@ class Kernel extends ConsoleKernel
     protected function commands(): array
     {
         return [
-            Commands\EventsListen::class,
+            // Event commands removed
         ];
     }
 }

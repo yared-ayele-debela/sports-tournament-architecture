@@ -6,12 +6,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\Response;
-
 /**
- * Token Validation Cache Service
- * 
- * Caches token validation results to reduce load on auth-service
- * and improve response times.
  */
 class TokenValidationCache
 {
@@ -35,7 +30,6 @@ class TokenValidationCache
     {
         $cacheKey = $this->getCacheKey($token);
 
-        // Try to get from cache first
         $cached = Cache::get($cacheKey);
         if ($cached !== null) {
             Log::debug('Token validation cache hit', ['token_hash' => substr($cacheKey, -8)]);
@@ -106,7 +100,6 @@ class TokenValidationCache
         Cache::forget($cacheKey);
         Log::debug('Token validation cache invalidated', ['token_hash' => substr($cacheKey, -8)]);
     }
-
     /**
      * Invalidate all tokens for a user
      *

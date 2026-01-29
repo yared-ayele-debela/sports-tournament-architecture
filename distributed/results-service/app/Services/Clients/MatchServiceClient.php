@@ -2,6 +2,8 @@
 
 namespace App\Services\Clients;
 
+use Illuminate\Support\Facades\Log;
+
 class MatchServiceClient extends ServiceClient
 {
     public function __construct()
@@ -16,6 +18,7 @@ class MatchServiceClient extends ServiceClient
 
     public function getCompletedMatches($tournamentId)
     {
+        Log::info("Fetching completed matches for tournament {$tournamentId}");
         $response = $this->get("/api/public/tournaments/{$tournamentId}/matches?status=completed");
         
         // Handle paginated response - extract data if paginated

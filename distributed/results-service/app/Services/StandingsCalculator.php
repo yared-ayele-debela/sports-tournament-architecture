@@ -8,6 +8,7 @@ use App\Services\Clients\MatchServiceClient;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
+use Exception;
 
 class StandingsCalculator
 {
@@ -71,8 +72,12 @@ class StandingsCalculator
         // Clear cached tournament standings
         $this->clearTournamentCache($result->tournament_id);
 
-        // Publish Redis event
-        $this->publishStandingsUpdated($result->tournament_id);
+        // Update tournament statistics
+        Log::info('About to update tournament statistics', [
+            'tournament_id' => $result->tournament_id,
+            'match_id' => $result->match_id
+        ]);
+        $this->updateTournamentStatistics($result->tournament_id);
     }
 
     public function recalculateForTournament(int $tournamentId): void
@@ -154,11 +159,42 @@ class StandingsCalculator
         Redis::del("tournament_standings:{$tournamentId}");
     }
 
-    protected function publishStandingsUpdated(int $tournamentId): void
+    /**
+     * Update tournament statistics
+     *
+     * @param int $tournamentId
+     * @return void
+     */
+    protected function updateTournamentStatistics(int $tournamentId): void
     {
-        Redis::publish('standings.updated', json_encode([
-            'tournament_id' => $tournamentId,
-            'timestamp' => now()->toISOString(),
-        ]));
+        try {
+            // Calculate tournament statistics
+            $totalMatches = MatchResult::where('tournament_id', $tournamentId)->count();
+            $totalGoals = MatchResult::where('tournament_id', $tournamentId)
+                ->selectRaw('SUM(home_score + away_score) as total_goals')
+                ->value('total_goals') ?? 0;
+
+            $statistics = [
+                'total_matches' => $totalMatches,
+                'total_goals' => $totalGoals,
+                'average_goals_per_match' => $totalMatches > 0 ? round($totalGoals / $totalMatches, 2) : 0,
+                'last_updated' => now()->toISOString()
+            ];
+
+            // Cache tournament statistics
+            Redis::setex("tournament_statistics:{$tournamentId}", 3600, json_encode($statistics)); // 1 hour
+
+            Log::info('Tournament statistics updated', [
+                'tournament_id' => $tournamentId,
+                'total_matches' => $statistics['total_matches'],
+                'total_goals' => $statistics['total_goals']
+            ]);
+
+        } catch (Exception $e) {
+            Log::error('Failed to update tournament statistics', [
+                'tournament_id' => $tournamentId,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

@@ -7,6 +7,8 @@ use App\Models\Team;
 use App\Models\Player;
 use App\Services\AuthServiceClient;
 use App\Services\TournamentServiceClient;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Events\TeamCreated;
 use App\Events\TeamUpdated;
 use App\Helpers\AuthHelper;
@@ -17,16 +19,19 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class TeamController extends Controller
 {
     protected $authService;
     protected $tournamentService;
+    protected EventPublisher $eventPublisher;
 
-    public function __construct(AuthServiceClient $authService, TournamentServiceClient $tournamentService)
+    public function __construct(AuthServiceClient $authService, TournamentServiceClient $tournamentService, EventPublisher $eventPublisher)
     {
         $this->authService = $authService;
         $this->tournamentService = $tournamentService;
+        $this->eventPublisher = $eventPublisher;
     }
 
     public function public_index(Request $request): JsonResponse
@@ -115,8 +120,11 @@ class TeamController extends Controller
 
             DB::commit();
 
-            // Fire event
+            // Fire legacy event
             event(new TeamCreated($team, $request->coach_id));
+            
+            // Publish team created event
+            $this->publishTeamCreatedEvent($team, ['id' => $request->coach_id, 'name' => 'Coach']);
 
             return ApiResponse::created($team, 'Team created successfully');
 
@@ -166,10 +174,14 @@ class TeamController extends Controller
         }
 
         try {
+            $oldData = $team->toArray();
             $team->update($request->only(['name', 'logo']));
 
-            // Fire event
+            // Fire legacy event
             event(new TeamUpdated($team, AuthHelper::getCurrentUserId()));
+            
+            // Publish team updated event
+            $this->publishTeamUpdatedEvent($team, $oldData);
 
             return ApiResponse::success($team->load('coaches'), 'Team updated successfully');
 
@@ -204,6 +216,9 @@ class TeamController extends Controller
             $team->delete();
 
             DB::commit();
+
+            // Publish team deleted event
+            $this->publishTeamDeletedEvent($team, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'Admin']);
 
             return ApiResponse::success(null, 'Team deleted successfully');
 
@@ -343,6 +358,66 @@ class TeamController extends Controller
             ], 'Team statistics retrieved successfully');
         } catch (\Exception $e) {
             return ApiResponse::serverError('Failed to retrieve team statistics', $e);
+        }
+    }
+
+    /**
+     * Publish team created event
+     *
+     * @param Team $team
+     * @param array $user
+     * @return void
+     */
+    protected function publishTeamCreatedEvent(Team $team, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::teamCreated($team, $user);
+            $this->eventPublisher->publish('sports.team.created', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish team created event', [
+                'team_id' => $team->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish team updated event
+     *
+     * @param Team $team
+     * @param array $oldData
+     * @return void
+     */
+    protected function publishTeamUpdatedEvent(Team $team, array $oldData): void
+    {
+        try {
+            $payload = EventPayloadBuilder::teamUpdated($team, $oldData);
+            $this->eventPublisher->publish('sports.team.updated', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish team updated event', [
+                'team_id' => $team->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish team deleted event
+     *
+     * @param Team $team
+     * @param array $user
+     * @return void
+     */
+    protected function publishTeamDeletedEvent(Team $team, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::teamDeleted($team, $user);
+            $this->eventPublisher->publish('sports.team.deleted', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish team deleted event', [
+                'team_id' => $team->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

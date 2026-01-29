@@ -7,17 +7,23 @@ use App\Models\Player;
 use App\Models\Team;
 use App\Events\PlayerCreated;
 use App\Events\PlayerUpdated;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Helpers\AuthHelper;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class PlayerController extends Controller
 {
-    public function __construct()
+    protected EventPublisher $eventPublisher;
+
+    public function __construct(EventPublisher $eventPublisher)
     {
+        $this->eventPublisher = $eventPublisher;
     }
 
     /**
@@ -88,8 +94,11 @@ class PlayerController extends Controller
             // Load relationships
             $player->load('team');
 
-            // Fire event
+            // Fire legacy event
             event(new PlayerCreated($player, AuthHelper::getCurrentUserId()));
+            
+            // Publish player created event
+            $this->publishPlayerCreatedEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
 
             return ApiResponse::created($player, 'Player created successfully');
 
@@ -150,10 +159,14 @@ class PlayerController extends Controller
                 }
             }
 
+            $oldData = $player->toArray();
             $player->update($request->only(['full_name', 'position', 'jersey_number']));
 
-            // Fire event
+            // Fire legacy event
             event(new PlayerUpdated($player, AuthHelper::getCurrentUserId()));
+            
+            // Publish player updated event
+            $this->publishPlayerUpdatedEvent($player, $oldData);
 
             return ApiResponse::success($player->load('team'), 'Player updated successfully');
 
@@ -191,10 +204,73 @@ class PlayerController extends Controller
         try {
             $player->delete();
 
+            // Publish player deleted event
+            $this->publishPlayerDeletedEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
+
             return ApiResponse::success(null, 'Player deleted successfully');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('Failed to delete player: ' . $e->getMessage(), $e);
+        }
+    }
+
+    /**
+     * Publish player created event
+     *
+     * @param Player $player
+     * @param array $user
+     * @return void
+     */
+    protected function publishPlayerCreatedEvent(Player $player, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::playerCreated($player, $user);
+            $this->eventPublisher->publish('sports.player.created', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish player created event', [
+                'player_id' => $player->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish player updated event
+     *
+     * @param Player $player
+     * @param array $oldData
+     * @return void
+     */
+    protected function publishPlayerUpdatedEvent(Player $player, array $oldData): void
+    {
+        try {
+            $payload = EventPayloadBuilder::playerUpdated($player, $oldData);
+            $this->eventPublisher->publish('sports.player.updated', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish player updated event', [
+                'player_id' => $player->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish player deleted event
+     *
+     * @param Player $player
+     * @param array $user
+     * @return void
+     */
+    protected function publishPlayerDeletedEvent(Player $player, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::playerDeleted($player, $user);
+            $this->eventPublisher->publish('sports.player.deleted', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish player deleted event', [
+                'player_id' => $player->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

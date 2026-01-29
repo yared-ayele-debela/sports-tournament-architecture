@@ -6,11 +6,13 @@ use App\Http\Controllers\Controller;
 use App\Models\MatchGame;
 use App\Models\MatchEvent;
 use App\Services\Clients\TeamServiceClient;
-use App\Services\EventPublisher;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class MatchEventController extends Controller
 {
@@ -82,11 +84,8 @@ class MatchEventController extends Controller
         $match->current_minute = $validated['minute'];
         $match->save();
 
-        // Publish Redis event using EventPublisher
-        $this->eventPublisher->publishMatchEventRecorded(
-            $event->toArray(),
-            $match->toArray()
-        );
+        // Publish match event recorded event (real-time)
+        $this->publishMatchEventRecordedEvent($event, ['id' => Auth::id(), 'name' => 'Admin']);
 
         return ApiResponse::created($event->load('match'));
     }
@@ -103,5 +102,26 @@ class MatchEventController extends Controller
     {
         $response = $this->teamService->validatePlayer($playerId, $teamId);
         return $response && isset($response['success']) && $response['success'] === true;
+    }
+
+    /**
+     * Publish match event recorded event (real-time)
+     *
+     * @param MatchEvent $matchEvent
+     * @param array $user
+     * @return void
+     */
+    protected function publishMatchEventRecordedEvent(MatchEvent $matchEvent, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::matchEventRecorded($matchEvent, $user);
+            $this->eventPublisher->publish('sports.match.event.recorded', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish match event recorded event', [
+                'event_id' => $matchEvent->id,
+                'match_id' => $matchEvent->match_id,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 }

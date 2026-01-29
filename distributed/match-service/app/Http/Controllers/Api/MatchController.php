@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MatchGame;
 use App\Services\MatchScheduler;
+use App\Services\Events\EventPublisher;
+use App\Services\Events\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -14,10 +16,12 @@ use Illuminate\Support\Facades\Log;
 class MatchController extends Controller
 {
     protected MatchScheduler $matchScheduler;
+    protected EventPublisher $eventPublisher;
 
-    public function __construct(MatchScheduler $matchScheduler)
+    public function __construct(MatchScheduler $matchScheduler, EventPublisher $eventPublisher)
     {
         $this->matchScheduler = $matchScheduler;
+        $this->eventPublisher = $eventPublisher;
     }
 
     /**
@@ -67,6 +71,9 @@ class MatchController extends Controller
 
         $match = MatchGame::create($validated);
 
+        // Publish match created event
+        $this->publishMatchCreatedEvent($match, ['id' => Auth::id(), 'name' => 'Admin']);
+
         return ApiResponse::created($match->load(['matchEvents', 'matchReport']));
     }
 
@@ -111,8 +118,13 @@ class MatchController extends Controller
             'away_score' => 'sometimes|integer|min:0',
             'current_minute' => 'sometimes|integer|min:0|max:120',
         ]);
+        
 
+        $oldData = $match->toArray();
         $match->update($validated);
+
+        // Publish match updated event
+        $this->publishMatchUpdatedEvent($match, $oldData);
 
         return ApiResponse::success($match->load(['matchEvents', 'matchReport']));
     }
@@ -133,7 +145,18 @@ class MatchController extends Controller
         ]);
 
         $match = MatchGame::findOrFail($id);
+        $oldStatus = $match->status;
         $match->update($validated);
+
+        // Publish match status changed event if status changed
+        if (isset($validated['status']) && $validated['status'] !== $oldStatus) {
+            $this->publishMatchStatusChangedEvent($match, $oldStatus);
+            
+            // If match started, publish match started event
+            if ($validated['status'] === 'in_progress' && $oldStatus !== 'in_progress') {
+                $this->publishMatchStartedEvent($match, ['id' => Auth::id(), 'name' => 'Admin']);
+            }
+        }
 
         return ApiResponse::success($match);
     }
@@ -272,6 +295,88 @@ class MatchController extends Controller
             ]);
 
             return ApiResponse::serverError('Failed to retrieve matches by date', $e);
+        }
+    }
+
+    /**
+     * Publish match created event
+     *
+     * @param MatchGame $match
+     * @param array $user
+     * @return void
+     */
+    protected function publishMatchCreatedEvent(MatchGame $match, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::matchCreated($match, $user);
+            $this->eventPublisher->publish('sports.match.created', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish match created event', [
+                'match_id' => $match->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish match updated event
+     *
+     * @param MatchGame $match
+     * @param array $oldData
+     * @return void
+     */
+    protected function publishMatchUpdatedEvent(MatchGame $match, array $oldData): void
+    {
+        try {
+            $payload = EventPayloadBuilder::matchUpdated($match, $oldData);
+            $this->eventPublisher->publish('sports.match.updated', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish match updated event', [
+                'match_id' => $match->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish match status changed event
+     *
+     * @param MatchGame $match
+     * @param string $oldStatus
+     * @return void
+     */
+    protected function publishMatchStatusChangedEvent(MatchGame $match, string $oldStatus): void
+    {
+        try {
+            $payload = EventPayloadBuilder::matchStatusChanged($match, $oldStatus);
+            $this->eventPublisher->publish('sports.match.status.changed', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish match status changed event', [
+                'match_id' => $match->id,
+                'old_status' => $oldStatus,
+                'new_status' => $match->status,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Publish match started event
+     *
+     * @param MatchGame $match
+     * @param array $user
+     * @return void
+     */
+    protected function publishMatchStartedEvent(MatchGame $match, array $user): void
+    {
+        try {
+            $payload = EventPayloadBuilder::matchStarted($match, $user);
+            $this->eventPublisher->publish('sports.match.started', $payload);
+        } catch (\Exception $e) {
+            Log::warning('Failed to publish match started event', [
+                'match_id' => $match->id,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 }

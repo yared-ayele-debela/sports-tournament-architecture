@@ -1,128 +1,253 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\Events;
 
 use Illuminate\Support\Facades\Redis;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
+use Exception;
 
+/**
+ * Base Event Publisher for Redis Pub/Sub
+ * 
+ * Used by ALL services to publish events to Redis channels
+ */
 class EventPublisher
 {
-    protected const CHANNELS = [
-        'MATCH_CREATED' => 'match.created',
-        'MATCH_EVENT_RECORDED' => 'match.event.recorded',
-        'MATCH_COMPLETED' => 'match.completed',
-        'MATCH_UPDATED' => 'match.updated',
-        'MATCH_CANCELLED' => 'match.cancelled',
-    ];
+    protected string $serviceName;
+    protected string $version = '1.0';
+    protected int $retryAttempts = 3;
+    protected int $retryDelay = 100; // milliseconds
 
-    public function publishMatchCreated(array $matchData): void
+    public function __construct()
     {
-        $event = [
-            'event_type' => 'match.created',
-            'match_id' => $matchData['id'],
-            'tournament_id' => $matchData['tournament_id'],
-            'home_team_id' => $matchData['home_team_id'],
-            'away_team_id' => $matchData['away_team_id'],
-            'venue_id' => $matchData['venue_id'],
-            'referee_id' => $matchData['referee_id'],
-            'match_date' => $matchData['match_date'],
-            'round_number' => $matchData['round_number'],
-            'status' => $matchData['status'],
-            'timestamp' => now()->toISOString(),
-        ];
-
-        $this->publish(self::CHANNELS['MATCH_CREATED'], $event);
+        $this->serviceName = config('app.name', 'unknown-service');
     }
 
-    public function publishMatchEventRecorded(array $eventData, array $matchData): void
+    /**
+     * Publish event to Redis channel
+     *
+     * @param string $channel
+     * @param array $data
+     * @return bool
+     */
+    public function publish(string $channel, array $data): bool
     {
-        $event = [
-            'event_type' => 'match.event.recorded',
-            'event_id' => $eventData['id'],
-            'match_id' => $eventData['match_id'],
-            'team_id' => $eventData['team_id'],
-            'player_id' => $eventData['player_id'],
-            'event_type' => $eventData['event_type'],
-            'minute' => $eventData['minute'],
-            'description' => $eventData['description'],
-            'home_score' => $matchData['home_score'],
-            'away_score' => $matchData['away_score'],
-            'current_minute' => $matchData['current_minute'],
-            'timestamp' => now()->toISOString(),
-        ];
-
-        $this->publish(self::CHANNELS['MATCH_EVENT_RECORDED'], $event);
-    }
-
-    public function publishMatchCompleted(array $matchData, array $reportData): void
-    {
-        $event = [
-            'event_type' => 'match.completed',
-            'match_id' => $matchData['id'],
-            'tournament_id' => $matchData['tournament_id'],
-            'home_team_id' => $matchData['home_team_id'],
-            'away_team_id' => $matchData['away_team_id'],
-            'home_score' => $matchData['home_score'],
-            'away_score' => $matchData['away_score'],
-            'status' => $matchData['status'],
-            'report_id' => $reportData['id'],
-            'referee' => $reportData['referee'],
-            'attendance' => $reportData['attendance'],
-            'summary' => $reportData['summary'],
-            'timestamp' => now()->toISOString(),
-        ];
-
-        $this->publish(self::CHANNELS['MATCH_COMPLETED'], $event);
-    }
-
-    public function publishMatchUpdated(array $matchData): void
-    {
-        $event = [
-            'event_type' => 'match.updated',
-            'match_id' => $matchData['id'],
-            'tournament_id' => $matchData['tournament_id'],
-            'home_team_id' => $matchData['home_team_id'],
-            'away_team_id' => $matchData['away_team_id'],
-            'status' => $matchData['status'],
-            'home_score' => $matchData['home_score'] ?? null,
-            'away_score' => $matchData['away_score'] ?? null,
-            'current_minute' => $matchData['current_minute'] ?? null,
-            'timestamp' => now()->toISOString(),
-        ];
-
-        $this->publish(self::CHANNELS['MATCH_UPDATED'], $event);
-    }
-
-    public function publishMatchCancelled(array $matchData): void
-    {
-        $event = [
-            'event_type' => 'match.cancelled',
-            'match_id' => $matchData['id'],
-            'tournament_id' => $matchData['tournament_id'],
-            'home_team_id' => $matchData['home_team_id'],
-            'away_team_id' => $matchData['away_team_id'],
-            'reason' => $matchData['cancellation_reason'] ?? 'Not specified',
-            'timestamp' => now()->toISOString(),
-        ];
-
-        $this->publish(self::CHANNELS['MATCH_CANCELLED'], $event);
-    }
-
-    protected function publish(string $channel, array $data): void
-    {
+        $event = $this->createEvent($channel, $data);
+        
         try {
-            Redis::publish($channel, json_encode($data, JSON_THROW_ON_ERROR));
-        } catch (\Exception $e) {
-            // Log error but don't break the application flow
-            logger()->error('Failed to publish Redis event', [
+            $this->publishWithRetry($channel, $event);
+            
+            Log::info('Event published successfully', [
                 'channel' => $channel,
-                'error' => $e->getMessage(),
-                'data' => $data,
+                'event_id' => $event['event_id'],
+                'event_type' => $event['event_type'],
+                'service' => $this->serviceName,
+                'payload_size' => strlen(json_encode($event))
             ]);
+
+            return true;
+        } catch (Exception $e) {
+            Log::error('Failed to publish event', [
+                'channel' => $channel,
+                'event_id' => $event['event_id'],
+                'event_type' => $event['event_type'],
+                'service' => $this->serviceName,
+                'error' => $e->getMessage(),
+                'attempts' => $this->retryAttempts
+            ]);
+
+            return false;
         }
     }
 
-    public function getChannels(): array
+    /**
+     * Create standardized event structure
+     *
+     * @param string $channel
+     * @param array $data
+     * @return array
+     */
+    protected function createEvent(string $channel, array $data): array
     {
-        return self::CHANNELS;
+        return [
+            'event_id' => $this->generateEventId(),
+            'event_type' => $this->extractEventType($channel),
+            'service' => $this->serviceName,
+            'payload' => $data,
+            'timestamp' => now()->utc()->toISOString(),
+            'version' => $this->version
+        ];
+    }
+
+    /**
+     * Generate unique event ID
+     *
+     * @return string
+     */
+    protected function generateEventId(): string
+    {
+        return Str::uuid()->toString();
+    }
+
+    /**
+     * Extract event type from channel
+     * Returns the full channel name as event type for consistency
+     *
+     * @param string $channel
+     * @return string
+     */
+    protected function extractEventType(string $channel): string
+    {
+        return $channel;
+    }
+
+    /**
+     * Publish event with retry logic
+     *
+     * @param string $channel
+     * @param array $event
+     * @throws Exception
+     */
+    protected function publishWithRetry(string $channel, array $event): void
+    {
+        $payload = json_encode($event);
+        
+        if ($payload === false) {
+            throw new Exception('Failed to encode event payload to JSON');
+        }
+
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $this->retryAttempts; $attempt++) {
+            try {
+                $published = Redis::publish($channel, $payload);
+                
+                if ($published === 0) {
+                    Log::warning('No subscribers received event', [
+                        'channel' => $channel,
+                        'event_id' => $event['event_id'],
+                        'attempt' => $attempt
+                    ]);
+                }
+
+                // Success - exit retry loop
+                return;
+                
+            } catch (Exception $e) {
+                $lastException = $e;
+                
+                Log::warning('Event publish attempt failed', [
+                    'channel' => $channel,
+                    'event_id' => $event['event_id'],
+                    'attempt' => $attempt,
+                    'max_attempts' => $this->retryAttempts,
+                    'error' => $e->getMessage()
+                ]);
+
+                // Don't wait on the last attempt
+                if ($attempt < $this->retryAttempts) {
+                    usleep($this->retryDelay * 1000); // Convert to microseconds
+                }
+            }
+        }
+
+        // All attempts failed
+        throw $lastException ?: new Exception('Event publishing failed after all retry attempts');
+    }
+
+    /**
+     * Publish multiple events in batch
+     *
+     * @param array $events Array of ['channel' => string, 'data' => array]
+     * @return array Results with success/failure for each event
+     */
+    public function publishBatch(array $events): array
+    {
+        $results = [];
+        
+        foreach ($events as $index => $eventData) {
+            if (!isset($eventData['channel']) || !isset($eventData['data'])) {
+                $results[$index] = [
+                    'success' => false,
+                    'error' => 'Missing channel or data in event specification'
+                ];
+                continue;
+            }
+
+            $results[$index] = [
+                'success' => $this->publish($eventData['channel'], $eventData['data']),
+                'channel' => $eventData['channel']
+            ];
+        }
+
+        return $results;
+    }
+
+    /**
+     * Check Redis connection health
+     *
+     * @return bool
+     */
+    public function isHealthy(): bool
+    {
+        try {
+            Redis::ping();
+            return true;
+        } catch (Exception $e) {
+            Log::error('Redis health check failed', [
+                'service' => $this->serviceName,
+                'error' => $e->getMessage()
+            ]);
+            return false;
+        }
+    }
+
+    /**
+     * Get service name
+     *
+     * @return string
+     */
+    public function getServiceName(): string
+    {
+        return $this->serviceName;
+    }
+
+    /**
+     * Set service name (useful for testing)
+     *
+     * @param string $serviceName
+     * @return self
+     */
+    public function setServiceName(string $serviceName): self
+    {
+        $this->serviceName = $serviceName;
+        return $this;
+    }
+
+    /**
+     * Set event version
+     *
+     * @param string $version
+     * @return self
+     */
+    public function setVersion(string $version): self
+    {
+        $this->version = $version;
+        return $this;
+    }
+
+    /**
+     * Set retry configuration
+     *
+     * @param int $attempts
+     * @param int $delayMs
+     * @return self
+     */
+    public function setRetryConfig(int $attempts, int $delayMs): self
+    {
+        $this->retryAttempts = $attempts;
+        $this->retryDelay = $delayMs;
+        return $this;
     }
 }

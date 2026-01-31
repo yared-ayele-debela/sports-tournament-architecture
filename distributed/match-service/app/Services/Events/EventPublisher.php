@@ -121,7 +121,7 @@ class EventPublisher
 
         for ($attempt = 1; $attempt <= $this->retryAttempts; $attempt++) {
             try {
-                $published = Redis::publish($channel, $payload);
+                $published = app('redis')->connection('events')->publish($channel, $payload);
                 
                 if ($published === 0) {
                     Log::warning('No subscribers received event', [
@@ -192,7 +192,7 @@ class EventPublisher
     public function isHealthy(): bool
     {
         try {
-            Redis::ping();
+            app('redis')->connection('events')->ping();
             return true;
         } catch (Exception $e) {
             Log::error('Redis health check failed', [

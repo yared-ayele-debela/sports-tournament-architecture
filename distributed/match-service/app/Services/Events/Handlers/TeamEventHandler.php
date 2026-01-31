@@ -36,16 +36,20 @@ class TeamEventHandler extends BaseEventHandler
         $eventType = $event['event_type'];
         $payload = $event['payload'];
 
+        // Handle both prefixed and non-prefixed event types
         switch ($eventType) {
             case 'sports.team.created':
+            case 'team.created':
                 $this->handleTeamCreated($payload);
                 break;
 
             case 'sports.team.updated':
+            case 'team.updated':
                 $this->handleTeamUpdated($payload);
                 break;
 
             case 'sports.team.deleted':
+            case 'team.deleted':
                 $this->handleTeamDeleted($payload);
                 break;
 
@@ -66,8 +70,11 @@ class TeamEventHandler extends BaseEventHandler
     {
         return [
             'sports.team.created',
+            'team.created',
             'sports.team.updated',
-            'sports.team.deleted'
+            'team.updated',
+            'sports.team.deleted',
+            'team.deleted'
         ];
     }
 

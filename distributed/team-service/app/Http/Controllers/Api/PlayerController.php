@@ -7,7 +7,7 @@ use App\Models\Player;
 use App\Models\Team;
 use App\Events\PlayerCreated;
 use App\Events\PlayerUpdated;
-use App\Services\Events\EventPublisher;
+use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
 use App\Helpers\AuthHelper;
 use App\Support\ApiResponse;
@@ -19,11 +19,11 @@ use Illuminate\Support\Facades\Log;
 
 class PlayerController extends Controller
 {
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(EventPublisher $eventPublisher)
+    public function __construct(QueuePublisher $queuePublisher)
     {
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
 
     /**
@@ -97,8 +97,8 @@ class PlayerController extends Controller
             // Fire legacy event
             event(new PlayerCreated($player, AuthHelper::getCurrentUserId()));
             
-            // Publish player created event
-            $this->publishPlayerCreatedEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
+            // Dispatch player created event to queue (default priority)
+            $this->dispatchPlayerCreatedQueueEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
 
             return ApiResponse::created($player, 'Player created successfully');
 
@@ -165,8 +165,8 @@ class PlayerController extends Controller
             // Fire legacy event
             event(new PlayerUpdated($player, AuthHelper::getCurrentUserId()));
             
-            // Publish player updated event
-            $this->publishPlayerUpdatedEvent($player, $oldData);
+            // Dispatch player updated event to queue (default priority)
+            $this->dispatchPlayerUpdatedQueueEvent($player, $oldData);
 
             return ApiResponse::success($player->load('team'), 'Player updated successfully');
 
@@ -204,8 +204,8 @@ class PlayerController extends Controller
         try {
             $player->delete();
 
-            // Publish player deleted event
-            $this->publishPlayerDeletedEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
+            // Dispatch player deleted event to queue (default priority)
+            $this->dispatchPlayerDeletedQueueEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
 
             return ApiResponse::success(null, 'Player deleted successfully');
 
@@ -215,19 +215,19 @@ class PlayerController extends Controller
     }
 
     /**
-     * Publish player created event
+     * Dispatch player created event to queue (default priority)
      *
      * @param Player $player
      * @param array $user
      * @return void
      */
-    protected function publishPlayerCreatedEvent(Player $player, array $user): void
+    protected function dispatchPlayerCreatedQueueEvent(Player $player, array $user): void
     {
         try {
             $payload = EventPayloadBuilder::playerCreated($player, $user);
-            $this->eventPublisher->publish('sports.player.created', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'player.created');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish player created event', [
+            Log::warning('Failed to dispatch player created queue event', [
                 'player_id' => $player->id,
                 'error' => $e->getMessage()
             ]);
@@ -235,19 +235,19 @@ class PlayerController extends Controller
     }
 
     /**
-     * Publish player updated event
+     * Dispatch player updated event to queue (default priority)
      *
      * @param Player $player
      * @param array $oldData
      * @return void
      */
-    protected function publishPlayerUpdatedEvent(Player $player, array $oldData): void
+    protected function dispatchPlayerUpdatedQueueEvent(Player $player, array $oldData): void
     {
         try {
             $payload = EventPayloadBuilder::playerUpdated($player, $oldData);
-            $this->eventPublisher->publish('sports.player.updated', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'player.updated');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish player updated event', [
+            Log::warning('Failed to dispatch player updated queue event', [
                 'player_id' => $player->id,
                 'error' => $e->getMessage()
             ]);
@@ -255,19 +255,19 @@ class PlayerController extends Controller
     }
 
     /**
-     * Publish player deleted event
+     * Dispatch player deleted event to queue (default priority)
      *
      * @param Player $player
      * @param array $user
      * @return void
      */
-    protected function publishPlayerDeletedEvent(Player $player, array $user): void
+    protected function dispatchPlayerDeletedQueueEvent(Player $player, array $user): void
     {
         try {
             $payload = EventPayloadBuilder::playerDeleted($player, $user);
-            $this->eventPublisher->publish('sports.player.deleted', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'player.deleted');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish player deleted event', [
+            Log::warning('Failed to dispatch player deleted queue event', [
                 'player_id' => $player->id,
                 'error' => $e->getMessage()
             ]);

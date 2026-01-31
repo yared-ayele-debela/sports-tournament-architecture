@@ -7,7 +7,7 @@ use App\Models\Team;
 use App\Models\Player;
 use App\Services\AuthServiceClient;
 use App\Services\TournamentServiceClient;
-use App\Services\Events\EventPublisher;
+use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
 use App\Events\TeamCreated;
 use App\Events\TeamUpdated;
@@ -25,13 +25,13 @@ class TeamController extends Controller
 {
     protected $authService;
     protected $tournamentService;
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(AuthServiceClient $authService, TournamentServiceClient $tournamentService, EventPublisher $eventPublisher)
+    public function __construct(AuthServiceClient $authService, TournamentServiceClient $tournamentService, QueuePublisher $queuePublisher)
     {
         $this->authService = $authService;
         $this->tournamentService = $tournamentService;
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
 
     public function public_index(Request $request): JsonResponse
@@ -123,8 +123,8 @@ class TeamController extends Controller
             // Fire legacy event
             event(new TeamCreated($team, $request->coach_id));
             
-            // Publish team created event
-            $this->publishTeamCreatedEvent($team, ['id' => $request->coach_id, 'name' => 'Coach']);
+            // Dispatch team created event to queue (default priority)
+            $this->dispatchTeamCreatedQueueEvent($team, ['id' => $request->coach_id, 'name' => 'Coach']);
 
             return ApiResponse::created($team, 'Team created successfully');
 
@@ -180,8 +180,8 @@ class TeamController extends Controller
             // Fire legacy event
             event(new TeamUpdated($team, AuthHelper::getCurrentUserId()));
             
-            // Publish team updated event
-            $this->publishTeamUpdatedEvent($team, $oldData);
+            // Dispatch team updated event to queue (default priority)
+            $this->dispatchTeamUpdatedQueueEvent($team, $oldData);
 
             return ApiResponse::success($team->load('coaches'), 'Team updated successfully');
 
@@ -217,8 +217,8 @@ class TeamController extends Controller
 
             DB::commit();
 
-            // Publish team deleted event
-            $this->publishTeamDeletedEvent($team, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'Admin']);
+            // Dispatch team deleted event to queue (default priority)
+            $this->dispatchTeamDeletedQueueEvent($team, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'Admin']);
 
             return ApiResponse::success(null, 'Team deleted successfully');
 
@@ -362,19 +362,19 @@ class TeamController extends Controller
     }
 
     /**
-     * Publish team created event
+     * Dispatch team created event to queue (default priority)
      *
      * @param Team $team
      * @param array $user
      * @return void
      */
-    protected function publishTeamCreatedEvent(Team $team, array $user): void
+    protected function dispatchTeamCreatedQueueEvent(Team $team, array $user): void
     {
         try {
             $payload = EventPayloadBuilder::teamCreated($team, $user);
-            $this->eventPublisher->publish('sports.team.created', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'team.created');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish team created event', [
+            Log::warning('Failed to dispatch team created queue event', [
                 'team_id' => $team->id,
                 'error' => $e->getMessage()
             ]);
@@ -382,19 +382,19 @@ class TeamController extends Controller
     }
 
     /**
-     * Publish team updated event
+     * Dispatch team updated event to queue (default priority)
      *
      * @param Team $team
      * @param array $oldData
      * @return void
      */
-    protected function publishTeamUpdatedEvent(Team $team, array $oldData): void
+    protected function dispatchTeamUpdatedQueueEvent(Team $team, array $oldData): void
     {
         try {
             $payload = EventPayloadBuilder::teamUpdated($team, $oldData);
-            $this->eventPublisher->publish('sports.team.updated', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'team.updated');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish team updated event', [
+            Log::warning('Failed to dispatch team updated queue event', [
                 'team_id' => $team->id,
                 'error' => $e->getMessage()
             ]);
@@ -402,19 +402,19 @@ class TeamController extends Controller
     }
 
     /**
-     * Publish team deleted event
+     * Dispatch team deleted event to queue (default priority)
      *
      * @param Team $team
      * @param array $user
      * @return void
      */
-    protected function publishTeamDeletedEvent(Team $team, array $user): void
+    protected function dispatchTeamDeletedQueueEvent(Team $team, array $user): void
     {
         try {
             $payload = EventPayloadBuilder::teamDeleted($team, $user);
-            $this->eventPublisher->publish('sports.team.deleted', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'team.deleted');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish team deleted event', [
+            Log::warning('Failed to dispatch team deleted queue event', [
                 'team_id' => $team->id,
                 'error' => $e->getMessage()
             ]);

@@ -8,8 +8,7 @@ use App\Support\ApiResponse;
 use App\Models\Tournament;
 use App\Models\TournamentSettings;
 use App\Services\AuthService;
-use App\Services\Events\EventPublisher;
-use App\Services\Events\EventPayloadBuilder;
+use App\Services\Queue\QueuePublisher;
 use App\Services\Clients\MatchServiceClient;
 use App\Services\Clients\ResultsServiceClient;
 use App\Services\Clients\TeamServiceClient;
@@ -22,15 +21,20 @@ use Illuminate\Pagination\LengthAwarePaginator;
 class TournamentController extends Controller
 {
     protected AuthService $authService;
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
     protected MatchServiceClient $matchServiceClient;
     protected ResultsServiceClient $resultsServiceClient;
     protected TeamServiceClient $teamServiceClient;
 
-    public function __construct(AuthService $authService, EventPublisher $eventPublisher, MatchServiceClient $matchServiceClient, ResultsServiceClient $resultsServiceClient, TeamServiceClient $teamServiceClient)
-    {
+    public function __construct(
+        AuthService $authService,
+        QueuePublisher $queuePublisher,
+        MatchServiceClient $matchServiceClient,
+        ResultsServiceClient $resultsServiceClient,
+        TeamServiceClient $teamServiceClient
+    ) {
         $this->authService = $authService;
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
         $this->matchServiceClient = $matchServiceClient;
         $this->resultsServiceClient = $resultsServiceClient;
         $this->teamServiceClient = $teamServiceClient;
@@ -113,8 +117,8 @@ class TournamentController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Publish tournament created event
-            $this->publishTournamentCreatedEvent($tournament, $user);
+            // Dispatch tournament created event to queue (default priority)
+            $this->dispatchTournamentCreatedQueueEvent($tournament, $user);
 
             return ApiResponse::created($tournament->load(['sport', 'settings']), 'Tournament created successfully');
         } catch (\Exception $e) {
@@ -184,8 +188,8 @@ class TournamentController extends Controller
                 'name' => $tournament->name
             ]);
 
-            // Publish tournament updated event
-            $this->publishTournamentUpdatedEvent($tournament, $oldData);
+            // Dispatch tournament updated event to queue (default priority)
+            $this->dispatchTournamentUpdatedQueueEvent($tournament, $oldData);
 
             return ApiResponse::success($tournament->load(['sport', 'settings']), 'Tournament updated successfully');
         } catch (\Exception $e) {
@@ -202,21 +206,38 @@ class TournamentController extends Controller
     /**
      * Remove the specified tournament.
      */
-    public function destroy(string $id): JsonResponse
+    public function destroy(Request $request, string $id): JsonResponse
     {
         try {
-            $tournament = Tournament::find($id);
+            $tournament = Tournament::with(['sport'])->find($id);
 
             if (!$tournament) {
                 return ApiResponse::notFound('Tournament not found');
             }
 
+            // Get tournament data before deletion for event
+            $tournamentData = [
+                'id' => $tournament->id,
+                'name' => $tournament->name,
+                'status' => $tournament->status,
+                'sport_id' => $tournament->sport_id,
+                'start_date' => $tournament->start_date?->toIso8601String(),
+                'end_date' => $tournament->end_date?->toIso8601String(),
+            ];
+
+            // Get authenticated user from middleware
+            $user = $request->get('authenticated_user', []);
+
+            // Delete tournament
             $tournament->delete();
 
             Log::info('Tournament deleted successfully', [
                 'tournament_id' => $id,
-                'tournament_name' => $tournament->name
+                'tournament_name' => $tournamentData['name']
             ]);
+
+            // Dispatch tournament deleted event to queue (high priority - critical)
+            $this->dispatchTournamentDeletedQueueEvent($tournamentData, $user);
 
             return ApiResponse::success(null, 'Tournament deleted successfully');
         } catch (\Exception $e) {
@@ -297,8 +318,8 @@ class TournamentController extends Controller
                 'new_status' => $newStatus
             ]);
 
-            // Publish tournament status changed event
-            $this->publishTournamentStatusChangedEvent($tournament, $currentStatus);
+            // Dispatch tournament status changed event to queue (high priority - critical)
+            $this->dispatchTournamentStatusChangedQueueEvent($tournament, $currentStatus);
 
             return ApiResponse::success($tournament, 'Tournament status updated successfully');
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -661,23 +682,28 @@ class TournamentController extends Controller
     }
 
     /**
-     * Publish tournament created event
+     * Dispatch tournament created event to queue
      *
      * @param Tournament $tournament
      * @param array $user
      * @return void
      */
-    protected function publishTournamentCreatedEvent(Tournament $tournament, array $user): void
+    protected function dispatchTournamentCreatedQueueEvent(Tournament $tournament, array $user): void
     {
         try {
-            $payload = EventPayloadBuilder::tournamentCreated(
-                $tournament->load(['sport', 'settings']),
-                $user
-            );
-
-            $this->eventPublisher->publish('sports.tournament.created', $payload);
+            $this->queuePublisher->dispatchNormal('events', [
+                'tournament_id' => $tournament->id,
+                'name' => $tournament->name,
+                'sport_id' => $tournament->sport_id,
+                'location' => $tournament->location,
+                'start_date' => $tournament->start_date?->toIso8601String(),
+                'end_date' => $tournament->end_date?->toIso8601String(),
+                'status' => $tournament->status,
+                'created_by' => $user['id'] ?? null,
+                'created_at' => now()->toIso8601String(),
+            ], 'tournament.created');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish tournament created event', [
+            Log::warning('Failed to dispatch tournament created queue event', [
                 'tournament_id' => $tournament->id,
                 'error' => $e->getMessage()
             ]);
@@ -685,23 +711,29 @@ class TournamentController extends Controller
     }
 
     /**
-     * Publish tournament updated event
+     * Dispatch tournament updated event to queue
      *
      * @param Tournament $tournament
      * @param array $oldData
      * @return void
      */
-    protected function publishTournamentUpdatedEvent(Tournament $tournament, array $oldData): void
+    protected function dispatchTournamentUpdatedQueueEvent(Tournament $tournament, array $oldData): void
     {
         try {
-            $payload = EventPayloadBuilder::tournamentUpdated(
-                $tournament->load(['sport', 'settings']),
-                $oldData
-            );
-
-            $this->eventPublisher->publish('sports.tournament.updated', $payload);
+            $this->queuePublisher->dispatchNormal('events', [
+                'tournament_id' => $tournament->id,
+                'name' => $tournament->name,
+                'sport_id' => $tournament->sport_id,
+                'location' => $tournament->location,
+                'start_date' => $tournament->start_date?->toIso8601String(),
+                'end_date' => $tournament->end_date?->toIso8601String(),
+                'status' => $tournament->status,
+                'old_data' => $oldData,
+                'updated_fields' => array_keys($tournament->getChanges()),
+                'updated_at' => now()->toIso8601String(),
+            ], 'tournament.updated');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish tournament updated event', [
+            Log::warning('Failed to dispatch tournament updated queue event', [
                 'tournament_id' => $tournament->id,
                 'error' => $e->getMessage()
             ]);
@@ -709,24 +741,55 @@ class TournamentController extends Controller
     }
 
     /**
-     * Publish tournament status changed event
+     * Dispatch tournament status changed event to queue (high priority)
      *
      * @param Tournament $tournament
      * @param string $oldStatus
      * @return void
      */
-    protected function publishTournamentStatusChangedEvent(Tournament $tournament, string $oldStatus): void
+    protected function dispatchTournamentStatusChangedQueueEvent(Tournament $tournament, string $oldStatus): void
     {
         try {
-            $payload = EventPayloadBuilder::tournamentStatusChanged(
-                $tournament->load(['sport', 'settings']),
-                $oldStatus
-            );
-
-            $this->eventPublisher->publish('sports.tournament.status.changed', $payload);
-        } catch (\Exception $e) {
-            Log::warning('Failed to publish tournament status changed event', [
+            $this->queuePublisher->dispatchHigh('events', [
                 'tournament_id' => $tournament->id,
+                'old_status' => $oldStatus,
+                'new_status' => $tournament->status,
+                'name' => $tournament->name,
+                'sport_id' => $tournament->sport_id,
+                'changed_at' => now()->toIso8601String(),
+            ], 'tournament.status.changed');
+        } catch (\Exception $e) {
+            Log::warning('Failed to dispatch tournament status changed queue event', [
+                'tournament_id' => $tournament->id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Dispatch tournament deleted event to queue (high priority)
+     *
+     * @param array $tournamentData
+     * @param array $user
+     * @return void
+     */
+    protected function dispatchTournamentDeletedQueueEvent(array $tournamentData, array $user): void
+    {
+        try {
+            $this->queuePublisher->dispatchHigh('events', [
+                'tournament_id' => $tournamentData['id'],
+                'id' => $tournamentData['id'],
+                'name' => $tournamentData['name'],
+                'status' => $tournamentData['status'],
+                'sport_id' => $tournamentData['sport_id'],
+                'start_date' => $tournamentData['start_date'],
+                'end_date' => $tournamentData['end_date'],
+                'deleted_by' => $user['id'] ?? null,
+                'deleted_at' => now()->toIso8601String(),
+            ], 'tournament.deleted');
+        } catch (\Exception $e) {
+            Log::warning('Failed to dispatch tournament deleted queue event', [
+                'tournament_id' => $tournamentData['id'],
                 'error' => $e->getMessage()
             ]);
         }

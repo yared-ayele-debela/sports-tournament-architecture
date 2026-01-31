@@ -5,8 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Sport;
 use App\Services\AuthService;
-use App\Services\Events\EventPublisher;
-use App\Services\Events\EventPayloadBuilder;
+use App\Services\Queue\QueuePublisher;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -16,12 +15,12 @@ use Illuminate\Support\Facades\Validator;
 class SportController extends Controller
 {
     protected AuthService $authService;
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(AuthService $authService, EventPublisher $eventPublisher)
+    public function __construct(AuthService $authService, QueuePublisher $queuePublisher)
     {
         $this->authService = $authService;
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
 
     /**
@@ -58,7 +57,7 @@ class SportController extends Controller
             $user = $request->get('authenticated_user');
             $userRoles = $request->get('user_roles', []);
             $userPermissions = $request->get('user_permissions', []);
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -66,11 +65,11 @@ class SportController extends Controller
                     'error' => 'No authenticated user'
                 ], 401);
             }
-            
+
             // Check if user has admin role OR manage_sports permission
             $isAdmin = collect($userRoles)->contains('name', 'Administrator');
             $canManageSports = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_sports');
-            
+
             if (!$isAdmin && !$canManageSports) {
                 return response()->json([
                     'success' => false,
@@ -96,8 +95,8 @@ class SportController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Publish sport created event
-            $this->publishSportCreatedEvent($sport, $user);
+            // Dispatch sport created event to queue (low priority)
+            $this->dispatchSportCreatedQueueEvent($sport, $user);
 
             return ApiResponse::created($sport, 'Sport created successfully');
         } catch (\Exception $e) {
@@ -144,7 +143,7 @@ class SportController extends Controller
             $user = $request->get('authenticated_user');
             $userRoles = $request->get('user_roles', []);
             $userPermissions = $request->get('user_permissions', []);
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -152,11 +151,11 @@ class SportController extends Controller
                     'error' => 'No authenticated user'
                 ], 401);
             }
-            
+
             // Check if user has admin role OR manage_sports permission
             $isAdmin = collect($userRoles)->contains('name', 'Administrator');
             $canManageSports = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_sports');
-            
+
             if (!$isAdmin && !$canManageSports) {
                 return response()->json([
                     'success' => false,
@@ -193,8 +192,8 @@ class SportController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Publish sport updated event
-            $this->publishSportUpdatedEvent($sport, $oldData);
+            // Dispatch sport updated event to queue (low priority)
+            $this->dispatchSportUpdatedQueueEvent($sport, $oldData, $user);
 
             return response()->json([
                 'success' => true,
@@ -226,7 +225,7 @@ class SportController extends Controller
             $user = $request->get('authenticated_user');
             $userRoles = $request->get('user_roles', []);
             $userPermissions = $request->get('user_permissions', []);
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -234,11 +233,11 @@ class SportController extends Controller
                     'error' => 'No authenticated user'
                 ], 401);
             }
-            
+
             // Check if user has admin role OR manage_sports permission
             $isAdmin = collect($userRoles)->contains('name', 'Administrator');
             $canManageSports = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_sports');
-            
+
             if (!$isAdmin && !$canManageSports) {
                 return response()->json([
                     'success' => false,
@@ -261,14 +260,17 @@ class SportController extends Controller
 
             $sport->delete();
 
+            $sportData = $sport->toArray();
+            $sport->delete();
+
             Log::info('Sport deleted successfully', [
                 'sport_id' => $id,
-                'sport_name' => $sport->name,
+                'sport_name' => $sportData['name'] ?? 'Unknown',
                 'user_id' => $user['id']
             ]);
 
-            // Publish sport deleted event
-            $this->publishSportDeletedEvent($sport, $user);
+            // Dispatch sport deleted event to queue (low priority)
+            $this->dispatchSportDeletedQueueEvent($id, $sportData, $user);
 
             return response()->json([
                 'success' => true,
@@ -290,19 +292,26 @@ class SportController extends Controller
     }
 
     /**
-     * Publish sport created event
+     * Dispatch sport created event to queue (low priority)
      *
      * @param Sport $sport
      * @param array $user
      * @return void
      */
-    protected function publishSportCreatedEvent(Sport $sport, array $user): void
+    protected function dispatchSportCreatedQueueEvent(Sport $sport, array $user): void
     {
         try {
-            $payload = EventPayloadBuilder::sportCreated($sport, $user);
-            $this->eventPublisher->publish('sports.sport.created', $payload);
+            $this->queuePublisher->dispatchLow('events', [
+                'sport_id' => $sport->id,
+                'name' => $sport->name,
+                'team_based' => $sport->team_based,
+                'rules' => $sport->rules,
+                'description' => $sport->description,
+                'created_by' => $user['id'] ?? null,
+                'created_at' => now()->toIso8601String(),
+            ], 'sport.created');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish sport created event', [
+            Log::warning('Failed to dispatch sport created queue event', [
                 'sport_id' => $sport->id,
                 'error' => $e->getMessage()
             ]);
@@ -310,19 +319,29 @@ class SportController extends Controller
     }
 
     /**
-     * Publish sport updated event
+     * Dispatch sport updated event to queue (low priority)
      *
      * @param Sport $sport
      * @param array $oldData
+     * @param array $user
      * @return void
      */
-    protected function publishSportUpdatedEvent(Sport $sport, array $oldData): void
+    protected function dispatchSportUpdatedQueueEvent(Sport $sport, array $oldData, array $user): void
     {
         try {
-            $payload = EventPayloadBuilder::sportUpdated($sport, $oldData);
-            $this->eventPublisher->publish('sports.sport.updated', $payload);
+            $this->queuePublisher->dispatchLow('events', [
+                'sport_id' => $sport->id,
+                'id' => $sport->id,
+                'name' => $sport->name,
+                'team_based' => $sport->team_based,
+                'rules' => $sport->rules,
+                'description' => $sport->description,
+                'old_data' => $oldData,
+                'updated_by' => $user['id'] ?? null,
+                'updated_at' => now()->toIso8601String(),
+            ], 'sport.updated');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish sport updated event', [
+            Log::warning('Failed to dispatch sport updated queue event', [
                 'sport_id' => $sport->id,
                 'error' => $e->getMessage()
             ]);
@@ -330,20 +349,26 @@ class SportController extends Controller
     }
 
     /**
-     * Publish sport deleted event
+     * Dispatch sport deleted event to queue (low priority)
      *
-     * @param Sport $sport
+     * @param int|string $sportId
+     * @param array $sportData
      * @param array $user
      * @return void
      */
-    protected function publishSportDeletedEvent(Sport $sport, array $user): void
+    protected function dispatchSportDeletedQueueEvent($sportId, array $sportData, array $user): void
     {
         try {
-            $payload = EventPayloadBuilder::sportDeleted($sport, $user);
-            $this->eventPublisher->publish('sports.sport.deleted', $payload);
+            $this->queuePublisher->dispatchLow('events', [
+                'sport_id' => $sportId,
+                'id' => $sportId,
+                'name' => $sportData['name'] ?? null,
+                'deleted_by' => $user['id'] ?? null,
+                'deleted_at' => now()->toIso8601String(),
+            ], 'sport.deleted');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish sport deleted event', [
-                'sport_id' => $sport->id,
+            Log::warning('Failed to dispatch sport deleted queue event', [
+                'sport_id' => $sportId,
                 'error' => $e->getMessage()
             ]);
         }

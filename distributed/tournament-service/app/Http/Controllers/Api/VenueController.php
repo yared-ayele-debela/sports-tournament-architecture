@@ -5,8 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Venue;
 use App\Services\AuthService;
-use App\Services\Events\EventPublisher;
-use App\Services\Events\EventPayloadBuilder;
+use App\Services\Queue\QueuePublisher;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -16,12 +15,12 @@ use Illuminate\Support\Facades\Validator;
 class VenueController extends Controller
 {
     protected AuthService $authService;
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(AuthService $authService, EventPublisher $eventPublisher)
+    public function __construct(AuthService $authService, QueuePublisher $queuePublisher)
     {
         $this->authService = $authService;
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
     /**
      * Display a listing of venues.
@@ -57,7 +56,7 @@ class VenueController extends Controller
             $user = $request->get('authenticated_user');
             $userRoles = $request->get('user_roles', []);
             $userPermissions = $request->get('user_permissions', []);
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -65,11 +64,11 @@ class VenueController extends Controller
                     'error' => 'No authenticated user'
                 ], 401);
             }
-            
+
             // Check if user has admin role OR manage_venues permission
             $isAdmin = collect($userRoles)->contains('name', 'Administrator');
             $canManageVenues = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_venues');
-            
+
             if (!$isAdmin && !$canManageVenues) {
                 return response()->json([
                     'success' => false,
@@ -93,8 +92,8 @@ class VenueController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Publish venue created event
-            $this->publishVenueCreatedEvent($venue, $user);
+            // Dispatch venue created event to queue (low priority)
+            $this->dispatchVenueCreatedQueueEvent($venue, $user);
 
             return ApiResponse::created($venue, 'Venue created successfully');
         } catch (\Exception $e) {
@@ -141,7 +140,7 @@ class VenueController extends Controller
             $user = $request->get('authenticated_user');
             $userRoles = $request->get('user_roles', []);
             $userPermissions = $request->get('user_permissions', []);
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -149,11 +148,11 @@ class VenueController extends Controller
                     'error' => 'No authenticated user'
                 ], 401);
             }
-            
+
             // Check if user has admin role OR manage_venues permission
             $isAdmin = collect($userRoles)->contains('name', 'Administrator');
             $canManageVenues = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_venues');
-            
+
             if (!$isAdmin && !$canManageVenues) {
                 return response()->json([
                     'success' => false,
@@ -188,8 +187,8 @@ class VenueController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Publish venue updated event
-            $this->publishVenueUpdatedEvent($venue, $oldData);
+            // Dispatch venue updated event to queue (low priority)
+            $this->dispatchVenueUpdatedQueueEvent($venue, $oldData, $user);
 
             return response()->json([
                 'success' => true,
@@ -221,7 +220,7 @@ class VenueController extends Controller
             $user = $request->get('authenticated_user');
             $userRoles = $request->get('user_roles', []);
             $userPermissions = $request->get('user_permissions', []);
-            
+
             if (!$user) {
                 return response()->json([
                     'success' => false,
@@ -229,11 +228,11 @@ class VenueController extends Controller
                     'error' => 'No authenticated user'
                 ], 401);
             }
-            
+
             // Check if user has admin role OR manage_venues permission
             $isAdmin = collect($userRoles)->contains('name', 'Administrator');
             $canManageVenues = $this->authService->userHasPermission(['data' => ['permissions' => $userPermissions]], 'manage_venues');
-            
+
             if (!$isAdmin && !$canManageVenues) {
                 return response()->json([
                     'success' => false,
@@ -253,16 +252,17 @@ class VenueController extends Controller
                 ], 404);
             }
 
+            $venueData = $venue->toArray();
             $venue->delete();
 
             Log::info('Venue deleted successfully', [
                 'venue_id' => $id,
-                'venue_name' => $venue->name,
+                'venue_name' => $venueData['name'] ?? 'Unknown',
                 'user_id' => $user['id']
             ]);
 
-            // Publish venue deleted event
-            $this->publishVenueDeletedEvent($venue, $user);
+            // Dispatch venue deleted event to queue (low priority)
+            $this->dispatchVenueDeletedQueueEvent($id, $venueData, $user);
 
             return response()->json([
                 'success' => true,
@@ -284,19 +284,25 @@ class VenueController extends Controller
     }
 
     /**
-     * Publish venue created event
+     * Dispatch venue created event to queue (low priority)
      *
      * @param Venue $venue
      * @param array $user
      * @return void
      */
-    protected function publishVenueCreatedEvent(Venue $venue, array $user): void
+    protected function dispatchVenueCreatedQueueEvent(Venue $venue, array $user): void
     {
         try {
-            $payload = EventPayloadBuilder::venueCreated($venue, $user);
-            $this->eventPublisher->publish('sports.venue.created', $payload);
+            $this->queuePublisher->dispatchLow('events', [
+                'venue_id' => $venue->id,
+                'name' => $venue->name,
+                'location' => $venue->location,
+                'capacity' => $venue->capacity,
+                'created_by' => $user['id'] ?? null,
+                'created_at' => now()->toIso8601String(),
+            ], 'venue.created');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish venue created event', [
+            Log::warning('Failed to dispatch venue created queue event', [
                 'venue_id' => $venue->id,
                 'error' => $e->getMessage()
             ]);
@@ -304,19 +310,28 @@ class VenueController extends Controller
     }
 
     /**
-     * Publish venue updated event
+     * Dispatch venue updated event to queue (low priority)
      *
      * @param Venue $venue
      * @param array $oldData
+     * @param array $user
      * @return void
      */
-    protected function publishVenueUpdatedEvent(Venue $venue, array $oldData): void
+    protected function dispatchVenueUpdatedQueueEvent(Venue $venue, array $oldData, array $user): void
     {
         try {
-            $payload = EventPayloadBuilder::venueUpdated($venue, $oldData);
-            $this->eventPublisher->publish('sports.venue.updated', $payload);
+            $this->queuePublisher->dispatchLow('events', [
+                'venue_id' => $venue->id,
+                'id' => $venue->id,
+                'name' => $venue->name,
+                'location' => $venue->location,
+                'capacity' => $venue->capacity,
+                'old_data' => $oldData,
+                'updated_by' => $user['id'] ?? null,
+                'updated_at' => now()->toIso8601String(),
+            ], 'venue.updated');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish venue updated event', [
+            Log::warning('Failed to dispatch venue updated queue event', [
                 'venue_id' => $venue->id,
                 'error' => $e->getMessage()
             ]);
@@ -324,20 +339,26 @@ class VenueController extends Controller
     }
 
     /**
-     * Publish venue deleted event
+     * Dispatch venue deleted event to queue (low priority)
      *
-     * @param Venue $venue
+     * @param int|string $venueId
+     * @param array $venueData
      * @param array $user
      * @return void
      */
-    protected function publishVenueDeletedEvent(Venue $venue, array $user): void
+    protected function dispatchVenueDeletedQueueEvent($venueId, array $venueData, array $user): void
     {
         try {
-            $payload = EventPayloadBuilder::venueDeleted($venue, $user);
-            $this->eventPublisher->publish('sports.venue.deleted', $payload);
+            $this->queuePublisher->dispatchLow('events', [
+                'venue_id' => $venueId,
+                'id' => $venueId,
+                'name' => $venueData['name'] ?? null,
+                'deleted_by' => $user['id'] ?? null,
+                'deleted_at' => now()->toIso8601String(),
+            ], 'venue.deleted');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish venue deleted event', [
-                'venue_id' => $venue->id,
+            Log::warning('Failed to dispatch venue deleted queue event', [
+                'venue_id' => $venueId,
                 'error' => $e->getMessage()
             ]);
         }

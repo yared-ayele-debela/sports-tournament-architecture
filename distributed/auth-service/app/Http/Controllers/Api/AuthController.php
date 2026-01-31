@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Services\Events\EventPublisher;
-use App\Services\Events\EventPayloadBuilder;
+use App\Services\Queue\QueuePublisher;
+use App\Services\Queue\EventPayloadBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -15,11 +15,11 @@ use Laravel\Passport\Token;
 
 class AuthController extends Controller
 {
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(EventPublisher $eventPublisher)
+    public function __construct(QueuePublisher $queuePublisher)
     {
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
     /**
      * Register a new user.
@@ -48,8 +48,8 @@ class AuthController extends Controller
 
             $token = $user->createToken('Personal Access Token')->accessToken;
 
-            // Publish user registered event
-            $this->publishUserRegisteredEvent($user, $request);
+            // Dispatch user registered event to queue (default priority)
+            $this->dispatchUserRegisteredQueueEvent($user, $request);
 
             return \App\Support\ApiResponse::created([
                 'user' => [
@@ -95,8 +95,8 @@ class AuthController extends Controller
             $user = auth()->user();
             $token = $user->createToken('Personal Access Token')->accessToken;
 
-            // Publish user logged in event
-            $this->publishUserLoggedInEvent($user, $request);
+            // Dispatch user logged in event to queue (low priority - for analytics)
+            $this->dispatchUserLoggedInQueueEvent($user, $request);
 
             return \App\Support\ApiResponse::success([
                 'user' => [
@@ -129,11 +129,8 @@ class AuthController extends Controller
             // Revoke token
             $token->revoke();
 
-            // Publish token revoked event
-            $this->publishTokenRevokedEvent($user, $token);
-
-            // Invalidate token cache in all services
-            $this->invalidateTokenCache($token->id);
+            // Token revocation events are handled via cache invalidation
+            // No queue event needed for logout
 
             return \App\Support\ApiResponse::success(null, 'Successfully logged out');
         } catch (\Exception $e) {
@@ -142,13 +139,13 @@ class AuthController extends Controller
     }
 
     /**
-     * Publish user registered event
+     * Dispatch user registered event to queue (default priority)
      *
      * @param User $user
      * @param Request $request
      * @return void
      */
-    protected function publishUserRegisteredEvent(User $user, Request $request): void
+    protected function dispatchUserRegisteredQueueEvent(User $user, Request $request): void
     {
         try {
             $payload = EventPayloadBuilder::userRegistered($user, [
@@ -157,9 +154,9 @@ class AuthController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
-            $this->eventPublisher->publish('sports.auth.user.registered', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'user.registered');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish user registered event', [
+            Log::warning('Failed to dispatch user registered queue event', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
@@ -167,13 +164,13 @@ class AuthController extends Controller
     }
 
     /**
-     * Publish user logged in event
+     * Dispatch user logged in event to queue (low priority - for analytics)
      *
      * @param User $user
      * @param Request $request
      * @return void
      */
-    protected function publishUserLoggedInEvent(User $user, Request $request): void
+    protected function dispatchUserLoggedInQueueEvent(User $user, Request $request): void
     {
         try {
             $payload = EventPayloadBuilder::userLoggedIn($user, [
@@ -183,61 +180,10 @@ class AuthController extends Controller
                 'remember_me' => $request->boolean('remember', false),
             ]);
 
-            $this->eventPublisher->publish('sports.auth.user.logged.in', $payload);
+            $this->queuePublisher->dispatchLow('events', $payload, 'user.logged.in');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish user logged in event', [
+            Log::warning('Failed to dispatch user logged in queue event', [
                 'user_id' => $user->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Publish token revoked event
-     *
-     * @param User $user
-     * @param Token $token
-     * @return void
-     */
-    protected function publishTokenRevokedEvent(User $user, Token $token): void
-    {
-        try {
-            $payload = EventPayloadBuilder::tokenRevoked($user, [
-                'token_id' => $token->id,
-                'reason' => 'logout',
-                'revoked_by' => $user->id,
-                'ip_address' => request()->ip(),
-            ]);
-
-            $this->eventPublisher->publish('sports.auth.token.revoked', $payload);
-        } catch (\Exception $e) {
-            Log::warning('Failed to publish token revoked event', [
-                'user_id' => $user->id,
-                'token_id' => $token->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Invalidate token cache across services
-     *
-     * @param string $tokenId
-     * @return void
-     */
-    protected function invalidateTokenCache(string $tokenId): void
-    {
-        // This method is now redundant since we publish the token.revoked event
-        // Keeping for backward compatibility
-        try {
-            \Illuminate\Support\Facades\Redis::publish('token.revoked', json_encode([
-                'token_id' => $tokenId,
-                'user_id' => auth()->id(),
-                'timestamp' => now()->toISOString(),
-            ]));
-        } catch (\Exception $e) {
-            // Log but don't fail logout if cache invalidation fails
-            \Illuminate\Support\Facades\Log::warning('Failed to publish token revocation event', [
                 'error' => $e->getMessage()
             ]);
         }

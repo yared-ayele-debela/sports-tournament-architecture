@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Role;
-use App\Services\Events\EventPublisher;
-use App\Services\Events\EventPayloadBuilder;
+use App\Services\Queue\QueuePublisher;
+use App\Services\Queue\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -14,11 +14,11 @@ use Illuminate\Support\Facades\Log;
 
 class UserServiceController extends Controller
 {
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(EventPublisher $eventPublisher)
+    public function __construct(QueuePublisher $queuePublisher)
     {
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
     /**
      * Get user details by ID.
@@ -30,7 +30,7 @@ class UserServiceController extends Controller
     {
         try {
             $user = User::with('roles', 'roles.permissions')->find($id);
-            
+
             if (!$user) {
                 return ApiResponse::notFound('User not found');
             }
@@ -59,7 +59,7 @@ class UserServiceController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error getting user by ID: ' . $e->getMessage());
-            
+
             return ApiResponse::serverError('Internal server error', $e);
         }
     }
@@ -95,8 +95,8 @@ class UserServiceController extends Controller
 
             $user->roles()->attach($role->id);
 
-            // Publish role assigned event
-            $this->publishRoleAssignedEvent($user, $role, $request);
+            // Dispatch role assigned event to queue (default priority)
+            $this->dispatchRoleAssignedQueueEvent($user, $role, $request);
 
             return ApiResponse::success([
                 'user_id' => $user->id,
@@ -105,7 +105,7 @@ class UserServiceController extends Controller
             ], 'Role assigned successfully');
         } catch (\Exception $e) {
             Log::error('Error assigning role to user: ' . $e->getMessage());
-            
+
             return ApiResponse::serverError('Internal server error', $e);
         }
     }
@@ -120,7 +120,7 @@ class UserServiceController extends Controller
     {
         try {
             $user = User::find($userId);
-            
+
             if (!$user) {
                 return ApiResponse::notFound('User not found');
             }
@@ -145,7 +145,7 @@ class UserServiceController extends Controller
             ]);
         } catch (\Exception $e) {
             Log::error('Error getting user permissions: ' . $e->getMessage());
-            
+
             return ApiResponse::serverError('Internal server error', $e);
         }
     }
@@ -160,7 +160,7 @@ class UserServiceController extends Controller
     {
         try {
             $user = User::find($id);
-            
+
             if (!$user) {
                 return ApiResponse::error('User not found', 404, ['exists' => false]);
             }
@@ -174,31 +174,35 @@ class UserServiceController extends Controller
             ], 'User exists');
         } catch (\Exception $e) {
             Log::error('Error validating user by ID: ' . $e->getMessage());
-            
+
             return ApiResponse::serverError('Internal server error', $e, ['exists' => false]);
         }
     }
 
     /**
-     * Publish role assigned event
+     * Dispatch role assigned event to queue (default priority)
      *
      * @param User $user
      * @param Role $role
      * @param Request $request
      * @return void
      */
-    protected function publishRoleAssignedEvent(User $user, Role $role, Request $request): void
+    protected function dispatchRoleAssignedQueueEvent(User $user, Role $role, Request $request): void
     {
         try {
             $payload = EventPayloadBuilder::userRoleAssigned(
-                $user, 
-                $role->name, 
-                auth()->id() ?? 'system'
+                $user,
+                $role->id,
+                auth()->id() ?? null,
+                [
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]
             );
 
-            $this->eventPublisher->publish('sports.auth.user.role.assigned', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'user.role.assigned');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish role assigned event', [
+            Log::warning('Failed to dispatch role assigned queue event', [
                 'user_id' => $user->id,
                 'role_id' => $role->id,
                 'error' => $e->getMessage()

@@ -2,16 +2,13 @@
 
 namespace App\Providers;
 
-use App\Services\Events\EventPublisher;
-use App\Services\Events\EventPayloadBuilder;
-use App\Services\Events\Handlers\TeamEventHandler;
-use App\Services\Events\Handlers\TournamentEventHandler;
 use Illuminate\Support\ServiceProvider;
 
 /**
  * Event Service Provider
  * 
- * Registers event-related services and handlers
+ * Event handlers are now registered via config/events.php
+ * and loaded automatically by ProcessEventJob
  */
 class EventServiceProvider extends ServiceProvider
 {
@@ -22,25 +19,8 @@ class EventServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Register EventPublisher as singleton
-        $this->app->singleton(EventPublisher::class, function ($app) {
-            return new EventPublisher();
-        });
-
-        // Register EventPayloadBuilder as singleton (optional)
-        $this->app->singleton(EventPayloadBuilder::class, function ($app) {
-            return new EventPayloadBuilder();
-        });
-
-        // Register TeamEventHandler as singleton
-        $this->app->singleton(TeamEventHandler::class, function ($app) {
-            return new TeamEventHandler();
-        });
-
-        // Register TournamentEventHandler as singleton
-        $this->app->singleton(TournamentEventHandler::class, function ($app) {
-            return new TournamentEventHandler();
-        });
+        // Event handlers are registered via config/events.php
+        // and instantiated by ProcessEventJob when needed
     }
 
     /**
@@ -50,8 +30,7 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Register event handlers here if needed
-        // This is useful if you want to register handlers dynamically
+        //
     }
 
     /**
@@ -61,11 +40,6 @@ class EventServiceProvider extends ServiceProvider
      */
     public function provides(): array
     {
-        return [
-            EventPublisher::class,
-            EventPayloadBuilder::class,
-            TeamEventHandler::class,
-            TournamentEventHandler::class,
-        ];
+        return [];
     }
 }

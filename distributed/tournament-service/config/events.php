@@ -23,7 +23,7 @@ return [
         'sports.tournament.started',
         'sports.tournament.completed',
         'sports.tournament.status.changed',
-        
+
         // Match service events
         'sports.match.created',
         'sports.match.updated',
@@ -31,7 +31,7 @@ return [
         'sports.match.cancelled',
         'sports.match.score.updated',
         'sports.match.event.added',
-        
+
         // Team service events
         'sports.team.created',
         'sports.team.updated',
@@ -39,18 +39,18 @@ return [
         'sports.team.player.added',
         'sports.team.player.removed',
         'sports.team.player.updated',
-        
+
         // Results service events
         'sports.results.finalized',
         'sports.results.standings.updated',
         'sports.results.statistics.updated',
-        
+
         // Auth service events
         'sports.auth.user.created',
         'sports.auth.user.updated',
         'sports.auth.user.deleted',
         'sports.auth.token.revoked',
-        
+
         // Gateway service events (if needed)
         'sports.gateway.request.completed',
         'sports.gateway.error.occurred',
@@ -58,15 +58,52 @@ return [
 
     /**
      * Event handler classes to load for event processing.
-     * Each handler must implement the EventHandler interface.
+     * Each handler must implement the EventHandlerInterface.
+     * Used for Pub/Sub event handling.
      */
     'handlers' => [
-        // Add your event handler classes here
+        // Cache invalidation handler for public API cache
+        \App\Services\Events\Handlers\CacheInvalidationHandler::class,
+
+        // Results event handler
+        \App\Services\Events\Handlers\ResultsEventHandler::class,
+
+        // Add more event handler classes here as needed
         // Example:
-        // 'App\\Events\\Handlers\\TournamentEventHandler',
-        // 'App\\Events\\Handlers\\MatchEventHandler',
-        // 'App\\Events\\Handlers\\TeamEventHandler',
-        // 'App\\Events\\Handlers\\ResultsEventHandler',
+        // 'App\\Services\\Queue\\Handlers\\TournamentEventHandler',
+        // 'App\\Services\\Queue\\Handlers\\MatchEventHandler',
+        // 'App\\Services\\Queue\\Handlers\\TeamEventHandler',
+    ],
+
+    /**
+     * Event-to-Handler Mapping for Queue-based Event Processing
+     * Maps event types to their handler classes.
+     * Used by ProcessEventJob to route events to appropriate handlers.
+     *
+     * Structure:
+     * 'event_type' => HandlerClass::class
+     *
+     * Priority-based queue routing:
+     * - 'high' queue: Critical events (match.completed, standings.updated)
+     * - 'default' queue: Normal events (team.created, player.created)
+     * - 'low' queue: Non-critical events (user.logged.in)
+     */
+    'event_handlers' => [
+        // Critical events (high priority)
+        'match.completed' => null, // Example: App\Services\Queue\Handlers\MatchCompletedHandler::class,
+        'standings.updated' => null, // Example: App\Services\Queue\Handlers\StandingsUpdatedHandler::class,
+
+        // Normal events (default priority)
+        'team.created' => null, // Example: App\Services\Queue\Handlers\TeamCreatedHandler::class,
+        'team.updated' => null, // Example: App\Services\Queue\Handlers\TeamUpdatedHandler::class,
+        'player.created' => null, // Example: App\Services\Queue\Handlers\PlayerCreatedHandler::class,
+        'player.updated' => null, // Example: App\Services\Queue\Handlers\PlayerUpdatedHandler::class,
+        'tournament.created' => null, // Example: App\Services\Queue\Handlers\TournamentCreatedHandler::class,
+        'tournament.updated' => null, // Example: App\Services\Queue\Handlers\TournamentUpdatedHandler::class,
+
+        // Non-critical events (low priority)
+        'user.logged.in' => null, // Example: App\Services\Queue\Handlers\UserLoggedInHandler::class,
+        'user.updated' => null, // Example: App\Services\Queue\Handlers\UserUpdatedHandler::class,
     ],
 
     /**
@@ -77,17 +114,17 @@ return [
          * Default channel for publishing events.
          */
         'default_channel' => env('EVENTS_DEFAULT_CHANNEL', 'sports.events'),
-        
+
         /**
          * Enable/disable event publishing.
          */
         'enabled' => env('EVENTS_ENABLED', true),
-        
+
         /**
          * Event versioning.
          */
         'version' => env('EVENTS_VERSION', '1.0'),
-        
+
         /**
          * Event retry configuration.
          */
@@ -105,12 +142,12 @@ return [
          * Reconnection delay in milliseconds.
          */
         'reconnect_delay_ms' => env('EVENTS_RECONNECT_DELAY_MS', 5000),
-        
+
         /**
          * Maximum reconnection attempts.
          */
         'max_reconnect_attempts' => env('EVENTS_MAX_RECONNECT_ATTEMPTS', 10),
-        
+
         /**
          * Enable/disable event subscription.
          */
@@ -125,12 +162,12 @@ return [
          * Event TTL in seconds for history storage.
          */
         'ttl' => env('EVENTS_HISTORY_TTL', 86400), // 24 hours
-        
+
         /**
          * Maximum number of events to keep in history.
          */
         'max_events' => env('EVENTS_MAX_HISTORY', 1000),
-        
+
         /**
          * Enable/disable event history storage.
          */
@@ -145,7 +182,7 @@ return [
          * Enable strict event validation.
          */
         'strict' => env('EVENTS_VALIDATION_STRICT', true),
-        
+
         /**
          * Required event fields.
          */
@@ -167,7 +204,7 @@ return [
          * Service name for event identification.
          */
         'name' => env('EVENTS_SERVICE_NAME', config('app.name', 'unknown-service')),
-        
+
         /**
          * Service-specific event prefixes.
          */

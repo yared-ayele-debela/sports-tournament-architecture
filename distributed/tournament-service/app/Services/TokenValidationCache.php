@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Exceptions\AuthenticationException;
+use App\Exceptions\ServiceUnavailableException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -9,7 +11,7 @@ use Illuminate\Http\Client\Response;
 
 /**
  * Token Validation Cache Service
- * 
+ *
  * Caches token validation results to reduce load on auth-service
  * and improve response times.
  */
@@ -29,9 +31,11 @@ class TokenValidationCache
      * Validate token with caching
      *
      * @param string $token
-     * @return array|null Returns user data on success, null on failure
+     * @return array Returns user data on success
+     * @throws AuthenticationException When token is invalid
+     * @throws ServiceUnavailableException When auth service is unavailable
      */
-    public function validate(string $token): ?array
+    public function validate(string $token): array
     {
         $cacheKey = $this->getCacheKey($token);
 
@@ -46,16 +50,14 @@ class TokenValidationCache
         Log::debug('Token validation cache miss', ['token_hash' => substr($cacheKey, -8)]);
         $userData = $this->validateWithAuthService($token);
 
-        if ($userData !== null) {
-            // Cache successful validation
-            // Use shorter TTL than token expiration to ensure we revalidate
-            $ttl = $this->calculateTtl($userData);
-            Cache::put($cacheKey, $userData, $ttl);
-            Log::debug('Token validation cached', [
-                'token_hash' => substr($cacheKey, -8),
-                'ttl' => $ttl
-            ]);
-        }
+        // Cache successful validation
+        // Use shorter TTL than token expiration to ensure we revalidate
+        $ttl = $this->calculateTtl($userData);
+        Cache::put($cacheKey, $userData, $ttl);
+        Log::debug('Token validation cached', [
+            'token_hash' => substr($cacheKey, -8),
+            'ttl' => $ttl
+        ]);
 
         return $userData;
     }
@@ -64,9 +66,11 @@ class TokenValidationCache
      * Validate token directly with auth service
      *
      * @param string $token
-     * @return array|null
+     * @return array Returns user data on success
+     * @throws AuthenticationException When token is invalid
+     * @throws ServiceUnavailableException When auth service is unavailable
      */
-    protected function validateWithAuthService(string $token): ?array
+    protected function validateWithAuthService(string $token): array
     {
         try {
             /** @var Response $response */
@@ -74,23 +78,71 @@ class TokenValidationCache
                 ->withToken($token)
                 ->get($this->authServiceUrl . '/api/auth/me');
 
+            // Handle non-200 status codes
+            if ($response->status() === 401 || $response->status() === 403) {
+                throw new AuthenticationException(
+                    'Invalid or expired token',
+                    [
+                        'status_code' => $response->status(),
+                        'auth_service_url' => $this->authServiceUrl
+                    ]
+                );
+            }
+
             if ($response->status() !== 200) {
-                return null;
+                throw new ServiceUnavailableException(
+                    "Auth service returned status {$response->status()}",
+                    'auth-service',
+                    [
+                        'status_code' => $response->status(),
+                        'auth_service_url' => $this->authServiceUrl
+                    ]
+                );
             }
 
             $responseData = $response->json();
 
             if (!($responseData['success'] ?? false)) {
-                return null;
+                throw new AuthenticationException(
+                    $responseData['message'] ?? 'Token validation failed',
+                    [
+                        'response_data' => $responseData,
+                        'auth_service_url' => $this->authServiceUrl
+                    ]
+                );
             }
 
-            return $responseData['data'] ?? null;
+            $userData = $responseData['data'] ?? null;
+            if ($userData === null) {
+                throw new AuthenticationException(
+                    'No user data returned from auth service',
+                    [
+                        'response_data' => $responseData,
+                        'auth_service_url' => $this->authServiceUrl
+                    ]
+                );
+            }
+
+            return $userData;
+        } catch (AuthenticationException | ServiceUnavailableException $e) {
+            // Re-throw our custom exceptions
+            throw $e;
         } catch (\Exception $e) {
             Log::error('Token validation failed', [
                 'error' => $e->getMessage(),
-                'auth_service_url' => $this->authServiceUrl
+                'auth_service_url' => $this->authServiceUrl,
+                'exception' => get_class($e)
             ]);
-            return null;
+
+            throw new ServiceUnavailableException(
+                'Authentication service unavailable',
+                'auth-service',
+                [
+                    'error' => $e->getMessage(),
+                    'auth_service_url' => $this->authServiceUrl
+                ],
+                $e
+            );
         }
     }
 
@@ -118,12 +170,12 @@ class TokenValidationCache
         // Note: This requires a cache tag system or user-token mapping
         // For now, we'll use a pattern-based approach if using Redis
         $pattern = "token_validation:user_{$userId}:*";
-        
+
         // If using Redis, we can use SCAN to find and delete matching keys
         if (config('cache.default') === 'redis') {
             $this->invalidateByPattern($pattern);
         }
-        
+
         Log::info('User token cache invalidated', ['user_id' => $userId]);
     }
 
@@ -139,10 +191,10 @@ class TokenValidationCache
             if (config('cache.default') !== 'redis') {
                 return;
             }
-            
+
             $redis = \Illuminate\Support\Facades\Redis::connection();
             $keys = $redis->keys($pattern);
-            
+
             if (!empty($keys)) {
                 $redis->del($keys);
                 Log::debug('Cache entries deleted by pattern', [
@@ -182,7 +234,7 @@ class TokenValidationCache
         // If token expiration is available in response, use it
         // Otherwise use configured default TTL
         // We'll use a conservative approach: cache for 5 minutes or until token expires (whichever is shorter)
-        
+
         // Default Passport token expiration is typically 1 year
         // We'll cache for a shorter period to ensure we revalidate periodically
         return min($this->cacheTtl, $this->defaultTtl);
@@ -198,7 +250,7 @@ class TokenValidationCache
         if (config('cache.default') === 'redis') {
             $this->invalidateByPattern('token_validation:*');
         }
-        
+
         Log::info('All token validation cache cleared');
     }
 }

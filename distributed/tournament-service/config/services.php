@@ -37,6 +37,7 @@ return [
 
     'auth' => [
         'url' => env('AUTH_SERVICE_URL', 'http://localhost:8001'),
+        'token_cache_ttl' => env('AUTH_TOKEN_CACHE_TTL', 300), // 5 minutes default
     ],
 
 ];

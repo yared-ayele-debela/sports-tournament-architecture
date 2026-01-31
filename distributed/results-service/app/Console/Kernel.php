@@ -21,7 +21,7 @@ class Kernel extends ConsoleKernel
     protected function commands(): array
     {
         return [
-            // Event commands removed
+            // Commands will be auto-discovered
         ];
     }
 }

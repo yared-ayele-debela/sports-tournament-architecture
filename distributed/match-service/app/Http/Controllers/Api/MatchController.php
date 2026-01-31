@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\MatchGame;
 use App\Services\MatchScheduler;
-use App\Services\Events\EventPublisher;
+use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -16,12 +16,12 @@ use Illuminate\Support\Facades\Log;
 class MatchController extends Controller
 {
     protected MatchScheduler $matchScheduler;
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(MatchScheduler $matchScheduler, EventPublisher $eventPublisher)
+    public function __construct(MatchScheduler $matchScheduler, QueuePublisher $queuePublisher)
     {
         $this->matchScheduler = $matchScheduler;
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
 
     /**
@@ -71,8 +71,12 @@ class MatchController extends Controller
 
         $match = MatchGame::create($validated);
 
-        // Publish match created event
-        $this->publishMatchCreatedEvent($match, ['id' => Auth::id(), 'name' => 'Admin']);
+        // Dispatch match created event to queue (default priority)
+        $user = Auth::user();
+        $this->dispatchMatchCreatedQueueEvent($match, [
+            'id' => Auth::id() ?? null,
+            'name' => $user?->name ?? 'System'
+        ]);
 
         return ApiResponse::created($match->load(['matchEvents', 'matchReport']));
     }
@@ -118,13 +122,13 @@ class MatchController extends Controller
             'away_score' => 'sometimes|integer|min:0',
             'current_minute' => 'sometimes|integer|min:0|max:120',
         ]);
-        
+
 
         $oldData = $match->toArray();
         $match->update($validated);
 
-        // Publish match updated event
-        $this->publishMatchUpdatedEvent($match, $oldData);
+        // Dispatch match updated event to queue (default priority)
+        $this->dispatchMatchUpdatedQueueEvent($match, $oldData);
 
         return ApiResponse::success($match->load(['matchEvents', 'matchReport']));
     }
@@ -148,13 +152,17 @@ class MatchController extends Controller
         $oldStatus = $match->status;
         $match->update($validated);
 
-        // Publish match status changed event if status changed
+        // Dispatch match status changed event if status changed (high priority)
         if (isset($validated['status']) && $validated['status'] !== $oldStatus) {
-            $this->publishMatchStatusChangedEvent($match, $oldStatus);
-            
-            // If match started, publish match started event
+            $this->dispatchMatchStatusChangedQueueEvent($match, $oldStatus);
+
+            // If match started, dispatch match started event (high priority)
             if ($validated['status'] === 'in_progress' && $oldStatus !== 'in_progress') {
-                $this->publishMatchStartedEvent($match, ['id' => Auth::id(), 'name' => 'Admin']);
+                $user = Auth::user();
+                $this->dispatchMatchStartedQueueEvent($match, [
+                    'id' => Auth::id() ?? null,
+                    'name' => $user?->name ?? 'System'
+                ]);
             }
         }
 
@@ -299,19 +307,19 @@ class MatchController extends Controller
     }
 
     /**
-     * Publish match created event
+     * Dispatch match created event to queue (default priority)
      *
      * @param MatchGame $match
      * @param array $user
      * @return void
      */
-    protected function publishMatchCreatedEvent(MatchGame $match, array $user): void
+    protected function dispatchMatchCreatedQueueEvent(MatchGame $match, array $user): void
     {
         try {
             $payload = EventPayloadBuilder::matchCreated($match, $user);
-            $this->eventPublisher->publish('sports.match.created', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'match.created');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish match created event', [
+            Log::warning('Failed to dispatch match created queue event', [
                 'match_id' => $match->id,
                 'error' => $e->getMessage()
             ]);
@@ -319,19 +327,19 @@ class MatchController extends Controller
     }
 
     /**
-     * Publish match updated event
+     * Dispatch match updated event to queue (default priority)
      *
      * @param MatchGame $match
      * @param array $oldData
      * @return void
      */
-    protected function publishMatchUpdatedEvent(MatchGame $match, array $oldData): void
+    protected function dispatchMatchUpdatedQueueEvent(MatchGame $match, array $oldData): void
     {
         try {
             $payload = EventPayloadBuilder::matchUpdated($match, $oldData);
-            $this->eventPublisher->publish('sports.match.updated', $payload);
+            $this->queuePublisher->dispatchNormal('events', $payload, 'match.updated');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish match updated event', [
+            Log::warning('Failed to dispatch match updated queue event', [
                 'match_id' => $match->id,
                 'error' => $e->getMessage()
             ]);
@@ -339,19 +347,19 @@ class MatchController extends Controller
     }
 
     /**
-     * Publish match status changed event
+     * Dispatch match status changed event to queue (high priority)
      *
      * @param MatchGame $match
      * @param string $oldStatus
      * @return void
      */
-    protected function publishMatchStatusChangedEvent(MatchGame $match, string $oldStatus): void
+    protected function dispatchMatchStatusChangedQueueEvent(MatchGame $match, string $oldStatus): void
     {
         try {
             $payload = EventPayloadBuilder::matchStatusChanged($match, $oldStatus);
-            $this->eventPublisher->publish('sports.match.status.changed', $payload);
+            $this->queuePublisher->dispatchHigh('events', $payload, 'match.status.changed');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish match status changed event', [
+            Log::warning('Failed to dispatch match status changed queue event', [
                 'match_id' => $match->id,
                 'old_status' => $oldStatus,
                 'new_status' => $match->status,
@@ -361,19 +369,19 @@ class MatchController extends Controller
     }
 
     /**
-     * Publish match started event
+     * Dispatch match started event to queue (high priority)
      *
      * @param MatchGame $match
      * @param array $user
      * @return void
      */
-    protected function publishMatchStartedEvent(MatchGame $match, array $user): void
+    protected function dispatchMatchStartedQueueEvent(MatchGame $match, array $user): void
     {
         try {
             $payload = EventPayloadBuilder::matchStarted($match, $user);
-            $this->eventPublisher->publish('sports.match.started', $payload);
+            $this->queuePublisher->dispatchHigh('events', $payload, 'match.started');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish match started event', [
+            Log::warning('Failed to dispatch match started queue event', [
                 'match_id' => $match->id,
                 'error' => $e->getMessage()
             ]);

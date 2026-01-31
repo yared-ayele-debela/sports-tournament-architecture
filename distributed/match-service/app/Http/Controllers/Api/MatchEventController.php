@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MatchGame;
 use App\Models\MatchEvent;
 use App\Services\Clients\TeamServiceClient;
-use App\Services\Events\EventPublisher;
+use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -17,12 +17,12 @@ use Illuminate\Support\Facades\Log;
 class MatchEventController extends Controller
 {
     protected TeamServiceClient $teamService;
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(TeamServiceClient $teamService, EventPublisher $eventPublisher)
+    public function __construct(TeamServiceClient $teamService, QueuePublisher $queuePublisher)
     {
         $this->teamService = $teamService;
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
 
     public function match_event_index(string $matchId): JsonResponse
@@ -84,8 +84,12 @@ class MatchEventController extends Controller
         $match->current_minute = $validated['minute'];
         $match->save();
 
-        // Publish match event recorded event (real-time)
-        $this->publishMatchEventRecordedEvent($event, ['id' => Auth::id(), 'name' => 'Admin']);
+        // Dispatch match event recorded event to queue (high priority - real-time)
+        $user = Auth::user();
+        $this->dispatchMatchEventRecordedQueueEvent($event, [
+            'id' => Auth::id() ?? null,
+            'name' => $user?->name ?? 'System'
+        ]);
 
         return ApiResponse::created($event->load('match'));
     }
@@ -105,19 +109,19 @@ class MatchEventController extends Controller
     }
 
     /**
-     * Publish match event recorded event (real-time)
+     * Dispatch match event recorded event to queue (high priority - real-time)
      *
      * @param MatchEvent $matchEvent
      * @param array $user
      * @return void
      */
-    protected function publishMatchEventRecordedEvent(MatchEvent $matchEvent, array $user): void
+    protected function dispatchMatchEventRecordedQueueEvent(MatchEvent $matchEvent, array $user): void
     {
         try {
             $payload = EventPayloadBuilder::matchEventRecorded($matchEvent, $user);
-            $this->eventPublisher->publish('sports.match.event.recorded', $payload);
+            $this->queuePublisher->dispatchHigh('events', $payload, 'match.event.recorded');
         } catch (\Exception $e) {
-            Log::warning('Failed to publish match event recorded event', [
+            Log::warning('Failed to dispatch match event recorded queue event', [
                 'event_id' => $matchEvent->id,
                 'match_id' => $matchEvent->match_id,
                 'error' => $e->getMessage()

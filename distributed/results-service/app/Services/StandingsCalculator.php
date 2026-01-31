@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\MatchResult;
 use App\Models\Standing;
 use App\Services\Clients\MatchServiceClient;
+use App\Services\Queue\QueuePublisher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -13,10 +14,12 @@ use Exception;
 class StandingsCalculator
 {
     protected MatchServiceClient $matchService;
+    protected ?QueuePublisher $queuePublisher;
 
-    public function __construct(MatchServiceClient $matchService)
+    public function __construct(MatchServiceClient $matchService, ?QueuePublisher $queuePublisher = null)
     {
         $this->matchService = $matchService;
+        $this->queuePublisher = $queuePublisher ?? app(QueuePublisher::class);
     }
 
     public function updateStandingsFromMatch(MatchResult $result): void
@@ -78,6 +81,24 @@ class StandingsCalculator
             'match_id' => $result->match_id
         ]);
         $this->updateTournamentStatistics($result->tournament_id);
+
+        // Publish standings updated event (if queue publisher is available)
+        // Note: This is also published by MatchCompletedHandler, but we keep it here
+        // for cases where standings are updated outside of match completion
+        if ($this->queuePublisher) {
+            try {
+                $this->queuePublisher->dispatchHigh('events', [
+                    'tournament_id' => $result->tournament_id,
+                    'match_id' => $result->match_id,
+                    'updated_at' => now()->toIso8601String()
+                ], 'standings.updated');
+            } catch (Exception $e) {
+                Log::warning('Failed to dispatch standings updated queue event', [
+                    'tournament_id' => $result->tournament_id,
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
     }
 
     public function recalculateForTournament(int $tournamentId): void
@@ -163,9 +184,9 @@ class StandingsCalculator
      * Update tournament statistics
      *
      * @param int $tournamentId
-     * @return void
+     * @return array|null
      */
-    protected function updateTournamentStatistics(int $tournamentId): void
+    protected function updateTournamentStatistics(int $tournamentId): ?array
     {
         try {
             // Calculate tournament statistics
@@ -190,11 +211,31 @@ class StandingsCalculator
                 'total_goals' => $statistics['total_goals']
             ]);
 
+            // Publish statistics.updated event (default priority)
+            if ($this->queuePublisher) {
+                try {
+                    $this->queuePublisher->dispatchNormal('events', [
+                        'tournament_id' => $tournamentId,
+                        'statistics' => $statistics,
+                        'updated_at' => now()->toIso8601String()
+                    ], 'statistics.updated');
+                } catch (Exception $e) {
+                    Log::warning('Failed to dispatch statistics updated queue event', [
+                        'tournament_id' => $tournamentId,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            return $statistics;
+
         } catch (Exception $e) {
             Log::error('Failed to update tournament statistics', [
                 'tournament_id' => $tournamentId,
                 'error' => $e->getMessage()
             ]);
+
+            return null;
         }
     }
 }

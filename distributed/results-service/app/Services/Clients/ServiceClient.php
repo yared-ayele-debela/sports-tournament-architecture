@@ -2,8 +2,11 @@
 
 namespace App\Services\Clients;
 
+use App\Exceptions\ServiceRequestException;
+use App\Exceptions\ServiceUnavailableException;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Exception\ConnectException;
 use Illuminate\Support\Facades\Log;
 
 abstract class ServiceClient
@@ -24,6 +27,13 @@ abstract class ServiceClient
         ]);
     }
 
+    /**
+     * @param string $endpoint
+     * @param array $query
+     * @return array
+     * @throws ServiceRequestException
+     * @throws ServiceUnavailableException
+     */
     protected function get(string $endpoint, array $query = [])
     {
         try {
@@ -42,18 +52,68 @@ abstract class ServiceClient
                 'headers' => $headers,
             ]);
 
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (RequestException $e) {
-            Log::error("Service request failed: {$e->getMessage()}", [
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            // Check if response indicates failure
+            if (is_array($data) && isset($data['success']) && !$data['success']) {
+                throw new ServiceRequestException(
+                    $data['message'] ?? 'Service request failed',
+                    class_basename($this),
+                    $response->getStatusCode(),
+                    ['endpoint' => $endpoint, 'query' => $query, 'response' => $data]
+                );
+            }
+
+            return $data;
+        } catch (ConnectException $e) {
+            Log::error("Service connection failed: {$e->getMessage()}", [
                 'service' => class_basename($this),
                 'endpoint' => $endpoint,
                 'query' => $query,
             ]);
 
-            return null;
+            throw new ServiceUnavailableException(
+                "Unable to connect to service: {$e->getMessage()}",
+                class_basename($this),
+                ['endpoint' => $endpoint, 'query' => $query],
+                $e
+            );
+        } catch (RequestException $e) {
+            $statusCode = $e->hasResponse() ? $e->getResponse()->getStatusCode() : null;
+
+            Log::error("Service request failed: {$e->getMessage()}", [
+                'service' => class_basename($this),
+                'endpoint' => $endpoint,
+                'query' => $query,
+                'status_code' => $statusCode,
+            ]);
+
+            if ($statusCode >= 500 || $statusCode === null) {
+                throw new ServiceUnavailableException(
+                    "Service unavailable: {$e->getMessage()}",
+                    class_basename($this),
+                    ['endpoint' => $endpoint, 'query' => $query, 'status_code' => $statusCode],
+                    $e
+                );
+            }
+
+            throw new ServiceRequestException(
+                "Service request failed: {$e->getMessage()}",
+                class_basename($this),
+                $statusCode,
+                ['endpoint' => $endpoint, 'query' => $query],
+                $e
+            );
         }
     }
 
+    /**
+     * @param string $endpoint
+     * @param array $data
+     * @return array
+     * @throws ServiceRequestException
+     * @throws ServiceUnavailableException
+     */
     protected function post(string $endpoint, array $data = [])
     {
         try {
@@ -72,18 +132,66 @@ abstract class ServiceClient
                 'headers' => $headers,
             ]);
 
-            return json_decode($response->getBody()->getContents(), true);
+            $responseData = json_decode($response->getBody()->getContents(), true);
+
+            // Check if response indicates failure
+            if (is_array($responseData) && isset($responseData['success']) && !$responseData['success']) {
+                throw new ServiceRequestException(
+                    $responseData['message'] ?? 'Service request failed',
+                    class_basename($this),
+                    $response->getStatusCode(),
+                    ['endpoint' => $endpoint, 'data' => $data, 'response' => $responseData]
+                );
+            }
+
+            return $responseData;
+        } catch (ConnectException $e) {
+            Log::error("Service connection failed: {$e->getMessage()}", [
+                'service' => class_basename($this),
+                'endpoint' => $endpoint,
+            ]);
+
+            throw new ServiceUnavailableException(
+                "Unable to connect to service: {$e->getMessage()}",
+                class_basename($this),
+                ['endpoint' => $endpoint],
+                $e
+            );
         } catch (RequestException $e) {
+            $statusCode = $e->hasResponse() ? $e->getResponse()->getStatusCode() : null;
+
             Log::error("Service request failed: {$e->getMessage()}", [
                 'service' => class_basename($this),
                 'endpoint' => $endpoint,
-                'data' => $data,
+                'status_code' => $statusCode,
             ]);
 
-            return null;
+            if ($statusCode >= 500 || $statusCode === null) {
+                throw new ServiceUnavailableException(
+                    "Service unavailable: {$e->getMessage()}",
+                    class_basename($this),
+                    ['endpoint' => $endpoint, 'status_code' => $statusCode],
+                    $e
+                );
+            }
+
+            throw new ServiceRequestException(
+                "Service request failed: {$e->getMessage()}",
+                class_basename($this),
+                $statusCode,
+                ['endpoint' => $endpoint],
+                $e
+            );
         }
     }
 
+    /**
+     * @param string $endpoint
+     * @param array $data
+     * @return array
+     * @throws ServiceRequestException
+     * @throws ServiceUnavailableException
+     */
     protected function put(string $endpoint, array $data = [])
     {
         try {
@@ -102,18 +210,53 @@ abstract class ServiceClient
                 'headers' => $headers,
             ]);
 
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (RequestException $e) {
-            Log::error("Service request failed: {$e->getMessage()}", [
-                'service' => class_basename($this),
-                'endpoint' => $endpoint,
-                'data' => $data,
-            ]);
+            $responseData = json_decode($response->getBody()->getContents(), true);
 
-            return null;
+            if (is_array($responseData) && isset($responseData['success']) && !$responseData['success']) {
+                throw new ServiceRequestException(
+                    $responseData['message'] ?? 'Service request failed',
+                    class_basename($this),
+                    $response->getStatusCode(),
+                    ['endpoint' => $endpoint, 'response' => $responseData]
+                );
+            }
+
+            return $responseData;
+        } catch (ConnectException $e) {
+            throw new ServiceUnavailableException(
+                "Unable to connect to service: {$e->getMessage()}",
+                class_basename($this),
+                ['endpoint' => $endpoint],
+                $e
+            );
+        } catch (RequestException $e) {
+            $statusCode = $e->hasResponse() ? $e->getResponse()->getStatusCode() : null;
+
+            if ($statusCode >= 500 || $statusCode === null) {
+                throw new ServiceUnavailableException(
+                    "Service unavailable: {$e->getMessage()}",
+                    class_basename($this),
+                    ['endpoint' => $endpoint, 'status_code' => $statusCode],
+                    $e
+                );
+            }
+
+            throw new ServiceRequestException(
+                "Service request failed: {$e->getMessage()}",
+                class_basename($this),
+                $statusCode,
+                ['endpoint' => $endpoint],
+                $e
+            );
         }
     }
 
+    /**
+     * @param string $endpoint
+     * @return array
+     * @throws ServiceRequestException
+     * @throws ServiceUnavailableException
+     */
     protected function delete(string $endpoint)
     {
         try {
@@ -131,14 +274,44 @@ abstract class ServiceClient
                 'headers' => $headers,
             ]);
 
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (RequestException $e) {
-            Log::error("Service request failed: {$e->getMessage()}", [
-                'service' => class_basename($this),
-                'endpoint' => $endpoint,
-            ]);
+            $responseData = json_decode($response->getBody()->getContents(), true);
 
-            return null;
+            if (is_array($responseData) && isset($responseData['success']) && !$responseData['success']) {
+                throw new ServiceRequestException(
+                    $responseData['message'] ?? 'Service request failed',
+                    class_basename($this),
+                    $response->getStatusCode(),
+                    ['endpoint' => $endpoint, 'response' => $responseData]
+                );
+            }
+
+            return $responseData;
+        } catch (ConnectException $e) {
+            throw new ServiceUnavailableException(
+                "Unable to connect to service: {$e->getMessage()}",
+                class_basename($this),
+                ['endpoint' => $endpoint],
+                $e
+            );
+        } catch (RequestException $e) {
+            $statusCode = $e->hasResponse() ? $e->getResponse()->getStatusCode() : null;
+
+            if ($statusCode >= 500 || $statusCode === null) {
+                throw new ServiceUnavailableException(
+                    "Service unavailable: {$e->getMessage()}",
+                    class_basename($this),
+                    ['endpoint' => $endpoint, 'status_code' => $statusCode],
+                    $e
+                );
+            }
+
+            throw new ServiceRequestException(
+                "Service request failed: {$e->getMessage()}",
+                class_basename($this),
+                $statusCode,
+                ['endpoint' => $endpoint],
+                $e
+            );
         }
     }
 }

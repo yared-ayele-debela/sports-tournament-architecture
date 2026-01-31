@@ -29,17 +29,15 @@ class MatchServiceClient extends ServiceClient
         return $response;
     }
 
+    /**
+     * @param int $tournamentId
+     * @return array
+     * @throws \App\Exceptions\ServiceRequestException
+     * @throws \App\Exceptions\ServiceUnavailableException
+     */
     public function getCompletedMatchesWithoutAuth($tournamentId)
     {
-        try {
-            $response = $this->client->get("/api/tournaments/{$tournamentId}/matches?status=completed");
-            return json_decode($response->getBody()->getContents(), true);
-        } catch (\Exception $e) {
-            \Illuminate\Support\Facades\Log::error("Service request failed: {$e->getMessage()}", [
-                'service' => class_basename($this),
-                'endpoint' => "/api/tournaments/{$tournamentId}/matches?status=completed",
-            ]);
-            return null;
-        }
+        // Use the parent get method which throws exceptions
+        return $this->get("/api/tournaments/{$tournamentId}/matches", ['status' => 'completed']);
     }
 }

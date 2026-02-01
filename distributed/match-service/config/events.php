@@ -14,13 +14,13 @@ return [
         'sports.team.created',
         'sports.team.updated',
         'sports.team.deleted',
-        
+
         // Tournament events for scheduling control
         'sports.tournament.created',
         'sports.tournament.updated',
         'sports.tournament.status.changed',
         'sports.tournament.deleted',
-        
+
         // Sport and venue events (for future use)
         'sports.sport.created',
         'sports.sport.updated',
@@ -42,6 +42,8 @@ return [
     'handlers' => [
         'team.created' => \App\Handlers\TeamCreatedHandler::class,
         'tournament.status.changed' => \App\Handlers\TournamentStatusChangedHandler::class,
+        // Cache invalidation handler (processes all cache-related events)
+        \App\Services\Events\Handlers\CacheInvalidationHandler::class,
     ],
 
     /*
@@ -56,7 +58,7 @@ return [
         'default_channel' => env('EVENTS_DEFAULT_CHANNEL', 'sports.events'),
         'enabled' => env('EVENTS_ENABLED', true),
         'version' => env('EVENTS_VERSION', '1.0'),
-        
+
         'retry' => [
             'max_attempts' => env('EVENTS_RETRY_MAX_ATTEMPTS', 3),
             'delay_ms' => env('EVENTS_RETRY_DELAY_MS', 100),

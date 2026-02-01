@@ -31,8 +31,7 @@ Route::get('health', function () {
         'timestamp' => now()->toISOString()
     ]);
 });
-
-// Public routes for basic match information
+// Legacy public routes (for backward compatibility)
 Route::get('/public/tournaments/{tournamentId}/matches', [MatchController::class, 'index']);
 Route::get('/public/matches', [MatchController::class, 'index']);
 Route::get('/public/matches/live', [MatchController::class, 'liveMatches']);

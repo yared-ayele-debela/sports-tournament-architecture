@@ -59,19 +59,19 @@ class HealthController extends Controller
     {
         try {
             $start = microtime(true);
-            
+
             // Test basic connection
             DB::connection()->getPdo();
-            
+
             // Test query execution
             DB::select('SELECT 1');
-            
+
             // Test table access
             $matchCount = DB::table('matches')->count();
             $eventCount = DB::table('match_events')->count();
-            
+
             $responseTime = (microtime(true) - $start) * 1000;
-            
+
             return [
                 'status' => 'healthy',
                 'response_time_ms' => round($responseTime, 2),
@@ -85,7 +85,7 @@ class HealthController extends Controller
             ];
         } catch (\Exception $e) {
             Log::error('Database health check failed', ['error' => $e->getMessage()]);
-            
+
             return [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
@@ -103,20 +103,20 @@ class HealthController extends Controller
     {
         try {
             $start = microtime(true);
-            
+
             // Test cache write
             $testKey = 'health_check_' . time();
             $testValue = 'test_value_' . time();
             Cache::put($testKey, $testValue, 60);
-            
+
             // Test cache read
             $retrieved = Cache::get($testKey);
-            
+
             // Clean up
             Cache::forget($testKey);
-            
+
             $responseTime = (microtime(true) - $start) * 1000;
-            
+
             return [
                 'status' => $retrieved === $testValue ? 'healthy' : 'unhealthy',
                 'response_time_ms' => round($responseTime, 2),
@@ -126,7 +126,7 @@ class HealthController extends Controller
             ];
         } catch (\Exception $e) {
             Log::error('Cache health check failed', ['error' => $e->getMessage()]);
-            
+
             return [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
@@ -142,14 +142,14 @@ class HealthController extends Controller
     protected function checkExternalServices(): array
     {
         $services = [];
-        
+
         // Check Auth Service dependency
         try {
             $authUrl = config('services.auth.url', 'http://localhost:8001');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($authUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
-            
+
             $services['auth_service'] = [
                 'status' => $response->status() === 200 ? 'healthy' : 'unhealthy',
                 'response_time_ms' => round($responseTime, 2),
@@ -163,14 +163,14 @@ class HealthController extends Controller
                 'url' => config('services.auth.url', 'http://localhost:8001'),
             ];
         }
-        
+
         // Check Tournament Service dependency
         try {
-            $tournamentUrl = config('services.tournament.url', 'http://localhost:8002');
+            $tournamentUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002'));
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($tournamentUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
-            
+
             $services['tournament_service'] = [
                 'status' => $response->status() === 200 ? 'healthy' : 'unhealthy',
                 'response_time_ms' => round($responseTime, 2),
@@ -181,17 +181,17 @@ class HealthController extends Controller
             $services['tournament_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.tournament.url', 'http://localhost:8002'),
+                'url' => config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002')),
             ];
         }
-        
+
         // Check Team Service dependency
         try {
             $teamUrl = config('services.team.url', 'http://localhost:8003');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($teamUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
-            
+
             $services['team_service'] = [
                 'status' => $response->status() === 200 ? 'healthy' : 'unhealthy',
                 'response_time_ms' => round($responseTime, 2),
@@ -205,7 +205,7 @@ class HealthController extends Controller
                 'url' => config('services.team.url', 'http://localhost:8003'),
             ];
         }
-        
+
         // Check Redis (if configured)
         try {
             $redisUrl = config('database.redis.default.url');
@@ -226,7 +226,7 @@ class HealthController extends Controller
                 'error' => $e->getMessage(),
             ];
         }
-        
+
         return [
             'status' => $this->getExternalServicesStatus($services),
             'services' => $services,
@@ -284,11 +284,11 @@ class HealthController extends Controller
         try {
             $logFile = storage_path('logs/laravel.log');
             $logSize = file_exists($logFile) ? filesize($logFile) : 0;
-            
+
             // Get database metrics
             $matchCount = DB::table('matches')->count();
             $eventCount = DB::table('match_events')->count();
-            
+
             return [
                 'status' => 'healthy',
                 'php_version' => PHP_VERSION,
@@ -322,7 +322,7 @@ class HealthController extends Controller
             $uptime = time() - $startTime;
             return $this->formatDuration($uptime);
         }
-        
+
         return 'unknown';
     }
 
@@ -332,15 +332,15 @@ class HealthController extends Controller
     protected function determineOverallStatus(array $checks): string
     {
         $statuses = array_column($checks, 'status');
-        
+
         if (in_array('unhealthy', $statuses)) {
             return 'unhealthy';
         }
-        
+
         if (in_array('degraded', $statuses)) {
             return 'degraded';
         }
-        
+
         return 'healthy';
     }
 
@@ -350,19 +350,19 @@ class HealthController extends Controller
     protected function getExternalServicesStatus(array $services): string
     {
         $statuses = array_column($services, 'status');
-        
+
         if (in_array('unhealthy', $statuses)) {
             return 'unhealthy';
         }
-        
+
         if (in_array('degraded', $statuses)) {
             return 'degraded';
         }
-        
+
         if (in_array('not_configured', $statuses)) {
             return 'degraded';
         }
-        
+
         return 'healthy';
     }
 
@@ -374,11 +374,11 @@ class HealthController extends Controller
         if ($memoryPercent > 90 || $diskPercent > 90 || ($loadAverage[0] ?? 0) > 10) {
             return 'unhealthy';
         }
-        
+
         if ($memoryPercent > 75 || $diskPercent > 75 || ($loadAverage[0] ?? 0) > 5) {
             return 'degraded';
         }
-        
+
         return 'healthy';
     }
 
@@ -389,7 +389,7 @@ class HealthController extends Controller
     {
         $limit = strtolower($limit);
         $multiplier = 1;
-        
+
         if (str_ends_with($limit, 'g')) {
             $multiplier = 1024 * 1024 * 1024;
         } elseif (str_ends_with($limit, 'm')) {
@@ -397,7 +397,7 @@ class HealthController extends Controller
         } elseif (str_ends_with($limit, 'k')) {
             $multiplier = 1024;
         }
-        
+
         return (int) ((int) $limit * $multiplier);
     }
 
@@ -410,9 +410,9 @@ class HealthController extends Controller
         $bytes = max($bytes, 0);
         $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
         $pow = min($pow, count($units) - 1);
-        
+
         $bytes /= (1 << (10 * $pow));
-        
+
         return round($bytes, 2) . ' ' . $units[$pow];
     }
 
@@ -425,13 +425,13 @@ class HealthController extends Controller
         $hours = floor(($seconds % 86400) / 3600);
         $minutes = floor(($seconds % 3600) / 60);
         $seconds = $seconds % 60;
-        
+
         $parts = [];
         if ($days > 0) $parts[] = "{$days}d";
         if ($hours > 0) $parts[] = "{$hours}h";
         if ($minutes > 0) $parts[] = "{$minutes}m";
         if ($seconds > 0 || empty($parts)) $parts[] = "{$seconds}s";
-        
+
         return implode(' ', $parts);
     }
 
@@ -444,7 +444,7 @@ class HealthController extends Controller
             $cores = shell_exec('nproc 2>/dev/null || echo 1');
             return (int) trim($cores);
         }
-        
+
         return 1;
     }
 }

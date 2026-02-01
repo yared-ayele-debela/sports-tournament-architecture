@@ -263,36 +263,62 @@ class EventPayloadBuilder
     /**
      * Build match deleted event payload
      *
-     * @param Match $match
+     * @param array|MatchGame $match Match data or MatchGame object
      * @param array $user
      * @return array
      */
-    public static function matchDeleted(MatchGame $match, array $user): array
+    public static function matchDeleted($match, array $user): array
+    {
+        if ($match instanceof MatchGame) {
+            $matchData = [
+                'id' => $match->id,
+                'tournament_id' => $match->tournament_id,
+                'home_team_id' => $match->home_team_id,
+                'away_team_id' => $match->away_team_id,
+                'match_date' => $match->match_date?->toISOString(),
+                'venue_id' => $match->venue_id,
+                'status' => $match->status,
+            ];
+        } else {
+            $matchData = $match;
+        }
+
+        return [
+            'match_id' => $matchData['id'] ?? null,
+            'tournament_id' => $matchData['tournament_id'] ?? null,
+            'home_team_id' => $matchData['home_team_id'] ?? null,
+            'away_team_id' => $matchData['away_team_id'] ?? null,
+            'deleted_by' => $user['id'] ?? null,
+            'deleted_by_name' => $user['name'] ?? null,
+            'deleted_at' => now()->toISOString(),
+            'original_data' => [
+                'scheduled_at' => $matchData['match_date'] ?? null,
+                'venue_id' => $matchData['venue_id'] ?? null,
+                'status' => $matchData['status'] ?? null,
+            ],
+        ];
+    }
+
+    /**
+     * Build match score updated event payload
+     *
+     * @param MatchGame $match
+     * @param array $oldScore ['home' => int, 'away' => int]
+     * @param array $newScore ['home' => int, 'away' => int]
+     * @return array
+     */
+    public static function matchScoreUpdated(MatchGame $match, array $oldScore, array $newScore): array
     {
         return [
             'match_id' => $match->id,
             'tournament_id' => $match->tournament_id,
             'home_team_id' => $match->home_team_id,
             'away_team_id' => $match->away_team_id,
-            'deleted_by' => $user['id'],
-            'deleted_by_name' => $user['name'] ?? null,
-            'deleted_at' => now()->toISOString(),
-            'original_data' => [
-                'scheduled_at' => $match->match_date?->toISOString(),
-                'venue_id' => $match->venue_id,
-                'status' => $match->status,
-                'match_type' => $match->match_type ?? 'regular'
-            ],
-            'teams' => [
-                'home' => [
-                    'id' => $match->home_team_id,
-                    'name' => $match->homeTeam?->name ?? null
-                ],
-                'away' => [
-                    'id' => $match->away_team_id,
-                    'name' => $match->awayTeam?->name ?? null
-                ]
-            ]
+            'old_score' => $oldScore,
+            'new_score' => $newScore,
+            'score_changed_at' => now()->toISOString(),
+            'status' => $match->status,
+            'current_minute' => $match->current_minute,
         ];
     }
 

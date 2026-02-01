@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Public\PublicMatchController;
+use App\Http\Controllers\Api\Public\PublicSearchController;
+use App\Http\Controllers\Api\Public\PublicApiDocumentationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -30,6 +32,33 @@ Route::prefix('public')->group(function () {
             Route::get('today', [PublicMatchController::class, 'today'])->name('public.matches.today');
             Route::get('upcoming', [PublicMatchController::class, 'upcoming'])->name('public.matches.upcoming');
         });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search Routes
+        |--------------------------------------------------------------------------
+        |
+        | Public search endpoints.
+        |
+        */
+
+        Route::prefix('search')->group(function () {
+            // Match search
+            Route::get('/matches', [PublicSearchController::class, 'searchMatches'])
+                ->name('public.search.matches');
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | API Documentation
+        |--------------------------------------------------------------------------
+        |
+        | Self-documenting API endpoint.
+        |
+        */
+
+        Route::get('/docs', [PublicApiDocumentationController::class, 'index'])
+            ->name('public.docs');
 
         // CORS preflight
         Route::options('{any}', function () {

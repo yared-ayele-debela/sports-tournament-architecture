@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\TokenValidationCache;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 class ValidateUserServiceToken
@@ -26,12 +26,12 @@ class ValidateUserServiceToken
             ], 401);
         }
 
-        // Validate token with auth service
+        // Validate token with caching
         try {
-            $response = Http::withToken($token)
-                ->get(config('services.auth.url', env('AUTH_SERVICE_URL', 'http://localhost:8001')) . '/api/auth/me');
+            $tokenCache = app(TokenValidationCache::class);
+            $userData = $tokenCache->validate($token);
 
-            if (!$response->successful()) {
+            if ($userData === null) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid token',
@@ -39,22 +39,12 @@ class ValidateUserServiceToken
                 ], 401);
             }
 
-            $responseData = $response->json();
-
-            if (!$responseData['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Token validation failed',
-                    'error' => 'Unauthorized'
-                ], 401);
-            }
-
             // Add user data to request for later use
             $request->merge([
-                'user' => $responseData['data']['user'] ?? $responseData['data'],
-                'user_id' => $responseData['data']['user']['id'] ?? $responseData['data']['id'],
-                'user_permissions' => $responseData['data']['permissions'] ?? [],
-                'user_roles' => $responseData['data']['roles'] ?? []
+                'user' => $userData['user'] ?? $userData,
+                'user_id' => $userData['user']['id'] ?? $userData['id'] ?? null,
+                'user_permissions' => $userData['permissions'] ?? [],
+                'user_roles' => $userData['roles'] ?? []
             ]);
 
             return $next($request);

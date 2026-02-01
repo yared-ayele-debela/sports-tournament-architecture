@@ -1,59 +1,424 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Team Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Team and Player Management Service for the Sports Tournament Architecture. This service handles team creation, player management, squad management, and provides team-related data for tournaments.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Team Management**: Complete CRUD operations for teams
+- **Player Management**: Complete CRUD operations for players
+- **Squad Management**: Manage team squads and player assignments
+- **Team Statistics**: Calculate and provide team statistics
+- **Tournament Integration**: Get teams by tournament
+- **Event-Driven**: Publishes and consumes events for integration with other services
+- **Cache Management**: Intelligent caching with automatic invalidation
+- **RESTful API**: Standardized JSON responses with consistent error handling
+- **Public API**: Public endpoints for team and player information
+- **Health Monitoring**: Health check endpoints for service monitoring
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Technology Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Framework**: Laravel 11
+- **Database**: MySQL/PostgreSQL (configurable)
+- **Queue**: Redis/RabbitMQ (for event publishing and consumption)
+- **Cache**: Redis
 
-## Learning Laravel
+## API Endpoints
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Base URL
+```
+http://localhost:8004/api/v1
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Public Endpoints (No Authentication Required)
 
-## Laravel Sponsors
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check endpoint |
+| GET | `/public/teams/{id}` | Get team profile |
+| GET | `/public/teams/{id}/overview` | Get team overview |
+| GET | `/public/teams/{id}/squad` | Get team squad/players |
+| GET | `/public/teams/{id}/matches` | Get team matches |
+| GET | `/public/teams/{id}/statistics` | Get team statistics |
+| GET | `/public/tournaments/{tournamentId}/teams` | Get teams by tournament |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Protected Endpoints (Requires Service Token)
 
-### Premium Partners
+#### Team Management
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/tournaments/{tournamentId}/teams` | Get teams by tournament |
+| GET | `/teams` | List all teams (with pagination and search) |
+| POST | `/teams` | Create a new team |
+| GET | `/teams/{id}` | Get team details |
+| PUT | `/teams/{id}` | Update team |
+| DELETE | `/teams/{id}` | Delete team |
+
+**Query Parameters (List endpoint):**
+- `per_page` (optional): Number of items per page (default: 15)
+- `search` (optional): Search by team name
+- `tournament_id` (optional): Filter by tournament ID
+
+**Request Body (Create/Update):**
+```json
+{
+    "name": "Team Name",
+    "short_name": "TNM",
+    "logo_url": "https://example.com/logo.png",
+    "founded_year": 2020,
+    "country": "Country Name",
+    "city": "City Name"
+}
+```
+
+#### Player Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/players` | List all players (with pagination and search) |
+| POST | `/players` | Create a new player |
+| GET | `/players/{id}` | Get player details |
+| PUT | `/players/{id}` | Update player |
+| DELETE | `/players/{id}` | Delete player |
+| GET | `/teams/{teamId}/players` | Get players by team |
+| GET | `/teams/{teamId}/players/{playerId}/validate` | Validate player belongs to team |
+
+**Query Parameters (List endpoint):**
+- `per_page` (optional): Number of items per page (default: 15)
+- `search` (optional): Search by player name
+- `team_id` (optional): Filter by team ID
+
+**Request Body (Create/Update):**
+```json
+{
+    "team_id": 1,
+    "name": "Player Name",
+    "position": "forward",
+    "jersey_number": 10,
+    "date_of_birth": "1995-01-15",
+    "nationality": "Country",
+    "height": 180,
+    "weight": 75
+}
+```
+
+**Player Positions:**
+- `goalkeeper`
+- `defender`
+- `midfielder`
+- `forward`
+
+## Response Format
+
+### Success Response
+```json
+{
+    "success": true,
+    "message": "Team created successfully",
+    "data": {
+        "id": 1,
+        "name": "Team Name",
+        "short_name": "TNM",
+        "logo_url": "https://example.com/logo.png",
+        "founded_year": 2020,
+        "country": "Country Name",
+        "city": "City Name",
+        "created_at": "2024-01-01T00:00:00.000000Z",
+        "updated_at": "2024-01-01T00:00:00.000000Z"
+    },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Error Response
+```json
+{
+    "success": false,
+    "message": "Validation failed",
+    "errors": {
+        "name": ["The name field is required."]
+    },
+    "error_code": "VALIDATION_ERROR",
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Paginated Response
+```json
+{
+    "success": true,
+    "message": "Teams retrieved successfully",
+    "data": [
+        // Array of teams
+    ],
+    "pagination": {
+        "current_page": 1,
+        "last_page": 5,
+        "per_page": 15,
+        "total": 75,
+        "from": 1,
+        "to": 15
+    },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Team Overview Response
+```json
+{
+    "success": true,
+    "message": "Team overview retrieved successfully",
+    "data": {
+        "id": 1,
+        "name": "Team Name",
+        "short_name": "TNM",
+        "logo_url": "https://example.com/logo.png",
+        "founded_year": 2020,
+        "country": "Country Name",
+        "city": "City Name",
+        "squad_size": 25,
+        "matches_played": 10,
+        "matches_won": 6,
+        "matches_drawn": 2,
+        "matches_lost": 2,
+        "total_goals": 20,
+        "players": [
+            // Array of players
+        ]
+    },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+## Setup Instructions
+
+### Prerequisites
+
+- PHP 8.2 or higher
+- Composer
+- MySQL/PostgreSQL
+- Redis (for queues and cache)
+
+### Installation
+
+1. **Clone and navigate to the service directory**
+```bash
+cd team-service
+```
+
+2. **Install dependencies**
+```bash
+composer install
+```
+
+3. **Copy environment file**
+```bash
+cp .env.example .env
+```
+
+4. **Generate application key**
+```bash
+php artisan key:generate
+```
+
+5. **Configure database in `.env`**
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=team_service
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+6. **Run migrations**
+```bash
+php artisan migrate
+```
+
+7. **Start the development server**
+```bash
+php artisan serve --port=8004
+```
+
+The service will be available at `http://localhost:8004`
+
+## Environment Variables
+
+Key environment variables to configure:
+
+```env
+APP_NAME="Team Service"
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost:8004
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=team_service
+DB_USERNAME=root
+DB_PASSWORD=
+
+QUEUE_CONNECTION=redis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+CACHE_DRIVER=redis
+
+# Service URLs (for inter-service communication)
+TOURNAMENT_SERVICE_URL=http://localhost:8002
+MATCH_SERVICE_URL=http://localhost:8003
+RESULTS_SERVICE_URL=http://localhost:8005
+```
+
+## Database Schema
+
+### Teams Table
+- `id`: Primary key
+- `name`: Team name
+- `short_name`: Team short name/abbreviation
+- `logo_url`: URL to team logo
+- `founded_year`: Year team was founded
+- `country`: Country name
+- `city`: City name
+- `created_at`, `updated_at`: Timestamps
+
+### Players Table
+- `id`: Primary key
+- `team_id`: Foreign key to teams
+- `name`: Player full name
+- `position`: Player position
+- `jersey_number`: Jersey number
+- `date_of_birth`: Date of birth
+- `nationality`: Player nationality
+- `height`: Height in centimeters
+- `weight`: Weight in kilograms
+- `created_at`, `updated_at`: Timestamps
+
+### Team Tournament Pivot Table
+- `team_id`: Foreign key to teams
+- `tournament_id`: Foreign key to tournaments
+- `created_at`, `updated_at`: Timestamps
+
+## Event Publishing
+
+The service publishes events to a message queue for other services:
+
+- `team.created`: When a new team is created
+- `team.updated`: When a team is updated
+- `team.deleted`: When a team is deleted
+- `player.created`: When a new player is created
+- `player.updated`: When a player is updated
+- `player.deleted`: When a player is deleted
+- `team.tournament.assigned`: When a team is assigned to a tournament
+- `team.tournament.removed`: When a team is removed from a tournament
+
+## Event Consumption
+
+The service consumes events from other services:
+
+- `tournament.*`: Tournament-related events
+- `match.*`: Match-related events for statistics
+
+## Usage Examples
+
+### Create a Team
+```bash
+curl -X POST http://localhost:8004/api/v1/teams \
+  -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Team Name",
+    "short_name": "TNM",
+    "logo_url": "https://example.com/logo.png",
+    "founded_year": 2020,
+    "country": "Country Name",
+    "city": "City Name"
+  }'
+```
+
+### Get Team Profile (Public)
+```bash
+curl -X GET http://localhost:8004/api/v1/public/teams/1
+```
+
+### Create a Player
+```bash
+curl -X POST http://localhost:8004/api/v1/players \
+  -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "team_id": 1,
+    "name": "Player Name",
+    "position": "forward",
+    "jersey_number": 10,
+    "date_of_birth": "1995-01-15",
+    "nationality": "Country",
+    "height": 180,
+    "weight": 75
+  }'
+```
+
+### Get Team Squad
+```bash
+curl -X GET http://localhost:8004/api/v1/public/teams/1/squad
+```
+
+### Get Teams by Tournament
+```bash
+curl -X GET http://localhost:8004/api/v1/public/tournaments/1/teams
+```
+
+### List Teams with Search
+```bash
+curl -X GET "http://localhost:8004/api/v1/teams?per_page=10&search=team" \
+  -H "Authorization: Bearer YOUR_SERVICE_TOKEN"
+```
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `VALIDATION_ERROR` | Request validation failed |
+| `RESOURCE_NOT_FOUND` | Requested resource not found |
+| `UNAUTHORIZED` | Authentication required |
+| `TEAM_NOT_FOUND` | Team not found |
+| `PLAYER_NOT_FOUND` | Player not found |
+| `TOURNAMENT_NOT_FOUND` | Tournament not found |
+| `DUPLICATE_JERSEY_NUMBER` | Jersey number already exists for team |
+| `INTERNAL_SERVER_ERROR` | Server error occurred |
+
+## Development
+
+### Running Tests
+```bash
+php artisan test
+```
+
+### Code Style
+Follow PSR-12 coding standards.
+
+### Queue Workers
+If using queues, start the worker:
+```bash
+php artisan queue:work
+```
+
+Or use supervisor for production:
+```bash
+supervisorctl start team-service-queue:*
+```
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. Follow the existing code structure
+2. Write tests for new features
+3. Update documentation
+4. Follow PSR-12 coding standards
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This service is part of the Sports Tournament Architecture project.

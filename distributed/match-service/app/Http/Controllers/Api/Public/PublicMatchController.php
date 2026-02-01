@@ -380,23 +380,34 @@ class PublicMatchController extends PublicApiController
             ->get();
 
         $formattedEvents = [];
+        // Cache team players to avoid multiple API calls for the same team
+        $teamPlayersCache = [];
+
         foreach ($events as $event) {
             $team = $this->teamServiceClient->getPublicTeam($event->team_id);
             $player = null;
-            if ($event->player_id) {
+
+            if ($event->player_id && $event->team_id) {
                 try {
-                    $playerResponse = $this->teamServiceClient->getPlayer($event->player_id);
-                    // Handle both public API format and internal API format
-                    if (isset($playerResponse['data'])) {
-                        $player = $playerResponse['data'];
-                    } elseif (isset($playerResponse['success']) && isset($playerResponse['data'])) {
-                        $player = $playerResponse['data'];
-                    } elseif (is_array($playerResponse) && isset($playerResponse['id'])) {
-                        $player = $playerResponse;
+                    // Get team players if not already cached
+                    if (!isset($teamPlayersCache[$event->team_id])) {
+                        $teamPlayersCache[$event->team_id] = $this->teamServiceClient->getPublicTeamPlayers($event->team_id);
+                    }
+
+                    // Find player in team's players list
+                    $teamPlayers = $teamPlayersCache[$event->team_id];
+                    if ($teamPlayers && is_array($teamPlayers)) {
+                        foreach ($teamPlayers as $teamPlayer) {
+                            if (isset($teamPlayer['id']) && $teamPlayer['id'] == $event->player_id) {
+                                $player = $teamPlayer;
+                                break;
+                            }
+                        }
                     }
                 } catch (\Exception $e) {
                     Log::warning('Failed to fetch player for match event', [
                         'player_id' => $event->player_id,
+                        'team_id' => $event->team_id,
                         'error' => $e->getMessage(),
                     ]);
                 }

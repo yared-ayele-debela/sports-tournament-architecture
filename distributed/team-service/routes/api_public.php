@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Public\PublicTeamController;
+use App\Http\Controllers\Api\Public\PublicSearchController;
+use App\Http\Controllers\Api\Public\PublicApiDocumentationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -53,6 +55,33 @@ Route::prefix('public')->group(function () {
                 ->name('public.teams.matches')
                 ->where('id', '[0-9]+');
         });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search Routes
+        |--------------------------------------------------------------------------
+        |
+        | Public search endpoints.
+        |
+        */
+
+        Route::prefix('search')->group(function () {
+            // Team search
+            Route::get('/teams', [PublicSearchController::class, 'searchTeams'])
+                ->name('public.search.teams');
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | API Documentation
+        |--------------------------------------------------------------------------
+        |
+        | Self-documenting API endpoint.
+        |
+        */
+
+        Route::get('/docs', [PublicApiDocumentationController::class, 'index'])
+            ->name('public.docs');
 
         /*
         |--------------------------------------------------------------------------

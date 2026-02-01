@@ -31,14 +31,23 @@ Route::get('health', function () {
     ]);
 });
 
-// Public routes for basic team information
+/*
+|--------------------------------------------------------------------------
+| Public API Routes (No Authentication Required)
+|--------------------------------------------------------------------------
+|
+| Public endpoints for team and player information.
+| These routes are accessible without authentication and include caching.
+|
+*/
+
+// Legacy public routes (for backward compatibility)
 Route::get('public/teams/{id}', [TeamController::class, 'show']);
 Route::get('public/teams/{id}/overview', [TeamController::class, 'overview']);
 Route::get('public/teams/{id}/squad', [TeamController::class, 'squad']);
 Route::get('public/teams/{id}/matches', [TeamController::class, 'matches']);
 Route::get('public/teams/{id}/statistics', [TeamController::class, 'statistics']);
 Route::get('/public/tournaments/{tournamentId}/teams', [TeamController::class, 'public_index']);
-
 
 
 Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {

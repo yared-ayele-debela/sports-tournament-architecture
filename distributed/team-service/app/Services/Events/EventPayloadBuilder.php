@@ -8,7 +8,7 @@ use Carbon\Carbon;
 
 /**
  * Event Payload Builder for Team Service
- * 
+ *
  * Helper class to build standardized event payloads
  */
 class EventPayloadBuilder
@@ -48,7 +48,7 @@ class EventPayloadBuilder
     public static function teamUpdated(Team $team, array $oldData): array
     {
         $newData = $team->toArray();
-        
+
         return [
             'team_id' => $team->id,
             'name' => $team->name,
@@ -98,12 +98,10 @@ class EventPayloadBuilder
     {
         return [
             'player_id' => $player->id,
-            'name' => $player->name,
-            'email' => $player->email,
+            'full_name' => $player->full_name,
             'position' => $player->position,
             'jersey_number' => $player->jersey_number,
             'team_id' => $player->team_id,
-            'status' => $player->status,
             'created_by' => $user['id'],
             'created_by_name' => $user['name'] ?? null,
             'created_at' => $player->created_at->toISOString(),
@@ -123,21 +121,52 @@ class EventPayloadBuilder
      */
     public static function playerUpdated(Player $player, array $oldData): array
     {
-        $newData = $player->toArray();
-        
+        // Get only the fillable fields to avoid relationship issues
+        $newData = [
+            'id' => $player->id,
+            'team_id' => $player->team_id,
+            'full_name' => $player->full_name,
+            'position' => $player->position,
+            'jersey_number' => $player->jersey_number,
+            'created_at' => $player->created_at?->toISOString(),
+            'updated_at' => $player->updated_at?->toISOString(),
+        ];
+
+        // Normalize old data to match structure
+        $normalizedOldData = [
+            'id' => $oldData['id'] ?? null,
+            'team_id' => $oldData['team_id'] ?? null,
+            'full_name' => $oldData['full_name'] ?? null,
+            'position' => $oldData['position'] ?? null,
+            'jersey_number' => $oldData['jersey_number'] ?? null,
+            'created_at' => isset($oldData['created_at']) ? (is_string($oldData['created_at']) ? $oldData['created_at'] : $oldData['created_at']->toISOString()) : null,
+            'updated_at' => isset($oldData['updated_at']) ? (is_string($oldData['updated_at']) ? $oldData['updated_at'] : $oldData['updated_at']->toISOString()) : null,
+        ];
+
+        // Find changed fields
+        $updatedFields = [];
+        foreach ($newData as $key => $value) {
+            if ($key === 'updated_at') {
+                continue; // Skip updated_at as it always changes
+            }
+            if (($normalizedOldData[$key] ?? null) !== $value) {
+                $updatedFields[] = $key;
+            }
+        }
+
         return [
             'player_id' => $player->id,
-            'name' => $player->name,
-            'updated_fields' => array_keys(array_diff_assoc($newData, $oldData)),
+            'full_name' => $player->full_name,
+            'updated_fields' => $updatedFields,
             'changes' => [
-                'old' => $oldData,
+                'old' => $normalizedOldData,
                 'new' => $newData
             ],
             'updated_at' => now()->toISOString(),
             'team_id' => $player->team_id,
+            'tournament_id' => $player->team->tournament_id ?? null,
             'position' => $player->position,
             'jersey_number' => $player->jersey_number,
-            'status' => $player->status,
         ];
     }
 
@@ -152,8 +181,7 @@ class EventPayloadBuilder
     {
         return [
             'player_id' => $player->id,
-            'name' => $player->name,
-            'email' => $player->email,
+            'full_name' => $player->full_name,
             'position' => $player->position,
             'jersey_number' => $player->jersey_number,
             'team_id' => $player->team_id,
@@ -161,7 +189,6 @@ class EventPayloadBuilder
             'deleted_by_name' => $user['name'] ?? null,
             'deleted_at' => now()->toISOString(),
             'original_data' => [
-                'status' => $player->status,
                 'team_name' => $player->team?->name ?? null,
             ],
         ];
@@ -180,7 +207,7 @@ class EventPayloadBuilder
     {
         return [
             'player_id' => $player->id,
-            'name' => $player->name,
+            'full_name' => $player->full_name,
             'old_team_id' => $oldTeamId,
             'new_team_id' => $newTeamId,
             'transferred_by' => $user['id'],
@@ -203,14 +230,14 @@ class EventPayloadBuilder
     {
         return [
             'player_id' => $player->id,
-            'name' => $player->name,
+            'full_name' => $player->full_name,
             'old_status' => $oldStatus,
-            'new_status' => $player->status,
+            'new_status' => $player->status ?? null,
             'status_changed_at' => now()->toISOString(),
             'team_id' => $player->team_id,
             'position' => $player->position,
             'jersey_number' => $player->jersey_number,
-            'reason' => self::getStatusChangeReason($oldStatus, $player->status),
+            'reason' => self::getStatusChangeReason($oldStatus, $player->status ?? ''),
         ];
     }
 

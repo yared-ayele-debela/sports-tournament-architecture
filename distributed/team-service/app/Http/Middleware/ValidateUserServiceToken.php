@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\TokenValidationCache;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\Response;
 
 class ValidateUserServiceToken
@@ -26,12 +26,12 @@ class ValidateUserServiceToken
             ], 401);
         }
 
-        // Validate token with auth service
+        // Validate token with caching
         try {
-            $response = Http::withToken($token)
-                ->get(config('services.auth.url') . '/api/auth/me');
+            $tokenCache = app(TokenValidationCache::class);
+            $userData = $tokenCache->validate($token);
 
-            if ($response->status() !== 200) {
+            if ($userData === null) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid token',
@@ -39,13 +39,11 @@ class ValidateUserServiceToken
                 ], 401);
             }
 
-            $responseData = $response->json();
-
             // Add user data to request for later use
             $request->merge([
-                'authenticated_user' => $responseData['data']['user'] ?? null,
-                'user_permissions' => $responseData['data']['permissions'] ?? [],
-                'user_roles' => $responseData['data']['roles'] ?? []
+                'authenticated_user' => $userData['user'] ?? null,
+                'user_permissions' => $userData['permissions'] ?? [],
+                'user_roles' => $userData['roles'] ?? []
             ]);
 
             return $next($request);

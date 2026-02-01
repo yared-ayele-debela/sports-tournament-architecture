@@ -2,6 +2,9 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Public\PublicTournamentController;
+use App\Http\Controllers\Api\Public\PublicSearchController;
+use App\Http\Controllers\Api\Public\PublicMetaSearchController;
+use App\Http\Controllers\Api\Public\PublicApiDocumentationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -82,7 +85,43 @@ Route::prefix('public')->group(function () {
             // List all venues
             Route::get('/', [PublicTournamentController::class, 'venues'])
                 ->name('public.venues.index');
+
+            // Get venue details
+            Route::get('{venue}', [PublicTournamentController::class, 'showVenue'])
+                ->name('public.venues.show')
+                ->where('venue', '[0-9]+');
         });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Search Routes
+        |--------------------------------------------------------------------------
+        |
+        | Public search endpoints.
+        |
+        */
+
+        Route::prefix('search')->group(function () {
+            // Meta search (aggregates all services)
+            Route::get('/', [PublicMetaSearchController::class, 'search'])
+                ->name('public.search.all');
+
+            // Tournament search
+            Route::get('/tournaments', [PublicSearchController::class, 'searchTournaments'])
+                ->name('public.search.tournaments');
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | API Documentation
+        |--------------------------------------------------------------------------
+        |
+        | Self-documenting API endpoint.
+        |
+        */
+
+        Route::get('/docs', [PublicApiDocumentationController::class, 'index'])
+            ->name('public.docs');
 
         /*
         |--------------------------------------------------------------------------

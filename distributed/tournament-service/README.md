@@ -1,59 +1,523 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Tournament Service
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Tournament Management Service for the Sports Tournament Architecture. This service handles tournament creation, sports management, venue management, and provides comprehensive tournament data.
 
-## About Laravel
+## Features
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- **Tournament Management**: Complete CRUD operations for tournaments
+- **Sports Management**: Manage different sports types
+- **Venue Management**: Manage tournament venues
+- **Tournament Settings**: Configure tournament-specific settings
+- **Status Management**: Update tournament status (draft, published, ongoing, completed)
+- **Tournament Overview**: Comprehensive tournament data aggregation
+- **Event-Driven**: Publishes events for integration with other services
+- **Cache Management**: Intelligent caching with automatic invalidation
+- **RESTful API**: Standardized JSON responses with consistent error handling
+- **Public API**: Public endpoints for tournament information
+- **Health Monitoring**: Health check endpoints for service monitoring
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Technology Stack
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- **Framework**: Laravel 11
+- **Authentication**: Laravel Passport (OAuth2) for protected endpoints
+- **Database**: MySQL/PostgreSQL (configurable)
+- **Queue**: Redis/RabbitMQ (for event publishing)
+- **Cache**: Redis
 
-## Learning Laravel
+## API Endpoints
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+### Base URL
+```
+http://localhost:8002/api
+```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Public Endpoints (No Authentication Required)
 
-## Laravel Sponsors
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/health` | Health check endpoint |
+| GET | `/health/info` | Service information |
+| GET | `/tournaments` | List all tournaments |
+| GET | `/tournaments/{id}` | Get tournament details |
+| GET | `/tournaments/{id}/matches` | Get tournament matches |
+| GET | `/tournaments/{id}/teams` | Get tournament teams |
+| GET | `/tournaments/{id}/overview` | Get tournament overview |
+| GET | `/tournaments/{id}/statistics` | Get tournament statistics |
+| GET | `/tournaments/{id}/standings` | Get tournament standings |
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+### Protected Endpoints (Requires Bearer Token)
 
-### Premium Partners
+#### Sports Management
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/sports` | List all sports |
+| POST | `/sports` | Create a new sport |
+| GET | `/sports/{id}` | Get sport details |
+| PUT | `/sports/{id}` | Update sport |
+| DELETE | `/sports/{id}` | Delete sport |
+
+**Request Body (Create/Update):**
+```json
+{
+    "name": "Football",
+    "description": "Association football",
+    "min_players": 11,
+    "max_players": 11
+}
+```
+
+#### Tournament Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/tournaments` | Create a new tournament |
+| PUT | `/tournaments/{id}` | Update tournament |
+| DELETE | `/tournaments/{id}` | Delete tournament |
+| PATCH | `/tournaments/{id}/status` | Update tournament status |
+| GET | `/tournaments/{id}/validate` | Validate tournament existence |
+
+**Query Parameters (List endpoint):**
+- `per_page` (optional): Number of items per page (default: 15)
+- `search` (optional): Search by tournament name
+- `sport_id` (optional): Filter by sport ID
+- `status` (optional): Filter by status
+
+**Request Body (Create/Update):**
+```json
+{
+    "name": "Premier League 2024",
+    "sport_id": 1,
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31",
+    "format": "league",
+    "description": "Annual premier league tournament"
+}
+```
+
+**Request Body (Update Status):**
+```json
+{
+    "status": "published"
+}
+```
+
+**Tournament Statuses:**
+- `draft`: Tournament is being created
+- `published`: Tournament is published and visible
+- `ongoing`: Tournament is currently active
+- `completed`: Tournament has finished
+- `cancelled`: Tournament was cancelled
+
+**Tournament Formats:**
+- `league`: Round-robin league format
+- `knockout`: Single or double elimination
+- `group_stage`: Group stage followed by knockout
+- `round_robin`: Round-robin format
+
+#### Tournament Settings
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/tournaments/{id}/settings` | Get tournament settings |
+| POST | `/tournaments/{id}/settings` | Create/update tournament settings |
+
+**Request Body (Create/Update Settings):**
+```json
+{
+    "points_per_win": 3,
+    "points_per_draw": 1,
+    "points_per_loss": 0,
+    "max_teams": 20,
+    "min_teams": 2,
+    "allow_draws": true,
+    "extra_time_enabled": false,
+    "penalty_shootout_enabled": false
+}
+```
+
+#### Venue Management
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/venues` | List all venues |
+| POST | `/venues` | Create a new venue |
+| GET | `/venues/{id}` | Get venue details |
+| PUT | `/venues/{id}` | Update venue |
+| DELETE | `/venues/{id}` | Delete venue |
+
+**Request Body (Create/Update):**
+```json
+{
+    "name": "Stadium Name",
+    "address": "123 Stadium Street",
+    "city": "City Name",
+    "country": "Country Name",
+    "capacity": 50000,
+    "surface_type": "grass"
+}
+```
+
+## Response Format
+
+### Success Response
+```json
+{
+    "success": true,
+    "message": "Tournament created successfully",
+    "data": {
+        "id": 1,
+        "name": "Premier League 2024",
+        "sport_id": 1,
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "format": "league",
+        "status": "draft",
+        "created_at": "2024-01-01T00:00:00.000000Z",
+        "updated_at": "2024-01-01T00:00:00.000000Z"
+    },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Error Response
+```json
+{
+    "success": false,
+    "message": "Validation failed",
+    "errors": {
+        "name": ["The name field is required."]
+    },
+    "error_code": "VALIDATION_ERROR",
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Paginated Response
+```json
+{
+    "success": true,
+    "message": "Tournaments retrieved successfully",
+    "data": [
+        // Array of tournaments
+    ],
+    "pagination": {
+        "current_page": 1,
+        "last_page": 5,
+        "per_page": 15,
+        "total": 75,
+        "from": 1,
+        "to": 15
+    },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Tournament Overview Response
+```json
+{
+    "success": true,
+    "message": "Tournament overview retrieved successfully",
+    "data": {
+        "id": 1,
+        "name": "Premier League 2024",
+        "sport": {
+            "id": 1,
+            "name": "Football"
+        },
+        "start_date": "2024-01-01",
+        "end_date": "2024-12-31",
+        "format": "league",
+        "status": "ongoing",
+        "teams_count": 20,
+        "matches_count": 190,
+        "completed_matches": 100,
+        "upcoming_matches": 90,
+        "standings": [
+            // Standings data
+        ],
+        "top_scorers": [
+            // Top scorers data
+        ]
+    },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+## Setup Instructions
+
+### Prerequisites
+
+- PHP 8.2 or higher
+- Composer
+- MySQL/PostgreSQL
+- Redis (for queues and cache)
+
+### Installation
+
+1. **Clone and navigate to the service directory**
+```bash
+cd tournament-service
+```
+
+2. **Install dependencies**
+```bash
+composer install
+```
+
+3. **Copy environment file**
+```bash
+cp .env.example .env
+```
+
+4. **Generate application key**
+```bash
+php artisan key:generate
+```
+
+5. **Configure database in `.env`**
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=tournament_service
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+6. **Run migrations**
+```bash
+php artisan migrate
+```
+
+7. **Install Passport (for authentication)**
+```bash
+php artisan passport:install
+```
+
+8. **Start the development server**
+```bash
+php artisan serve --port=8002
+```
+
+The service will be available at `http://localhost:8002`
+
+## Environment Variables
+
+Key environment variables to configure:
+
+```env
+APP_NAME="Tournament Service"
+APP_ENV=local
+APP_KEY=
+APP_DEBUG=true
+APP_URL=http://localhost:8002
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=tournament_service
+DB_USERNAME=root
+DB_PASSWORD=
+
+QUEUE_CONNECTION=redis
+REDIS_HOST=127.0.0.1
+REDIS_PASSWORD=null
+REDIS_PORT=6379
+
+CACHE_DRIVER=redis
+
+# Passport Configuration
+PASSPORT_CLIENT_ID=
+PASSPORT_CLIENT_SECRET=
+
+# Service URLs (for inter-service communication)
+AUTH_SERVICE_URL=http://localhost:8000
+MATCH_SERVICE_URL=http://localhost:8003
+TEAM_SERVICE_URL=http://localhost:8004
+RESULTS_SERVICE_URL=http://localhost:8005
+```
+
+## Database Schema
+
+### Sports Table
+- `id`: Primary key
+- `name`: Sport name
+- `description`: Sport description
+- `min_players`: Minimum players required
+- `max_players`: Maximum players allowed
+- `created_at`, `updated_at`: Timestamps
+
+### Tournaments Table
+- `id`: Primary key
+- `name`: Tournament name
+- `sport_id`: Foreign key to sports
+- `start_date`: Tournament start date
+- `end_date`: Tournament end date
+- `format`: Tournament format (league, knockout, etc.)
+- `status`: Tournament status
+- `description`: Tournament description
+- `created_at`, `updated_at`: Timestamps
+
+### Tournament Settings Table
+- `id`: Primary key
+- `tournament_id`: Foreign key to tournaments
+- `points_per_win`: Points awarded for a win
+- `points_per_draw`: Points awarded for a draw
+- `points_per_loss`: Points awarded for a loss
+- `max_teams`: Maximum number of teams
+- `min_teams`: Minimum number of teams
+- `allow_draws`: Whether draws are allowed
+- `extra_time_enabled`: Whether extra time is enabled
+- `penalty_shootout_enabled`: Whether penalty shootouts are enabled
+- Additional settings fields
+- `created_at`, `updated_at`: Timestamps
+
+### Venues Table
+- `id`: Primary key
+- `name`: Venue name
+- `address`: Venue address
+- `city`: City name
+- `country`: Country name
+- `capacity`: Venue capacity
+- `surface_type`: Surface type (grass, artificial, etc.)
+- `created_at`, `updated_at`: Timestamps
+
+## Event Publishing
+
+The service publishes events to a message queue for other services:
+
+- `tournament.created`: When a new tournament is created
+- `tournament.updated`: When a tournament is updated
+- `tournament.status.changed`: When tournament status changes
+- `tournament.deleted`: When a tournament is deleted
+- `sport.created`: When a new sport is created
+- `sport.updated`: When a sport is updated
+- `venue.created`: When a new venue is created
+- `venue.updated`: When a venue is updated
+
+## Usage Examples
+
+### Create a Tournament
+```bash
+curl -X POST http://localhost:8002/api/tournaments \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Premier League 2024",
+    "sport_id": 1,
+    "start_date": "2024-01-01",
+    "end_date": "2024-12-31",
+    "format": "league",
+    "description": "Annual premier league tournament"
+  }'
+```
+
+### Get Tournament Details (Public)
+```bash
+curl -X GET http://localhost:8002/api/tournaments/1
+```
+
+### Get Tournament Overview
+```bash
+curl -X GET http://localhost:8002/api/tournaments/1/overview
+```
+
+### Create a Sport
+```bash
+curl -X POST http://localhost:8002/api/sports \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Football",
+    "description": "Association football",
+    "min_players": 11,
+    "max_players": 11
+  }'
+```
+
+### Create a Venue
+```bash
+curl -X POST http://localhost:8002/api/venues \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Stadium Name",
+    "address": "123 Stadium Street",
+    "city": "City Name",
+    "country": "Country Name",
+    "capacity": 50000,
+    "surface_type": "grass"
+  }'
+```
+
+### Update Tournament Status
+```bash
+curl -X PATCH http://localhost:8002/api/tournaments/1/status \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "published"
+  }'
+```
+
+### Configure Tournament Settings
+```bash
+curl -X POST http://localhost:8002/api/tournaments/1/settings \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "points_per_win": 3,
+    "points_per_draw": 1,
+    "points_per_loss": 0,
+    "max_teams": 20,
+    "min_teams": 2,
+    "allow_draws": true
+  }'
+```
+
+## Error Codes
+
+| Code | Description |
+|------|-------------|
+| `VALIDATION_ERROR` | Request validation failed |
+| `RESOURCE_NOT_FOUND` | Requested resource not found |
+| `UNAUTHORIZED` | Authentication required |
+| `FORBIDDEN` | Insufficient permissions |
+| `SPORT_NOT_FOUND` | Sport not found |
+| `TOURNAMENT_NOT_FOUND` | Tournament not found |
+| `VENUE_NOT_FOUND` | Venue not found |
+| `INVALID_STATUS` | Invalid tournament status |
+| `INTERNAL_SERVER_ERROR` | Server error occurred |
+
+## Development
+
+### Running Tests
+```bash
+php artisan test
+```
+
+### Code Style
+Follow PSR-12 coding standards.
+
+### Queue Workers
+If using queues, start the worker:
+```bash
+php artisan queue:work
+```
+
+Or use supervisor for production:
+```bash
+supervisorctl start tournament-service-queue:*
+```
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+1. Follow the existing code structure
+2. Write tests for new features
+3. Update documentation
+4. Follow PSR-12 coding standards
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This service is part of the Sports Tournament Architecture project.

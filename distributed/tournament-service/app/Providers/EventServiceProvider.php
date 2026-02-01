@@ -4,12 +4,11 @@ namespace App\Providers;
 
 use App\Observers\TournamentObserver;
 use App\Models\Tournament;
-use App\Services\Events\EventPublisher;
 use Illuminate\Support\ServiceProvider;
 
 /**
  * Event Service Provider
- * 
+ *
  * Registers event-related services and model observers
  */
 class EventServiceProvider extends ServiceProvider
@@ -21,15 +20,8 @@ class EventServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // Register EventPublisher as singleton
-        $this->app->singleton(EventPublisher::class, function ($app) {
-            return new EventPublisher();
-        });
-
-        // Register EventPayloadBuilder as singleton (optional)
-        $this->app->singleton(\App\Services\Events\EventPayloadBuilder::class, function ($app) {
-            return new \App\Services\Events\EventPayloadBuilder();
-        });
+        // Event-related services registration removed
+        // QueuePublisher is registered in AppServiceProvider
     }
 
     /**
@@ -54,9 +46,6 @@ class EventServiceProvider extends ServiceProvider
      */
     public function provides(): array
     {
-        return [
-            EventPublisher::class,
-            \App\Services\Events\EventPayloadBuilder::class,
-        ];
+        return [];
     }
 }

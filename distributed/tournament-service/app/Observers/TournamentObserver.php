@@ -3,22 +3,22 @@
 namespace App\Observers;
 
 use App\Models\Tournament;
-use App\Services\Events\EventPublisher;
-use App\Services\Events\EventPayloadBuilder;
+use App\Services\Queue\QueuePublisher;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
 /**
  * Tournament Model Observer
- * 
+ *
  * Automatically publishes events for tournament model changes
  */
 class TournamentObserver
 {
-    protected EventPublisher $eventPublisher;
+    protected QueuePublisher $queuePublisher;
 
-    public function __construct(EventPublisher $eventPublisher)
+    public function __construct(QueuePublisher $queuePublisher)
     {
-        $this->eventPublisher = $eventPublisher;
+        $this->queuePublisher = $queuePublisher;
     }
 
     /**
@@ -32,15 +32,21 @@ class TournamentObserver
         try {
             // Get the user who created this tournament
             $user = $this->getAuthenticatedUser();
-            
-            if ($user) {
-                $payload = EventPayloadBuilder::tournamentCreated(
-                    $tournament->load(['sport', 'settings']),
-                    $user
-                );
 
-                $this->eventPublisher->publish('sports.tournament.created', $payload);
-                
+            if ($user) {
+                // Dispatch to queue (default priority)
+                $this->queuePublisher->dispatchNormal('events', [
+                    'tournament_id' => $tournament->id,
+                    'name' => $tournament->name,
+                    'sport_id' => $tournament->sport_id,
+                    'location' => $tournament->location,
+                    'start_date' => $tournament->start_date?->toIso8601String(),
+                    'end_date' => $tournament->end_date?->toIso8601String(),
+                    'status' => $tournament->status,
+                    'created_by' => $user['id'] ?? null,
+                    'created_at' => now()->toIso8601String(),
+                ], 'tournament.created');
+
                 Log::info('Tournament created event published via observer', [
                     'tournament_id' => $tournament->id,
                     'event_source' => 'observer'
@@ -66,14 +72,17 @@ class TournamentObserver
             // Check if status changed specifically
             if ($tournament->wasChanged('status')) {
                 $oldStatus = $tournament->getOriginal('status');
-                
-                $payload = EventPayloadBuilder::tournamentStatusChanged(
-                    $tournament->load(['sport', 'settings']),
-                    $oldStatus
-                );
 
-                $this->eventPublisher->publish('sports.tournament.status.changed', $payload);
-                
+                // Dispatch to queue (high priority - critical)
+                $this->queuePublisher->dispatchHigh('events', [
+                    'tournament_id' => $tournament->id,
+                    'old_status' => $oldStatus,
+                    'new_status' => $tournament->status,
+                    'name' => $tournament->name,
+                    'sport_id' => $tournament->sport_id,
+                    'changed_at' => now()->toIso8601String(),
+                ], 'tournament.status.changed');
+
                 Log::info('Tournament status changed event published via observer', [
                     'tournament_id' => $tournament->id,
                     'old_status' => $oldStatus,
@@ -83,13 +92,21 @@ class TournamentObserver
             } else {
                 // General update event
                 $oldData = $tournament->getOriginal();
-                $payload = EventPayloadBuilder::tournamentUpdated(
-                    $tournament->load(['sport', 'settings']),
-                    $oldData
-                );
 
-                $this->eventPublisher->publish('sports.tournament.updated', $payload);
-                
+                // Dispatch to queue (default priority)
+                $this->queuePublisher->dispatchNormal('events', [
+                    'tournament_id' => $tournament->id,
+                    'name' => $tournament->name,
+                    'sport_id' => $tournament->sport_id,
+                    'location' => $tournament->location,
+                    'start_date' => $tournament->start_date?->toIso8601String(),
+                    'end_date' => $tournament->end_date?->toIso8601String(),
+                    'status' => $tournament->status,
+                    'old_data' => $oldData,
+                    'updated_fields' => array_keys($tournament->getChanges()),
+                    'updated_at' => now()->toIso8601String(),
+                ], 'tournament.updated');
+
                 Log::info('Tournament updated event published via observer', [
                     'tournament_id' => $tournament->id,
                     'changed_fields' => array_keys($tournament->getChanges()),
@@ -112,25 +129,8 @@ class TournamentObserver
      */
     public function deleted(Tournament $tournament): void
     {
-        try {
-            $user = $this->getAuthenticatedUser();
-            
-            if ($user) {
-                $payload = EventPayloadBuilder::tournamentDeleted($tournament, $user);
-
-                $this->eventPublisher->publish('sports.tournament.deleted', $payload);
-                
-                Log::info('Tournament deleted event published via observer', [
-                    'tournament_id' => $tournament->id,
-                    'event_source' => 'observer'
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::warning('Failed to publish tournament deleted event via observer', [
-                'tournament_id' => $tournament->id,
-                'error' => $e->getMessage()
-            ]);
-        }
+        // Tournament deletion events can be handled via queue if needed
+        // Currently not implemented as tournament-service only publishes creation/update events
     }
 
     /**
@@ -141,28 +141,8 @@ class TournamentObserver
      */
     public function restored(Tournament $tournament): void
     {
-        try {
-            $user = $this->getAuthenticatedUser();
-            
-            if ($user) {
-                $payload = array_merge(
-                    EventPayloadBuilder::tournamentCreated($tournament, $user),
-                    ['restored' => true, 'restored_at' => now()->toISOString()]
-                );
-
-                $this->eventPublisher->publish('sports.tournament.restored', $payload);
-                
-                Log::info('Tournament restored event published via observer', [
-                    'tournament_id' => $tournament->id,
-                    'event_source' => 'observer'
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::warning('Failed to publish tournament restored event via observer', [
-                'tournament_id' => $tournament->id,
-                'error' => $e->getMessage()
-            ]);
-        }
+        // Tournament restoration events can be handled via queue if needed
+        // Currently not implemented as tournament-service only publishes creation/update events
     }
 
     /**
@@ -173,28 +153,8 @@ class TournamentObserver
      */
     public function forceDeleted(Tournament $tournament): void
     {
-        try {
-            $user = $this->getAuthenticatedUser();
-            
-            if ($user) {
-                $payload = array_merge(
-                    EventPayloadBuilder::tournamentDeleted($tournament, $user),
-                    ['force_deleted' => true, 'force_deleted_at' => now()->toISOString()]
-                );
-
-                $this->eventPublisher->publish('sports.tournament.force.deleted', $payload);
-                
-                Log::info('Tournament force deleted event published via observer', [
-                    'tournament_id' => $tournament->id,
-                    'event_source' => 'observer'
-                ]);
-            }
-        } catch (\Exception $e) {
-            Log::warning('Failed to publish tournament force deleted event via observer', [
-                'tournament_id' => $tournament->id,
-                'error' => $e->getMessage()
-            ]);
-        }
+        // Tournament force deletion events can be handled via queue if needed
+        // Currently not implemented as tournament-service only publishes creation/update events
     }
 
     /**
@@ -210,18 +170,23 @@ class TournamentObserver
         // 1. Use a middleware to store the current user in a service container
         // 2. Use Laravel's auth() facade if it's available
         // 3. Pass user context through a job queue system
-        
+
         try {
-            $user = auth()->user();
-            if ($user) {
-                return [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email
-                ];
+            if (Auth::check()) {
+                $user = Auth::user();
+                if ($user) {
+                    return [
+                        'id' => $user->id ?? null,
+                        'name' => $user->name ?? null,
+                        'email' => $user->email ?? null
+                    ];
+                }
             }
         } catch (\Exception $e) {
             // Auth might not be available in observer context
+            Log::debug('Could not get authenticated user in observer', [
+                'error' => $e->getMessage()
+            ]);
         }
 
         return null;

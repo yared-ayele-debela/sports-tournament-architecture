@@ -101,6 +101,37 @@ class Handler extends ExceptionHandler
             return ApiResponse::notFound('Resource not found');
         }
 
+        // Service exceptions
+        if ($e instanceof ServiceUnavailableException) {
+            return ApiResponse::serviceUnavailable(
+                $e->getMessage(),
+                $e->getServiceName()
+            );
+        }
+
+        if ($e instanceof ServiceRequestException) {
+            $statusCode = $e->getHttpStatusCode() ?? $e->getCode();
+            return ApiResponse::error(
+                $e->getMessage(),
+                $statusCode,
+                $e->getContext(),
+                $e->getErrorCode()
+            );
+        }
+
+        if ($e instanceof AuthenticationException) {
+            return ApiResponse::unauthorized($e->getMessage());
+        }
+
+        if ($e instanceof ServiceException) {
+            return ApiResponse::error(
+                $e->getMessage(),
+                $e->getCode(),
+                $e->getContext(),
+                $e->getErrorCode()
+            );
+        }
+
         // Default server error
         return ApiResponse::serverError(
             config('app.debug') ? $e->getMessage() : 'Internal server error',

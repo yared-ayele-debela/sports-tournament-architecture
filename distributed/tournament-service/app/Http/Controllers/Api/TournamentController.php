@@ -403,17 +403,33 @@ class TournamentController extends Controller
             Log::info("Fetched tournament matches for tournament {$id}", [
                 'matches_response' => $matchesResponse
             ]);
+            
+            // If match service is unavailable, return empty matches instead of error
             if (!$matchesResponse['success']) {
-                Log::error('Failed to fetch matches from MatchService', [
-                    'tournament_id' => $id,
-                    'error' => $matchesResponse['error']
-                ]);
+                $isServiceUnavailable = $matchesResponse['service_unavailable'] ?? false;
+                
+                if ($isServiceUnavailable) {
+                    // Service is not running - return empty matches gracefully
+                    Log::warning('MatchService is unavailable, returning empty matches', [
+                        'tournament_id' => $id,
+                        'error' => $matchesResponse['error']
+                    ]);
+                    
+                    $matches = [];
+                    $total = 0;
+                } else {
+                    // Other error - return error response
+                    Log::error('Failed to fetch matches from MatchService', [
+                        'tournament_id' => $id,
+                        'error' => $matchesResponse['error']
+                    ]);
 
-                return ApiResponse::error('Failed to retrieve tournament matches', $matchesResponse['status'] ?? 500, $matchesResponse['error']);
+                    return ApiResponse::error('Failed to retrieve tournament matches', $matchesResponse['status'] ?? 500, $matchesResponse['error']);
+                }
+            } else {
+                $matches = $matchesResponse['data']['data'] ?? [];
+                $total = (int) ($matchesResponse['data']['meta']['total'] ?? count($matches));
             }
-
-            $matches = $matchesResponse['data']['data'] ?? [];
-            $total = (int) ($matchesResponse['data']['meta']['total'] ?? count($matches));
 
             $paginator = new LengthAwarePaginator(
                 $matches,
@@ -464,20 +480,34 @@ class TournamentController extends Controller
             // Fetch teams from TeamService
             $teamsResponse = $this->teamServiceClient->getTournamentTeams($tournament->id);
 
+            // If team service is unavailable, return empty teams instead of error
             if (!$teamsResponse['success']) {
-                Log::error('Failed to fetch teams from TeamService', [
-                    'tournament_id' => $id,
-                    'error' => $teamsResponse['error']
-                ]);
+                $isServiceUnavailable = $teamsResponse['service_unavailable'] ?? false;
+                
+                if ($isServiceUnavailable) {
+                    // Service is not running - return empty teams gracefully
+                    Log::warning('TeamService is unavailable, returning empty teams', [
+                        'tournament_id' => $id,
+                        'error' => $teamsResponse['error']
+                    ]);
+                    
+                    $teams = [];
+                } else {
+                    // Other error - return error response
+                    Log::error('Failed to fetch teams from TeamService', [
+                        'tournament_id' => $id,
+                        'error' => $teamsResponse['error']
+                    ]);
 
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Failed to retrieve tournament teams',
-                    'error' => $teamsResponse['error']
-                ], $teamsResponse['status'] ?? 500);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Failed to retrieve tournament teams',
+                        'error' => $teamsResponse['error']
+                    ], $teamsResponse['status'] ?? 500);
+                }
+            } else {
+                $teams = $teamsResponse['data'] ?? [];
             }
-
-            $teams = $teamsResponse['data'] ?? [];
 
             $total = count($teams);
             $offset = ($page - 1) * $perPage;

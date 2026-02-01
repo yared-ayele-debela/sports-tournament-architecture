@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\TokenValidationCache;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\Response;
 
 class ValidatePassportToken
@@ -26,29 +26,31 @@ class ValidatePassportToken
             ], 401);
         }
 
-        // Validate token with auth service
+        // Validate token with caching
         try {
-            $response = Http::withToken($token)
-                ->get(config('services.auth.url') . '/api/auth/me');
-
-            if ($response->status() !== 200) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Invalid token',
-                    'error' => 'Unauthorized'
-                ], 401);
-            }
-
-            $responseData = $response->json();
+            $tokenCache = app(TokenValidationCache::class);
+            $userData = $tokenCache->validate($token);
 
             // Add user data to request for later use
             $request->merge([
-                'authenticated_user' => $responseData['data']['user'] ?? null,
-                'user_permissions' => $responseData['data']['permissions'] ?? [],
-                'user_roles' => $responseData['data']['roles'] ?? []
+                'authenticated_user' => $userData['user'] ?? null,
+                'user_permissions' => $userData['permissions'] ?? [],
+                'user_roles' => $userData['roles'] ?? []
             ]);
 
             return $next($request);
+        } catch (\App\Exceptions\AuthenticationException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => 'Unauthorized'
+            ], 401);
+        } catch (\App\Exceptions\ServiceUnavailableException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error' => 'Service Unavailable'
+            ], 503);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

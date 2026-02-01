@@ -247,6 +247,37 @@ class PublicTournamentController extends PublicApiController
     }
 
     /**
+     * Get venue details
+     *
+     * GET /api/public/venues/{id}
+     */
+    public function showVenue(Venue $venue): JsonResponse
+    {
+        try {
+            $cacheKey = $this->cacheService->generateKey("venue:{$venue->id}");
+
+            $data = $this->cacheService->remember(
+                $cacheKey,
+                3600, // 1 hour
+                function () use ($venue) {
+                    return $this->fetchVenueDetails($venue);
+                },
+                ['public-api', 'venues', "venue:{$venue->id}"],
+                'static'
+            );
+
+            return $this->successResponse($data, 'Venue details retrieved successfully', 200, 3600);
+        } catch (Throwable $e) {
+            Log::error('Failed to retrieve venue details', [
+                'venue_id' => $venue->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->errorResponse('Venue not found', 404, null, 'VENUE_NOT_FOUND');
+        }
+    }
+
+    /**
      * Fetch tournaments with filters
      */
     protected function fetchTournaments(array $filters): array
@@ -529,6 +560,21 @@ class PublicTournamentController extends PublicApiController
                 'capacity' => $venue->capacity,
             ];
         })->toArray();
+    }
+
+    /**
+     * Fetch venue details
+     */
+    protected function fetchVenueDetails(Venue $venue): array
+    {
+        return [
+            'id' => $venue->id,
+            'name' => $venue->name,
+            'location' => $venue->location,
+            'address' => $venue->address ?? null,
+            'capacity' => $venue->capacity,
+            'description' => $venue->description ?? null,
+        ];
     }
 
     /**

@@ -44,16 +44,5 @@ class Tournament extends Model
     /**
      * Get teams for this tournament (external reference).
      */
-    public function teams(): HasMany
-    {
-        return $this->hasMany('App\Models\Team');
-    }
-
-    /**
-     * Get matches for this tournament (external reference).
-     */
-    public function matches(): HasMany
-    {
-        return $this->hasMany('App\Models\Match');
-    }
+    
 }

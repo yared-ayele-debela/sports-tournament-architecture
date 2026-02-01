@@ -36,6 +36,8 @@ return [
     'handlers' => [
         'match.completed' => \App\Handlers\MatchCompletedHandler::class,
         'tournament.status.changed' => \App\Handlers\TournamentStatusChangedHandler::class,
+        // Cache invalidation handler (processes all cache-related events)
+        \App\Services\Events\Handlers\CacheInvalidationHandler::class,
     ],
 
     /*

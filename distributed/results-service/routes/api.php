@@ -32,7 +32,18 @@ Route::get('health', function () {
     ]);
 });
 
-// Public routes for basic tournament statistics and standings
+/*
+|--------------------------------------------------------------------------
+| Public API Routes (No Authentication Required)
+|--------------------------------------------------------------------------
+|
+| Public endpoints for tournament standings, results, and statistics.
+| These routes are accessible without authentication and include caching.
+|
+*/
+
+
+// Legacy public routes (for backward compatibility)
 Route::prefix('tournaments')->group(function () {
     Route::get('{tournamentId}/standings', [StandingsController::class, 'index']);
     Route::get('{tournamentId}/statistics', [StatisticsController::class, 'tournamentStatistics']);

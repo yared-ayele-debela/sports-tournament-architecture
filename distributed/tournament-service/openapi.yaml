@@ -1,0 +1,1573 @@
+openapi: 3.0.3
+info:
+  title: Tournament Service API
+  description: |
+    Tournament Management Service for the Sports Tournament Architecture.
+
+    This service handles:
+    - Tournament management (CRUD operations)
+    - Sports management
+    - Venue management
+    - Tournament settings configuration
+    - Tournament status management
+    - Tournament overview and statistics
+    - Public API endpoints for tournament information
+
+    **Authentication**: All protected endpoints require a Bearer token obtained from the auth-service.
+    **Public Endpoints**: Some endpoints are publicly accessible without authentication.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8002/api
+    description: Local development server
+  - url: https://api.example.com/api
+    description: Production server
+
+tags:
+  - name: Tournaments
+    description: Tournament management endpoints
+  - name: Sports
+    description: Sports management endpoints (protected)
+  - name: Venues
+    description: Venue management endpoints (protected)
+  - name: Tournament Settings
+    description: Tournament settings management (protected)
+  - name: Public API
+    description: Public endpoints accessible without authentication
+  - name: Health
+    description: Health check and service information endpoints
+
+paths:
+  /tournaments:
+    get:
+      tags:
+        - Tournaments
+      summary: List all tournaments
+      description: Get a paginated list of all tournaments with optional filters. Public endpoint.
+      operationId: listTournaments
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          description: Filter by tournament status
+          required: false
+          schema:
+            type: string
+            enum: [planned, ongoing, completed, cancelled]
+        - name: sport_id
+          in: query
+          description: Filter by sport ID
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournaments retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTournamentResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Tournaments
+      summary: Create a new tournament
+      description: Create a new tournament. Requires authentication and admin role or manage_tournaments permission.
+      operationId: createTournament
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTournamentRequest'
+            examples:
+              example1:
+                summary: Create tournament
+                value:
+                  sport_id: 1
+                  name: "World Cup 2024"
+                  location: "Multiple venues"
+                  start_date: "2024-06-01"
+                  end_date: "2024-07-15"
+                  status: "planned"
+      responses:
+        '201':
+          description: Tournament created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}:
+    get:
+      tags:
+        - Tournaments
+      summary: Get tournament by ID
+      description: Get detailed information about a specific tournament. Public endpoint.
+      operationId: getTournamentById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Tournaments
+      summary: Update tournament
+      description: Update tournament information. Requires authentication and admin role or manage_tournaments permission.
+      operationId: updateTournament
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTournamentRequest'
+      responses:
+        '200':
+          description: Tournament updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Tournaments
+      summary: Delete tournament
+      description: Delete a tournament. Requires authentication and admin role or manage_tournaments permission.
+      operationId: deleteTournament
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/status:
+    patch:
+      tags:
+        - Tournaments
+      summary: Update tournament status
+      description: "Update tournament status. Valid transitions: planned→ongoing/cancelled, ongoing→completed/cancelled, cancelled→planned. Requires authentication."
+      operationId: updateTournamentStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [planned, ongoing, completed, cancelled]
+                  description: New tournament status
+            examples:
+              example1:
+                summary: Update to ongoing
+                value:
+                  status: "ongoing"
+      responses:
+        '200':
+          description: Tournament status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentResponse'
+        '400':
+          description: Invalid status transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/validate:
+    get:
+      tags:
+        - Tournaments
+      summary: Validate tournament existence
+      description: Validate if a tournament exists and is accessible. Internal endpoint for service-to-service communication.
+      operationId: validateTournament
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament is valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentValidationResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/matches:
+    get:
+      tags:
+        - Tournaments
+      summary: Get tournament matches
+      description: Get all matches for a specific tournament. Public endpoint. Returns matches from Match Service.
+      operationId: getTournamentMatches
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Tournament matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/teams:
+    get:
+      tags:
+        - Tournaments
+      summary: Get tournament teams
+      description: Get all teams participating in a tournament. Public endpoint. Returns teams from Team Service.
+      operationId: getTournamentTeams
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: Page number
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Tournament teams retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeamResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/overview:
+    get:
+      tags:
+        - Tournaments
+      summary: Get tournament overview
+      description: Get comprehensive tournament overview including statistics, teams count, and matches count. Public endpoint.
+      operationId: getTournamentOverview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentOverviewResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/statistics:
+    get:
+      tags:
+        - Tournaments
+      summary: Get tournament statistics
+      description: Get detailed statistics for a tournament. Public endpoint. Returns statistics from Results Service.
+      operationId: getTournamentStatistics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentStatisticsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/standings:
+    get:
+      tags:
+        - Tournaments
+      summary: Get tournament standings
+      description: Get tournament standings/leaderboard. Public endpoint. Returns standings from Results Service.
+      operationId: getTournamentStandings
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament standings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentStandingsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{id}/settings:
+    get:
+      tags:
+        - Tournament Settings
+      summary: Get tournament settings
+      description: Get settings for a specific tournament. Requires authentication.
+      operationId: getTournamentSettings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentSettingsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Tournament Settings
+      summary: Create or update tournament settings
+      description: Create or update settings for a tournament. Requires authentication.
+      operationId: saveTournamentSettings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TournamentSettingsRequest'
+            examples:
+              example1:
+                summary: Tournament settings
+                value:
+                  match_duration: 90
+                  win_rest_time: 24
+                  daily_start_time: "09:00"
+                  daily_end_time: "18:00"
+      responses:
+        '200':
+          description: Tournament settings saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentSettingsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /sports:
+    get:
+      tags:
+        - Sports
+      summary: List all sports
+      description: Get a paginated list of all sports. Requires authentication.
+      operationId: listSports
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Sports retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedSportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Sports
+      summary: Create a new sport
+      description: Create a new sport. Requires authentication and admin role or manage_sports permission.
+      operationId: createSport
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSportRequest'
+            examples:
+              example1:
+                summary: Create sport
+                value:
+                  name: "Football"
+                  team_based: true
+                  description: "Association football"
+                  rules: "Standard FIFA rules apply"
+      responses:
+        '201':
+          description: Sport created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /sports/{id}:
+    get:
+      tags:
+        - Sports
+      summary: Get sport by ID
+      description: Get detailed information about a specific sport. Requires authentication.
+      operationId: getSportById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sport ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sport retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Sports
+      summary: Update sport
+      description: Update sport information. Requires authentication and admin role or manage_sports permission.
+      operationId: updateSport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sport ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSportRequest'
+      responses:
+        '200':
+          description: Sport updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Sports
+      summary: Delete sport
+      description: Delete a sport. Requires authentication and admin role or manage_sports permission.
+      operationId: deleteSport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Sport ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Sport deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /venues:
+    get:
+      tags:
+        - Venues
+      summary: List all venues
+      description: Get a paginated list of all venues. Requires authentication.
+      operationId: listVenues
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Venues retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedVenueResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Venues
+      summary: Create a new venue
+      description: Create a new venue. Requires authentication and admin role or manage_venues permission.
+      operationId: createVenue
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVenueRequest'
+            examples:
+              example1:
+                summary: Create venue
+                value:
+                  name: "Stadium Name"
+                  location: "123 Stadium Street, City"
+                  capacity: 50000
+      responses:
+        '201':
+          description: Venue created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenueResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /venues/{id}:
+    get:
+      tags:
+        - Venues
+      summary: Get venue by ID
+      description: Get detailed information about a specific venue. Requires authentication.
+      operationId: getVenueById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Venue ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Venue retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenueResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Venues
+      summary: Update venue
+      description: Update venue information. Requires authentication and admin role or manage_venues permission.
+      operationId: updateVenue
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Venue ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateVenueRequest'
+      responses:
+        '200':
+          description: Venue updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VenueResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Venues
+      summary: Delete venue
+      description: Delete a venue. Requires authentication and admin role or manage_venues permission.
+      operationId: deleteVenue
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Venue ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Venue deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Basic health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+              example:
+                success: true
+                message: "Tournament Service is healthy"
+                service: "tournament-service"
+                version: "1.0.0"
+                timestamp: "2024-01-01T00:00:00.000000Z"
+
+  /health/info:
+    get:
+      tags:
+        - Health
+      summary: Service information
+      description: Get detailed service information including features and endpoints
+      operationId: serviceInfo
+      responses:
+        '200':
+          description: Service information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  environment:
+                    type: string
+                  features:
+                    type: object
+                  endpoints:
+                    type: object
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        OAuth2 Bearer token authentication using Laravel Passport.
+        Include the token in the Authorization header: `Authorization: Bearer {token}`
+        Tokens are obtained from the auth-service.
+
+  schemas:
+    Tournament:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        sport_id:
+          type: integer
+        name:
+          type: string
+        location:
+          type: string
+          nullable: true
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [planned, ongoing, completed, cancelled]
+        created_by:
+          type: integer
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        sport:
+          $ref: '#/components/schemas/Sport'
+        settings:
+          $ref: '#/components/schemas/TournamentSettings'
+          nullable: true
+
+    CreateTournamentRequest:
+      type: object
+      required:
+        - sport_id
+        - name
+        - start_date
+        - end_date
+      properties:
+        sport_id:
+          type: integer
+          description: Sport ID (must exist)
+        name:
+          type: string
+          maxLength: 255
+        location:
+          type: string
+          maxLength: 500
+          nullable: true
+        start_date:
+          type: string
+          format: date
+          description: Tournament start date (must be today or future)
+        end_date:
+          type: string
+          format: date
+          description: Tournament end date (must be after start_date)
+        status:
+          type: string
+          enum: [planned, ongoing, completed, cancelled]
+          default: planned
+
+    UpdateTournamentRequest:
+      type: object
+      properties:
+        sport_id:
+          type: integer
+        name:
+          type: string
+          maxLength: 255
+        location:
+          type: string
+          maxLength: 500
+          nullable: true
+        start_date:
+          type: string
+          format: date
+        end_date:
+          type: string
+          format: date
+        status:
+          type: string
+          enum: [planned, ongoing, completed, cancelled]
+
+    TournamentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Tournament'
+        timestamp:
+          type: string
+          format: date-time
+
+    TournamentValidationResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            status:
+              type: string
+            sport_id:
+              type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    TournamentOverviewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            tournament:
+              $ref: '#/components/schemas/Tournament'
+            statistics:
+              type: object
+              properties:
+                teams_count:
+                  type: integer
+                matches_count:
+                  type: integer
+                status:
+                  type: string
+                days_remaining:
+                  type: integer
+                is_ongoing:
+                  type: boolean
+                is_completed:
+                  type: boolean
+        timestamp:
+          type: string
+          format: date-time
+
+    TournamentStatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            tournament_id:
+              type: integer
+            tournament_name:
+              type: string
+            statistics:
+              type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    TournamentStandingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            tournament_id:
+              type: integer
+            tournament_name:
+              type: string
+            standings:
+              type: array
+              items:
+                type: object
+        timestamp:
+          type: string
+          format: date-time
+
+    TournamentSettings:
+      type: object
+      properties:
+        id:
+          type: integer
+        tournament_id:
+          type: integer
+        match_duration:
+          type: integer
+          nullable: true
+          description: Match duration in minutes (1-480)
+        win_rest_time:
+          type: integer
+          nullable: true
+          description: Rest time after win in hours (0-1440)
+        daily_start_time:
+          type: string
+          nullable: true
+          format: time
+          description: Daily start time (HH:mm format)
+        daily_end_time:
+          type: string
+          nullable: true
+          format: time
+          description: Daily end time (HH:mm format, must be after daily_start_time)
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    TournamentSettingsRequest:
+      type: object
+      properties:
+        match_duration:
+          type: integer
+          minimum: 1
+          maximum: 480
+          nullable: true
+        win_rest_time:
+          type: integer
+          minimum: 0
+          maximum: 1440
+          nullable: true
+        daily_start_time:
+          type: string
+          format: time
+          nullable: true
+          description: Time in HH:mm format
+        daily_end_time:
+          type: string
+          format: time
+          nullable: true
+          description: Time in HH:mm format, must be after daily_start_time
+
+    TournamentSettingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/TournamentSettings'
+        timestamp:
+          type: string
+          format: date-time
+
+    Sport:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        team_based:
+          type: boolean
+        rules:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+          maxLength: 1000
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateSportRequest:
+      type: object
+      required:
+        - name
+        - team_based
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        team_based:
+          type: boolean
+        rules:
+          type: string
+          nullable: true
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    UpdateSportRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        team_based:
+          type: boolean
+        rules:
+          type: string
+          nullable: true
+        description:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    SportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Sport'
+        timestamp:
+          type: string
+          format: date-time
+
+    Venue:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        location:
+          type: string
+          nullable: true
+        capacity:
+          type: integer
+          nullable: true
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateVenueRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        location:
+          type: string
+          maxLength: 500
+          nullable: true
+        capacity:
+          type: integer
+          minimum: 1
+          nullable: true
+
+    UpdateVenueRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        location:
+          type: string
+          maxLength: 500
+          nullable: true
+        capacity:
+          type: integer
+          minimum: 1
+          nullable: true
+
+    VenueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Venue'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedTournamentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Tournament'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedSportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Sport'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedVenueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Venue'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedMatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            description: Match data from Match Service
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedTeamResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            type: object
+            description: Team data from Team Service
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        from:
+          type: integer
+          nullable: true
+        to:
+          type: integer
+          nullable: true
+        has_more:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        error_code:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Validation failed"
+            errors:
+              name:
+                - "The name field is required."
+              start_date:
+                - "The start date must be a date after or equal to today."
+            error_code: "VALIDATION_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Unauthorized"
+            error_code: "UNAUTHORIZED"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Tournament management access required"
+            error_code: "FORBIDDEN"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Tournament not found"
+            error_code: "RESOURCE_NOT_FOUND"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Internal server error"
+            error_code: "INTERNAL_SERVER_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"

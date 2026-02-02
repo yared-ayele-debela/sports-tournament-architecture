@@ -1,0 +1,1293 @@
+openapi: 3.0.3
+info:
+  title: Match Service API
+  description: |
+    Match Management Service for the Sports Tournament Architecture.
+
+    This service handles:
+    - Match management (CRUD operations)
+    - Match scheduling and schedule generation
+    - Match events tracking (goals, cards, substitutions)
+    - Live match updates
+    - Match reports
+    - Status management
+    - Public API endpoints for match information
+
+    **Authentication**: All protected endpoints require a Bearer token obtained from the auth-service.
+    **Public Endpoints**: Some endpoints are publicly accessible without authentication.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8004/api
+    description: Local development server
+  - url: https://api.example.com/api
+    description: Production server
+
+tags:
+  - name: Matches
+    description: Match management endpoints
+  - name: Match Events
+    description: Match events tracking endpoints
+  - name: Match Reports
+    description: Match reports management endpoints
+  - name: Schedule
+    description: Match schedule generation endpoints
+  - name: Public API
+    description: Public endpoints accessible without authentication
+  - name: Health
+    description: Health check and service information endpoints
+
+paths:
+  /matches:
+    get:
+      tags:
+        - Matches
+      summary: List all matches
+      description: Get a paginated list of all matches with optional filters. Requires authentication.
+      operationId: listMatches
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: tournament_id
+          in: query
+          description: Filter by tournament ID
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by match status
+          required: false
+          schema:
+            type: string
+            enum: [scheduled, in_progress, completed, cancelled]
+        - name: team_id
+          in: query
+          description: Filter by team ID (home or away)
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Matches
+      summary: Create a new match
+      description: Create a new match. Requires authentication.
+      operationId: createMatch
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMatchRequest'
+            examples:
+              example1:
+                summary: Create match
+                value:
+                  tournament_id: 1
+                  venue_id: 1
+                  home_team_id: 1
+                  away_team_id: 2
+                  referee_id: 1
+                  match_date: "2024-06-15 15:00:00"
+                  round_number: 1
+      responses:
+        '201':
+          description: Match created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /matches/{id}:
+    get:
+      tags:
+        - Matches
+      summary: Get match by ID
+      description: Get detailed information about a specific match with events and report. Requires authentication.
+      operationId: getMatchById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Match retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Matches
+      summary: Update match
+      description: Update match information. Requires authentication.
+      operationId: updateMatch
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMatchRequest'
+      responses:
+        '200':
+          description: Match updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Matches
+      summary: Delete match
+      description: Delete a match. Requires authentication.
+      operationId: deleteMatch
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Match deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /matches/{id}/status:
+    patch:
+      tags:
+        - Matches
+      summary: Update match status
+      description: "Update match status. Valid statuses: scheduled, in_progress, completed, cancelled. Requires authentication."
+      operationId: updateMatchStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [scheduled, in_progress, completed, cancelled]
+                  description: New match status
+                current_minute:
+                  type: integer
+                  minimum: 0
+                  maximum: 120
+                  description: Current minute of the match
+            examples:
+              example1:
+                summary: Update to in_progress
+                value:
+                  status: "in_progress"
+                  current_minute: 0
+      responses:
+        '200':
+          description: Match status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /matches/{matchId}/events:
+    get:
+      tags:
+        - Match Events
+      summary: Get match events
+      description: Get all events for a specific match, ordered by minute. Requires authentication.
+      operationId: getMatchEvents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Match events retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchEventsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Match Events
+      summary: Create match event
+      description: Create a new match event (goal, card, substitution, etc.). Automatically updates match score if event is a goal. Requires authentication.
+      operationId: createMatchEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMatchEventRequest'
+            examples:
+              example1:
+                summary: Record goal
+                value:
+                  team_id: 1
+                  player_id: 5
+                  event_type: "goal"
+                  minute: 45
+                  description: "Goal scored by Player Name"
+      responses:
+        '201':
+          description: Match event created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchEventResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Validation error or player/team validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /events/{id}:
+    delete:
+      tags:
+        - Match Events
+      summary: Delete match event
+      description: Delete a match event. Requires authentication.
+      operationId: deleteMatchEvent
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Event ID
+          schema:
+            type: integer
+      responses:
+        '204':
+          description: Event deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /matches/{matchId}/report:
+    get:
+      tags:
+        - Match Reports
+      summary: Get match report
+      description: Get the match report for a specific match. Requires authentication.
+      operationId: getMatchReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Match report retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchReportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Match Reports
+      summary: Create or update match report
+      description: Create or update a match report. This will also mark the match as completed. Requires authentication.
+      operationId: saveMatchReport
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchReportRequest'
+            examples:
+              example1:
+                summary: Create match report
+                value:
+                  summary: "Exciting match with multiple goals"
+                  referee: "John Smith"
+                  attendance: 45000
+                  home_score: 2
+                  away_score: 1
+                  duration_minutes: 90
+      responses:
+        '201':
+          description: Match report saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchReportResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{tournamentId}/generate-schedule:
+    post:
+      tags:
+        - Schedule
+      summary: Generate match schedule
+      description: Generate a round-robin match schedule for a tournament. Requires authentication.
+      operationId: generateSchedule
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Schedule generated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScheduleResponse'
+        '400':
+          description: Failed to generate schedule
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/matches:
+    get:
+      tags:
+        - Public API
+      summary: List all matches (public)
+      description: Get a paginated list of all matches. Public endpoint, no authentication required.
+      operationId: listPublicMatches
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: tournament_id
+          in: query
+          description: Filter by tournament ID
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          description: Filter by match status
+          required: false
+          schema:
+            type: string
+            enum: [scheduled, in_progress, completed, cancelled]
+        - name: team_id
+          in: query
+          description: Filter by team ID
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/matches/live:
+    get:
+      tags:
+        - Public API
+      summary: Get live matches (public)
+      description: Get currently live or recently started matches. Public endpoint.
+      operationId: getPublicLiveMatches
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Live matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/matches/upcoming:
+    get:
+      tags:
+        - Public API
+      summary: Get upcoming matches (public)
+      description: Get scheduled upcoming matches. Public endpoint.
+      operationId: getPublicUpcomingMatches
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 15
+        - name: tournament_id
+          in: query
+          description: Filter by tournament ID
+          required: false
+          schema:
+            type: integer
+        - name: team_id
+          in: query
+          description: Filter by team ID
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Upcoming matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/matches/completed:
+    get:
+      tags:
+        - Public API
+      summary: Get completed matches (public)
+      description: Get completed matches. Public endpoint.
+      operationId: getPublicCompletedMatches
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 15
+        - name: tournament_id
+          in: query
+          description: Filter by tournament ID
+          required: false
+          schema:
+            type: integer
+        - name: team_id
+          in: query
+          description: Filter by team ID
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Completed matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/matches/date/{date}:
+    get:
+      tags:
+        - Public API
+      summary: Get matches by date (public)
+      description: Get all matches scheduled for a specific date (YYYY-MM-DD format). Public endpoint.
+      operationId: getPublicMatchesByDate
+      parameters:
+        - name: date
+          in: path
+          required: true
+          description: Date in YYYY-MM-DD format
+          schema:
+            type: string
+            format: date
+            example: "2024-06-15"
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: tournament_id
+          in: query
+          description: Filter by tournament ID
+          required: false
+          schema:
+            type: integer
+        - name: team_id
+          in: query
+          description: Filter by team ID
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Matches for date retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '400':
+          description: Invalid date format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/matches/{id}:
+    get:
+      tags:
+        - Public API
+      summary: Get match details (public)
+      description: Get detailed information about a specific match. Public endpoint.
+      operationId: getPublicMatchById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Match retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchDetailResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/matches/{id}/events:
+    get:
+      tags:
+        - Public API
+      summary: Get match events (public)
+      description: Get all events for a specific match. Public endpoint.
+      operationId: getPublicMatchEvents
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Match events retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchEventsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/tournaments/{tournamentId}/matches:
+    get:
+      tags:
+        - Public API
+      summary: Get tournament matches (public)
+      description: Get all matches for a specific tournament. Public endpoint.
+      operationId: getPublicTournamentMatches
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: status
+          in: query
+          description: Filter by match status
+          required: false
+          schema:
+            type: string
+            enum: [scheduled, in_progress, completed, cancelled]
+      responses:
+        '200':
+          description: Tournament matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Basic health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+              example:
+                success: true
+                message: "Match Service is running"
+                service: "match-service"
+                version: "1.0.0"
+                timestamp: "2024-01-01T00:00:00.000000Z"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        OAuth2 Bearer token authentication using Laravel Passport.
+        Include the token in the Authorization header: `Authorization: Bearer {token}`
+        Tokens are obtained from the auth-service.
+
+  schemas:
+    Match:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tournament_id:
+          type: integer
+        venue_id:
+          type: integer
+        home_team_id:
+          type: integer
+        away_team_id:
+          type: integer
+        referee_id:
+          type: integer
+        match_date:
+          type: string
+          format: date-time
+        round_number:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum: [scheduled, in_progress, completed, cancelled]
+        home_score:
+          type: integer
+          nullable: true
+          minimum: 0
+        away_score:
+          type: integer
+          nullable: true
+          minimum: 0
+        current_minute:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 120
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    MatchDetail:
+      allOf:
+        - $ref: '#/components/schemas/Match'
+        - type: object
+          properties:
+            home_team:
+              type: object
+              description: Home team data from Team Service
+            away_team:
+              type: object
+              description: Away team data from Team Service
+            tournament:
+              type: object
+              description: Tournament data from Tournament Service
+            venue:
+              type: object
+              description: Venue data from Tournament Service
+            match_events:
+              type: array
+              items:
+                $ref: '#/components/schemas/MatchEvent'
+            match_report:
+              $ref: '#/components/schemas/MatchReport'
+              nullable: true
+
+    CreateMatchRequest:
+      type: object
+      required:
+        - tournament_id
+        - venue_id
+        - home_team_id
+        - away_team_id
+        - referee_id
+        - match_date
+        - round_number
+      properties:
+        tournament_id:
+          type: integer
+        venue_id:
+          type: integer
+        home_team_id:
+          type: integer
+        away_team_id:
+          type: integer
+          description: Must be different from home_team_id
+        referee_id:
+          type: integer
+        match_date:
+          type: string
+          format: date-time
+        round_number:
+          type: integer
+          minimum: 1
+
+    UpdateMatchRequest:
+      type: object
+      properties:
+        venue_id:
+          type: integer
+        referee_id:
+          type: integer
+        match_date:
+          type: string
+          format: date-time
+        round_number:
+          type: integer
+          minimum: 1
+        home_score:
+          type: integer
+          minimum: 0
+        away_score:
+          type: integer
+          minimum: 0
+        current_minute:
+          type: integer
+          minimum: 0
+          maximum: 120
+
+    MatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Match'
+        timestamp:
+          type: string
+          format: date-time
+
+    MatchDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/MatchDetail'
+        timestamp:
+          type: string
+          format: date-time
+
+    MatchEvent:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        match_id:
+          type: integer
+        team_id:
+          type: integer
+        player_id:
+          type: integer
+        event_type:
+          type: string
+          enum: [goal, yellow_card, red_card, substitution]
+        minute:
+          type: integer
+          minimum: 0
+          maximum: 120
+        description:
+          type: string
+          nullable: true
+          maxLength: 255
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateMatchEventRequest:
+      type: object
+      required:
+        - team_id
+        - player_id
+        - event_type
+        - minute
+      properties:
+        team_id:
+          type: integer
+          description: Team ID (must be participating in the match)
+        player_id:
+          type: integer
+          description: Player ID (must belong to the team)
+        event_type:
+          type: string
+          enum: [goal, yellow_card, red_card, substitution]
+        minute:
+          type: integer
+          minimum: 0
+          maximum: 120
+        description:
+          type: string
+          maxLength: 255
+          nullable: true
+
+    MatchEventResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/MatchEvent'
+        timestamp:
+          type: string
+          format: date-time
+
+    MatchEventsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchEvent'
+        timestamp:
+          type: string
+          format: date-time
+
+    MatchReport:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        match_id:
+          type: integer
+        summary:
+          type: string
+          maxLength: 2000
+        referee:
+          type: string
+          maxLength: 255
+        attendance:
+          type: integer
+          minimum: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    MatchReportRequest:
+      type: object
+      required:
+        - summary
+        - referee
+        - attendance
+        - home_score
+        - away_score
+      properties:
+        summary:
+          type: string
+          maxLength: 2000
+        referee:
+          type: string
+          maxLength: 255
+        attendance:
+          type: integer
+          minimum: 0
+        home_score:
+          type: integer
+          minimum: 0
+        away_score:
+          type: integer
+          minimum: 0
+        duration_minutes:
+          type: integer
+          minimum: 1
+          maximum: 180
+          default: 90
+
+    MatchReportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/MatchReport'
+        timestamp:
+          type: string
+          format: date-time
+
+    ScheduleResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Match'
+          description: Array of generated matches
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedMatchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Match'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        from:
+          type: integer
+          nullable: true
+        to:
+          type: integer
+          nullable: true
+        has_more:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        error_code:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Validation failed"
+            errors:
+              tournament_id:
+                - "The tournament id field is required."
+              away_team_id:
+                - "The away team id and home team id must be different."
+            error_code: "VALIDATION_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Unauthorized"
+            error_code: "UNAUTHORIZED"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Match not found"
+            error_code: "RESOURCE_NOT_FOUND"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Internal server error"
+            error_code: "INTERNAL_SERVER_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"

@@ -1,0 +1,1023 @@
+openapi: 3.0.3
+info:
+  title: Results Service API
+  description: |
+    Results and Statistics Service for the Sports Tournament Architecture.
+
+    This service handles:
+    - Tournament standings calculation and management
+    - Match results finalization
+    - Team and tournament statistics
+    - Top scorers tracking
+    - Real-time standings updates
+    - Public API endpoints for standings and statistics
+
+    **Authentication**: All protected endpoints require a Bearer token obtained from the auth-service.
+    **Public Endpoints**: Some endpoints are publicly accessible without authentication.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8005/api
+    description: Local development server
+  - url: https://api.example.com/api
+    description: Production server
+
+tags:
+  - name: Standings
+    description: Tournament standings management endpoints
+  - name: Match Results
+    description: Match results finalization endpoints
+  - name: Statistics
+    description: Statistics endpoints for teams and tournaments
+  - name: Public API
+    description: Public endpoints accessible without authentication
+  - name: Health
+    description: Health check and service information endpoints
+
+paths:
+  /tournaments/{tournamentId}/standings:
+    get:
+      tags:
+        - Standings
+      summary: Get tournament standings (public)
+      description: Get the standings table for a tournament. Public endpoint, no authentication required.
+      operationId: getTournamentStandings
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Standings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStandingsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /standings/recalculate/{tournamentId}:
+    post:
+      tags:
+        - Standings
+      summary: Recalculate tournament standings
+      description: Manually recalculate standings for a tournament. Requires authentication.
+      operationId: recalculateStandings
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Standings recalculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{tournamentId}/results:
+    get:
+      tags:
+        - Match Results
+      summary: Get tournament match results
+      description: Get all match results for a tournament. Requires authentication.
+      operationId: getTournamentResults
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+        - name: team_id
+          in: query
+          description: Filter by team ID (home or away)
+          required: false
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Match results retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMatchResultsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /results/{id}:
+    get:
+      tags:
+        - Match Results
+      summary: Get match result by ID
+      description: Get detailed information about a specific match result. Requires authentication.
+      operationId: getMatchResultById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Match result ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Match result retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResultResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /matches/{matchId}/finalize:
+    post:
+      tags:
+        - Match Results
+      summary: Finalize match result
+      description: Finalize a match result and automatically update tournament standings. Requires authentication.
+      operationId: finalizeMatchResult
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          description: Match ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FinalizeMatchRequest'
+            examples:
+              example1:
+                summary: Finalize match result
+                value:
+                  home_score: 2
+                  away_score: 1
+                  completed_at: "2024-06-15T17:30:00Z"
+      responses:
+        '200':
+          description: Match result finalized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResultResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Match not found or required match data not provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /teams/{teamId}/statistics:
+    get:
+      tags:
+        - Statistics
+      summary: Get team statistics
+      description: Get comprehensive statistics for a team across all tournaments. Requires authentication.
+      operationId: getTeamStatistics
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamStatisticsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{tournamentId}/statistics:
+    get:
+      tags:
+        - Statistics
+      summary: Get tournament statistics (public)
+      description: Get comprehensive statistics for a tournament. Public endpoint, no authentication required.
+      operationId: getTournamentStatistics
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TournamentStatisticsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/tournaments/{tournamentId}/standings:
+    get:
+      tags:
+        - Public API
+      summary: Get tournament standings (public)
+      description: Get the standings table for a tournament. Public endpoint with caching.
+      operationId: getPublicTournamentStandings
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament standings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicStandingsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/tournaments/{tournamentId}/statistics:
+    get:
+      tags:
+        - Public API
+      summary: Get tournament statistics (public)
+      description: Get comprehensive statistics for a tournament. Public endpoint with caching.
+      operationId: getPublicTournamentStatistics
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Tournament statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicTournamentStatisticsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/tournaments/{tournamentId}/top-scorers:
+    get:
+      tags:
+        - Public API
+      summary: Get top scorers (public)
+      description: Get top 10 goal scorers for a tournament. Public endpoint with caching.
+      operationId: getPublicTopScorers
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Top scorers retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopScorersResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/teams/{teamId}/standing:
+    get:
+      tags:
+        - Public API
+      summary: Get team standing (public)
+      description: Get a team's standing in their tournament with form. Public endpoint with caching.
+      operationId: getPublicTeamStanding
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team standing retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamStandingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Basic health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+              example:
+                success: true
+                message: "Results Service is running"
+                service: "results-service"
+                version: "1.0.0"
+                timestamp: "2024-01-01T00:00:00.000000Z"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        OAuth2 Bearer token authentication using Laravel Passport.
+        Include the token in the Authorization header: `Authorization: Bearer {token}`
+        Tokens are obtained from the auth-service.
+
+  schemas:
+    Standing:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tournament_id:
+          type: integer
+        team_id:
+          type: integer
+        played:
+          type: integer
+          minimum: 0
+        won:
+          type: integer
+          minimum: 0
+        drawn:
+          type: integer
+          minimum: 0
+        lost:
+          type: integer
+          minimum: 0
+        goals_for:
+          type: integer
+          minimum: 0
+        goals_against:
+          type: integer
+          minimum: 0
+        goal_difference:
+          type: integer
+        points:
+          type: integer
+          minimum: 0
+        position:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    StandingWithTeam:
+      allOf:
+        - $ref: '#/components/schemas/Standing'
+        - type: object
+          properties:
+            team:
+              type: object
+              description: Team data from Team Service
+              nullable: true
+
+    MatchResult:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        match_id:
+          type: integer
+        tournament_id:
+          type: integer
+        home_team_id:
+          type: integer
+        away_team_id:
+          type: integer
+        home_score:
+          type: integer
+          minimum: 0
+        away_score:
+          type: integer
+          minimum: 0
+        completed_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FinalizeMatchRequest:
+      type: object
+      required:
+        - home_score
+        - away_score
+        - completed_at
+      properties:
+        home_score:
+          type: integer
+          minimum: 0
+        away_score:
+          type: integer
+          minimum: 0
+        completed_at:
+          type: string
+          format: date-time
+        tournament_id:
+          type: integer
+          description: Required if match data cannot be fetched from Match Service
+        home_team_id:
+          type: integer
+          description: Required if match data cannot be fetched from Match Service
+        away_team_id:
+          type: integer
+          description: Required if match data cannot be fetched from Match Service
+
+    StandingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StandingWithTeam'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedStandingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StandingWithTeam'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    PublicStandingsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            standings:
+              type: array
+              items:
+                type: object
+                properties:
+                  position:
+                    type: integer
+                  team:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                  played:
+                    type: integer
+                  won:
+                    type: integer
+                  drawn:
+                    type: integer
+                  lost:
+                    type: integer
+                  goals_for:
+                    type: integer
+                  goals_against:
+                    type: integer
+                  goal_difference:
+                    type: integer
+                  points:
+                    type: integer
+            count:
+              type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    MatchResultResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/MatchResult'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedMatchResultsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatchResult'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    TeamStatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            team:
+              type: object
+              description: Team data from Team Service
+            statistics:
+              type: object
+              properties:
+                total_matches:
+                  type: integer
+                wins:
+                  type: integer
+                draws:
+                  type: integer
+                losses:
+                  type: integer
+                goals_for:
+                  type: integer
+                goals_against:
+                  type: integer
+                goal_difference:
+                  type: integer
+                points:
+                  type: integer
+                win_rate:
+                  type: number
+                  format: float
+                  description: Win rate percentage
+                recent_form:
+                  type: string
+                  description: Last 5 matches form (W/D/L)
+                  example: "WWDLW"
+        timestamp:
+          type: string
+          format: date-time
+
+    TournamentStatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            tournament_id:
+              type: integer
+            total_matches:
+              type: integer
+            total_goals:
+              type: integer
+            average_goals_per_match:
+              type: number
+              format: float
+            teams_participating:
+              type: integer
+            top_scorer:
+              type: object
+              nullable: true
+              properties:
+                player_name:
+                  type: string
+                goals:
+                  type: integer
+            best_defense:
+              type: object
+              nullable: true
+              properties:
+                team_id:
+                  type: integer
+                goals_conceded:
+                  type: integer
+            best_attack:
+              type: object
+              nullable: true
+              properties:
+                team_id:
+                  type: integer
+                goals_scored:
+                  type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    PublicTournamentStatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            tournament_id:
+              type: integer
+            total_matches:
+              type: integer
+            total_goals:
+              type: integer
+            average_goals_per_match:
+              type: number
+              format: float
+            teams_participating:
+              type: integer
+            top_scorers:
+              type: array
+              items:
+                type: object
+                properties:
+                  player_id:
+                    type: integer
+                  player_name:
+                    type: string
+                  team_id:
+                    type: integer
+                  team_name:
+                    type: string
+                  goals:
+                    type: integer
+            best_defense:
+              type: object
+              nullable: true
+              properties:
+                team:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                goals_conceded:
+                  type: integer
+            best_attack:
+              type: object
+              nullable: true
+              properties:
+                team:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    name:
+                      type: string
+                goals_scored:
+                  type: integer
+            clean_sheets:
+              type: array
+              items:
+                type: object
+                properties:
+                  team:
+                    type: object
+                    nullable: true
+                    properties:
+                      id:
+                        type: integer
+                      name:
+                        type: string
+                  clean_sheets:
+                    type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    TopScorersResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            scorers:
+              type: array
+              items:
+                type: object
+                properties:
+                  player_id:
+                    type: integer
+                  player_name:
+                    type: string
+                  team_id:
+                    type: integer
+                  team_name:
+                    type: string
+                  goals:
+                    type: integer
+            count:
+              type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    TeamStandingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            team:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+            tournament:
+              type: object
+              nullable: true
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+            position:
+              type: integer
+            played:
+              type: integer
+            won:
+              type: integer
+            drawn:
+              type: integer
+            lost:
+              type: integer
+            goals_for:
+              type: integer
+            goals_against:
+              type: integer
+            goal_difference:
+              type: integer
+            points:
+              type: integer
+            form:
+              type: string
+              description: Last 5 matches form (W/D/L)
+              example: "WWDLW"
+        timestamp:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        from:
+          type: integer
+          nullable: true
+        to:
+          type: integer
+          nullable: true
+        has_more:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        error_code:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Validation failed"
+            errors:
+              home_score:
+                - "The home score field is required."
+              away_score:
+                - "The away score field is required."
+            error_code: "VALIDATION_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Unauthorized"
+            error_code: "UNAUTHORIZED"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Tournament not found"
+            error_code: "RESOURCE_NOT_FOUND"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Internal server error"
+            error_code: "INTERNAL_SERVER_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"

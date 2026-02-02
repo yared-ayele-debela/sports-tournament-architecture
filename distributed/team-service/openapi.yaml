@@ -1,0 +1,1094 @@
+openapi: 3.0.3
+info:
+  title: Team Service API
+  description: |
+    Team and Player Management Service for the Sports Tournament Architecture.
+
+    This service handles:
+    - Team management (CRUD operations)
+    - Player management (CRUD operations)
+    - Squad management
+    - Team statistics and overview
+    - Tournament integration
+    - Public API endpoints for team information
+
+    **Authentication**: All protected endpoints require a Bearer token obtained from the auth-service.
+    **Public Endpoints**: Some endpoints are publicly accessible without authentication.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:8003/api
+    description: Local development server
+  - url: https://api.example.com/api
+    description: Production server
+
+tags:
+  - name: Teams
+    description: Team management endpoints
+  - name: Players
+    description: Player management endpoints
+  - name: Public API
+    description: Public endpoints accessible without authentication
+  - name: Health
+    description: Health check and service information endpoints
+
+paths:
+  /teams:
+    post:
+      tags:
+        - Teams
+      summary: Create a new team
+      description: Create a new team for a tournament. Requires authentication and appropriate permissions.
+      operationId: createTeam
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+            examples:
+              example1:
+                summary: Create team
+                value:
+                  tournament_id: 1
+                  name: "FC Barcelona"
+                  logo: "https://example.com/logos/barcelona.png"
+                  coach_id: 5
+      responses:
+        '201':
+          description: Team created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '400':
+          description: Invalid tournament or coach
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /teams/{id}:
+    get:
+      tags:
+        - Teams
+      summary: Get team by ID
+      description: Get detailed information about a specific team with players and coaches. Requires authentication.
+      operationId: getTeamById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Teams
+      summary: Update team
+      description: Update team information. Requires authentication and team management permissions.
+      operationId: updateTeam
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTeamRequest'
+      responses:
+        '200':
+          description: Team updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Teams
+      summary: Delete team
+      description: Delete a team. Only admins can delete teams. This will also delete all associated players.
+      operationId: deleteTeam
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /teams/{id}/players:
+    get:
+      tags:
+        - Teams
+      summary: Get team players
+      description: Get all players for a specific team. Requires authentication.
+      operationId: getTeamPlayers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Team players retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlayerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /teams/{teamId}/players/{playerId}/validate:
+    get:
+      tags:
+        - Teams
+      summary: Validate player belongs to team
+      description: Validate that a player belongs to a specific team. Internal endpoint for service-to-service communication.
+      operationId: validatePlayerInTeam
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: teamId
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+        - name: playerId
+          in: path
+          required: true
+          description: Player ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Player validated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerResponse'
+        '404':
+          description: Player not found or does not belong to team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /tournaments/{tournamentId}/teams:
+    get:
+      tags:
+        - Teams
+      summary: Get teams by tournament
+      description: Get all teams participating in a specific tournament. Requires authentication.
+      operationId: getTournamentTeams
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Tournament teams retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeamResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/teams/{id}:
+    get:
+      tags:
+        - Public API
+      summary: Get team profile (public)
+      description: Get team profile information. Public endpoint, no authentication required.
+      operationId: getPublicTeamProfile
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/teams/{id}/overview:
+    get:
+      tags:
+        - Public API
+      summary: Get team overview (public)
+      description: Get comprehensive team overview including statistics. Public endpoint.
+      operationId: getPublicTeamOverview
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamOverviewResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/teams/{id}/squad:
+    get:
+      tags:
+        - Public API
+      summary: Get team squad (public)
+      description: Get team squad/players list. Public endpoint.
+      operationId: getPublicTeamSquad
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Team squad retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlayerResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/teams/{id}/matches:
+    get:
+      tags:
+        - Public API
+      summary: Get team matches (public)
+      description: Get all matches for a team. Returns matches from Match Service. Public endpoint.
+      operationId: getPublicTeamMatches
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team matches retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamMatchesResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Match service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/teams/{id}/statistics:
+    get:
+      tags:
+        - Public API
+      summary: Get team statistics (public)
+      description: Get team statistics. Public endpoint.
+      operationId: getPublicTeamStatistics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Team ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Team statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamStatisticsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /public/tournaments/{tournamentId}/teams:
+    get:
+      tags:
+        - Public API
+      summary: Get tournament teams (public)
+      description: Get all teams participating in a tournament. Public endpoint.
+      operationId: getPublicTournamentTeams
+      parameters:
+        - name: tournamentId
+          in: path
+          required: true
+          description: Tournament ID
+          schema:
+            type: integer
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Tournament teams retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedTeamResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /players:
+    get:
+      tags:
+        - Players
+      summary: List all players
+      description: Get a paginated list of all players with optional filters. Requires authentication.
+      operationId: listPlayers
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: per_page
+          in: query
+          description: Number of items per page (1-100)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: team_id
+          in: query
+          description: Filter by team ID
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Players retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPlayerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    post:
+      tags:
+        - Players
+      summary: Create a new player
+      description: Create a new player for a team. Requires authentication and team management permissions. Jersey number must be unique within the team.
+      operationId: createPlayer
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePlayerRequest'
+            examples:
+              example1:
+                summary: Create player
+                value:
+                  team_id: 1
+                  full_name: "Lionel Messi"
+                  position: "Forward"
+                  jersey_number: 10
+      responses:
+        '201':
+          description: Player created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          description: Validation error or jersey number already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /players/{id}:
+    get:
+      tags:
+        - Players
+      summary: Get player by ID
+      description: Get detailed information about a specific player. Requires authentication.
+      operationId: getPlayerById
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Player ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Player retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    put:
+      tags:
+        - Players
+      summary: Update player
+      description: Update player information. Requires authentication and team management permissions. Jersey number must be unique within the team.
+      operationId: updatePlayer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Player ID
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdatePlayerRequest'
+      responses:
+        '200':
+          description: Player updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlayerResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Validation error or jersey number already taken
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+    delete:
+      tags:
+        - Players
+      summary: Delete player
+      description: Delete a player. Requires authentication and team management permissions.
+      operationId: deletePlayer
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Player ID
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Player deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/ServerError'
+
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Basic health check endpoint
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+                  service:
+                    type: string
+                  version:
+                    type: string
+                  timestamp:
+                    type: string
+                    format: date-time
+              example:
+                success: true
+                message: "Team Service is running"
+                service: "team-service"
+                version: "1.0.0"
+                timestamp: "2024-01-01T00:00:00.000000Z"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        OAuth2 Bearer token authentication using Laravel Passport.
+        Include the token in the Authorization header: `Authorization: Bearer {token}`
+        Tokens are obtained from the auth-service.
+
+  schemas:
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        tournament_id:
+          type: integer
+        name:
+          type: string
+        logo:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        players:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        coaches:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: integer
+              name:
+                type: string
+              email:
+                type: string
+
+    CreateTeamRequest:
+      type: object
+      required:
+        - tournament_id
+        - name
+        - coach_id
+      properties:
+        tournament_id:
+          type: integer
+          description: Tournament ID (must exist)
+        name:
+          type: string
+          maxLength: 255
+        logo:
+          type: string
+          maxLength: 500
+          nullable: true
+        coach_id:
+          type: integer
+          description: Coach user ID (must exist)
+
+    UpdateTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        logo:
+          type: string
+          maxLength: 500
+          nullable: true
+
+    TeamResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Team'
+        timestamp:
+          type: string
+          format: date-time
+
+    TeamOverviewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            team:
+              $ref: '#/components/schemas/Team'
+            statistics:
+              type: object
+              properties:
+                total_players:
+                  type: integer
+                active_players:
+                  type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    TeamMatchesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            matches:
+              type: array
+              items:
+                type: object
+                description: Match data from Match Service
+            meta:
+              type: object
+            team:
+              type: object
+              properties:
+                id:
+                  type: integer
+                name:
+                  type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    TeamStatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            team_id:
+              type: integer
+            team_name:
+              type: string
+            total_players:
+              type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        team_id:
+          type: integer
+        full_name:
+          type: string
+        position:
+          type: string
+          enum: [Goalkeeper, Defender, Midfielder, Forward]
+        jersey_number:
+          type: integer
+          minimum: 1
+          maximum: 99
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        team:
+          $ref: '#/components/schemas/Team'
+          nullable: true
+
+    CreatePlayerRequest:
+      type: object
+      required:
+        - team_id
+        - full_name
+        - position
+        - jersey_number
+      properties:
+        team_id:
+          type: integer
+          description: Team ID (must exist)
+        full_name:
+          type: string
+          maxLength: 255
+        position:
+          type: string
+          enum: [Goalkeeper, Defender, Midfielder, Forward]
+        jersey_number:
+          type: integer
+          minimum: 1
+          maximum: 99
+          description: Jersey number (must be unique within team)
+
+    UpdatePlayerRequest:
+      type: object
+      properties:
+        full_name:
+          type: string
+          maxLength: 255
+        position:
+          type: string
+          enum: [Goalkeeper, Defender, Midfielder, Forward]
+        jersey_number:
+          type: integer
+          minimum: 1
+          maximum: 99
+          description: Jersey number (must be unique within team)
+
+    PlayerResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/Player'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedTeamResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginatedPlayerResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Player'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+        timestamp:
+          type: string
+          format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        from:
+          type: integer
+          nullable: true
+        to:
+          type: integer
+          nullable: true
+        has_more:
+          type: boolean
+        has_previous:
+          type: boolean
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+        errors:
+          type: object
+          nullable: true
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        error_code:
+          type: string
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+
+  responses:
+    ValidationError:
+      description: Validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Validation failed"
+            errors:
+              name:
+                - "The name field is required."
+              jersey_number:
+                - "Jersey number already taken in this team."
+            error_code: "VALIDATION_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Unauthorized"
+            error_code: "UNAUTHORIZED"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    Forbidden:
+      description: Forbidden - Insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Unauthorized to create players for this team"
+            error_code: "FORBIDDEN"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Team not found"
+            error_code: "RESOURCE_NOT_FOUND"
+            timestamp: "2024-01-01T00:00:00.000000Z"
+
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: "Internal server error"
+            error_code: "INTERNAL_SERVER_ERROR"
+            timestamp: "2024-01-01T00:00:00.000000Z"

@@ -26,61 +26,65 @@ This project implements a distributed microservices architecture for managing sp
 - **Microservices Architecture**: Each service is independently deployable and scalable
 - **Event-Driven Communication**: Services communicate via Redis Pub/Sub for loose coupling
 - **Database per Service**: Each service maintains its own database for data isolation
-- **API Gateway Pattern**: Single entry point for all client requests
+- **Direct Client Access**: Admin Dashboard and Public View access services directly (no API Gateway)
 - **RESTful APIs**: Standardized JSON APIs with consistent response formats
 
 ## 🏗️ Architecture
 
 ### System Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Clients                              │
-│              (Web Apps, Mobile Apps, Admin Dashboard)       │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    API Gateway                              │
-│              (Port 8000) - Request Routing                 │
-│              Rate Limiting, Caching, Aggregation          │
-└─────┬──────┬──────┬──────┬──────┬──────┬───────────────────┘
-      │      │      │      │      │      │
-      ▼      ▼      ▼      ▼      ▼      ▼
-┌────────┐ ┌──────────┐ ┌──────┐ ┌──────┐ ┌────────┐ ┌──────────┐
-│  Auth  │ │Tournament│ │ Team │ │Match │ │Results │ │  Redis   │
-│Service │ │ Service  │ │Service│ │Service│ Service│ │Pub/Sub   │
-│ :8001  │ │  :8002   │ │ :8003│ │ :8004│ │ :8005  │ │  Events  │
-└───┬────┘ └────┬─────┘ └───┬──┘ └───┬──┘ └───┬────┘ └──────────┘
-    │          │            │        │        │
-    ▼          ▼            ▼        ▼        ▼
-┌────────┐ ┌──────────┐ ┌──────┐ ┌──────┐ ┌────────┐
-│ Auth   │ │Tournament│ │ Team │ │Match │ │Results │
-│  DB    │ │   DB     │ │  DB  │ │  DB  │ │  DB    │
-└────────┘ └──────────┘ └──────┘ └──────┘ └────────┘
-```
+The system follows a microservices architecture with 5 core services. Clients (Admin Dashboard and Public View) access services directly via HTTP/REST APIs.
+
+![System Architecture Diagram](docs/System%20Architecture%20Diagram/System%20Architecture%20Diagram.png)
+
+**Key Components:**
+- **5 Microservices**: Auth (8001), Tournament (8002), Team (8003), Match (8004), Results (8005)
+- **5 Databases**: One dedicated database per service
+- **Redis**: Event queue for asynchronous communication
+- **Clients**: Admin Dashboard (protected APIs) and Public View (public APIs)
+
+### Data Flow
+
+The following diagram shows how data flows through the system:
+
+![Data Flow Diagram](docs/System%20Architecture%20Diagram/Data%20Flow%20Diagram.png)
+
+**Flow Example: Tournament Creation**
+1. Admin Dashboard sends request to Tournament Service
+2. Tournament Service validates token with Auth Service
+3. Tournament Service saves to database
+4. Tournament Service publishes event to Redis
+5. Other services consume the event and update their caches
+
+### Event Flow
+
+Services communicate asynchronously via Redis Pub/Sub for event-driven updates:
+
+![Event Flow Diagram](docs/System%20Architecture%20Diagram/Event%20Flow%20Diagram.png)
+
+**Event Types:**
+- `tournament.created`, `tournament.updated`, `tournament.status.changed`
+- `match.completed`, `match.scheduled`
+- `standings.updated`, `statistics.updated`
+- `user.registered`, `user.logged.in`
 
 ### Communication Patterns
 
-1. **Synchronous**: HTTP/REST for direct service-to-service calls
+1. **Synchronous**: HTTP/REST for direct service-to-service calls and client requests
 2. **Asynchronous**: Redis Pub/Sub for event-driven communication
-3. **Authentication**: Token-based authentication via Auth Service
+3. **Authentication**: Token-based authentication via Auth Service (all services validate tokens)
 
-### Data Flow Example: Match Completion
+### Sequence Diagrams
 
-```
-1. Match Service completes match
-   ↓
-2. Publishes 'match.completed' event to Redis
-   ↓
-3. Results Service consumes event
-   ↓
-4. Results Service updates standings
-   ↓
-5. Results Service publishes 'standings.updated' event
-   ↓
-6. Gateway Service invalidates cache
-```
+For detailed flow diagrams, see the sequence diagrams:
+
+- [Tournament Creation Flow](docs/Sequence%20Diagrams/Tournament%20Creation%20Flow-.png)
+- [Match Completion Flow](docs/Sequence%20Diagrams/Match%20Completion%20Flow.png)
+- [User Authentication Flow](docs/Sequence%20Diagrams/User%20Authentication%20Flow.png)
+
+For instructions on creating and updating these diagrams, see:
+- [Architecture Diagram Guide](docs/ARCHITECTURE_DIAGRAM_GUIDE.md)
+- [Sequence Diagram Guide](docs/SEQUENCE_DIAGRAM_GUIDE.md)
 
 ## 🚀 Services
 
@@ -164,23 +168,6 @@ This project implements a distributed microservices architecture for managing sp
 
 **Documentation:** [results-service/README.md](./results-service/README.md)
 
-### 6. Gateway Service (Port 8000)
-
-**Responsibilities:**
-- API routing and aggregation
-- Request/response transformation
-- Rate limiting
-- Caching
-- Search aggregation
-
-**Key Features:**
-- Public API aggregation
-- Data composition from multiple services
-- Global search functionality
-- Health check aggregation
-
-**Documentation:** [gateway-service/README.md](./gateway-service/README.md)
-
 ## 💻 Technology Stack
 
 ### Backend
@@ -218,7 +205,7 @@ This project implements a distributed microservices architecture for managing sp
 - ✅ Event-driven architecture
 - ✅ Real-time cache invalidation
 - ✅ Service-to-service communication
-- ✅ API Gateway with aggregation
+- ✅ Public and protected API endpoints
 - ✅ Rate limiting
 - ✅ Caching strategies
 - ✅ Health monitoring
@@ -270,7 +257,6 @@ docker-compose exec auth-service php artisan passport:install
 ```
 
 6. **Access the services**
-- **API Gateway**: http://localhost:8000
 - **Auth Service**: http://localhost:8001
 - **Tournament Service**: http://localhost:8002
 - **Team Service**: http://localhost:8003
@@ -327,18 +313,18 @@ Each service requires specific environment variables. See individual service REA
 - [Team Service Environment Variables](./team-service/README.md#environment-variables)
 - [Match Service Environment Variables](./match-service/README.md#environment-variables)
 - [Results Service Environment Variables](./results-service/README.md#environment-variables)
-- [Gateway Service Environment Variables](./gateway-service/README.md#environment-variables)
 
 ## 📚 API Documentation
 
 ### Base URLs
 
-- **API Gateway**: `http://localhost:8000/api/public`
 - **Auth Service**: `http://localhost:8001/api/v1`
 - **Tournament Service**: `http://localhost:8002/api`
 - **Team Service**: `http://localhost:8003/api/v1`
 - **Match Service**: `http://localhost:8004/api/v1`
 - **Results Service**: `http://localhost:8005/api/v1`
+
+**Note**: Each service provides both public and protected API endpoints. Public endpoints are accessible without authentication, while protected endpoints require Bearer token authentication.
 
 ### API Documentation
 
@@ -349,7 +335,6 @@ Each service provides comprehensive API documentation:
 - [Team Service API](./team-service/README.md#api-endpoints)
 - [Match Service API](./match-service/README.md#api-endpoints)
 - [Results Service API](./results-service/README.md#api-endpoints)
-- [Gateway Service API](./gateway-service/README.md#api-endpoints)
 
 ### Self-Documenting APIs
 
@@ -393,9 +378,11 @@ distributed/
 ├── team-service/          # Team and player management
 ├── match-service/         # Match management
 ├── results-service/       # Results and statistics
-├── gateway-service/       # API Gateway
 ├── admin-dashboard/       # Admin frontend
 ├── tournament-public-app/  # Public frontend
+├── docs/                  # Documentation and diagrams
+│   ├── System Architecture Diagram/
+│   └── Sequence Diagrams/
 ├── docker-compose.yml      # Docker orchestration
 └── README.md              # This file
 ```
@@ -438,7 +425,6 @@ cd tournament-service && php artisan serve --port=8002
 cd team-service && php artisan serve --port=8003
 cd match-service && php artisan serve --port=8004
 cd results-service && php artisan serve --port=8005
-cd gateway-service && php artisan serve --port=8000
 ```
 
 ## 🧪 Testing
@@ -508,7 +494,6 @@ curl http://localhost:8002/api/health
 curl http://localhost:8003/api/v1/health
 curl http://localhost:8004/api/v1/health
 curl http://localhost:8005/api/v1/health
-curl http://localhost:8000/api/health
 ```
 
 ## 🔧 Troubleshooting
@@ -570,9 +555,39 @@ docker-compose exec auth-db mysql -u root -p
 - Check service-specific troubleshooting docs
 - Review logs for error messages
 
+## Error Handling
+
+All services use standardized error responses with error codes. See [ERROR_CODES.md](./ERROR_CODES.md) for the complete reference.
+
+### Standard Error Response Format
+
+```json
+{
+    "success": false,
+    "message": "Error description",
+    "error_code": "ERROR_CODE",
+    "errors": { /* optional validation errors */ },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Common Error Codes
+
+| Error Code | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `BAD_REQUEST` | 400 | Invalid request |
+| `UNAUTHORIZED` | 401 | Authentication required |
+| `FORBIDDEN` | 403 | Access denied |
+| `NOT_FOUND` | 404 | Resource not found |
+| `VALIDATION_ERROR` | 422 | Validation failed |
+| `INTERNAL_SERVER_ERROR` | 500 | Server error |
+
+For detailed error code documentation, see [ERROR_CODES.md](./ERROR_CODES.md).
+
 ## 📖 Additional Documentation
 
 - [API Documentation](./API_DOCUMENTATION.md) - Self-documenting API endpoints
+- [Error Codes Reference](./ERROR_CODES.md) - Complete error code documentation
 - [Search Implementation](./SEARCH_IMPLEMENTATION.md) - Search functionality details
 - [Project Feedback](./PROJECT_FEEDBACK.md) - Improvement recommendations
 - [Quick Improvements](./QUICK_IMPROVEMENTS.md) - Quick action checklist

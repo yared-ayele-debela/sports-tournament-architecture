@@ -383,15 +383,46 @@ The service publishes events to a message queue for other services:
 - `user.logged.in`: When a user logs in
 - `user.role.assigned`: When a role is assigned to a user
 
-## Error Codes
+## Error Responses
 
-| Code | Description |
-|------|-------------|
-| `VALIDATION_ERROR` | Request validation failed |
-| `RESOURCE_NOT_FOUND` | Requested resource not found |
-| `UNAUTHORIZED` | Authentication required |
-| `FORBIDDEN` | Insufficient permissions |
-| `INTERNAL_SERVER_ERROR` | Server error occurred |
+All error responses follow a standardized format:
+
+```json
+{
+    "success": false,
+    "message": "Error message",
+    "error_code": "ERROR_CODE",
+    "errors": { /* optional validation errors */ },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Common Error Codes
+
+| Error Code | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `BAD_REQUEST` | 400 | Invalid request |
+| `UNAUTHORIZED` | 401 | Authentication required |
+| `FORBIDDEN` | 403 | Access denied |
+| `NOT_FOUND` | 404 | Resource not found |
+| `RESOURCE_NOT_FOUND` | 404 | Resource not found (alternative) |
+| `METHOD_NOT_ALLOWED` | 405 | HTTP method not allowed |
+| `VALIDATION_ERROR` | 422 | Validation failed |
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
+| `INTERNAL_SERVER_ERROR` | 500 | Server error |
+| `SERVICE_UNAVAILABLE` | 503 | Service temporarily unavailable |
+
+### Service-Specific Error Codes
+
+| Error Code | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `AUTH_TOKEN_INVALID` | 401 | Authentication token is invalid |
+| `AUTH_TOKEN_EXPIRED` | 401 | Authentication token has expired |
+| `AUTH_CREDENTIALS_INVALID` | 401 | Invalid login credentials |
+| `AUTH_USER_NOT_FOUND` | 404 | User not found |
+| `AUTH_EMAIL_ALREADY_EXISTS` | 422 | Email address already registered |
+
+For a complete list of error codes, see [ERROR_CODES.md](../ERROR_CODES.md).
 
 ## Development
 

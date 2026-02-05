@@ -38,6 +38,14 @@ class ServiceClient
                 $options['json'] = $data;
             }
 
+            // Initialize headers array
+            $options['headers'] = [];
+
+            // Forward correlation ID from incoming request
+            if (request()->header('X-Request-ID')) {
+                $options['headers']['X-Request-ID'] = request()->header('X-Request-ID');
+            }
+
             // Forward Authorization header from incoming request
             $incomingToken = request()->bearerToken();
             if ($incomingToken) {

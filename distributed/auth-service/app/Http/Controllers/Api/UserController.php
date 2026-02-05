@@ -23,7 +23,17 @@ class UserController extends Controller
     {
         try {
             $perPage = $request->get('per_page', 15);
+            $page = $request->get('page', 1);
             $search = $request->get('search');
+
+            // Ensure per_page is a valid integer
+            $perPage = (int) $perPage;
+            if ($perPage < 1) {
+                $perPage = 15;
+            }
+            if ($perPage > 100) {
+                $perPage = 100; // Limit max per page
+            }
 
             $query = User::with('roles', 'roles.permissions');
 
@@ -34,7 +44,7 @@ class UserController extends Controller
                 });
             }
 
-            $users = $query->paginate($perPage);
+            $users = $query->paginate($perPage, ['*'], 'page', $page);
 
             $users->getCollection()->transform(function ($user) {
                 return [

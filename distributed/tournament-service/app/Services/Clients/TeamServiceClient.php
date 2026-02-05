@@ -31,9 +31,18 @@ class TeamServiceClient
     public function getTournamentTeams(int $tournamentId): array
     {
         try {
-            $response = $this->httpClient->get("/api/public/tournaments/{$tournamentId}/teams");
+            $headers = [];
+
+            // Forward correlation ID from incoming request
+            if (request()->header('X-Request-ID')) {
+                $headers['X-Request-ID'] = request()->header('X-Request-ID');
+            }
+
+            $response = $this->httpClient->get("/api/public/tournaments/{$tournamentId}/teams", [
+                'headers' => $headers,
+            ]);
             $responseContent = $response->getBody()->getContents();
-            
+
             Log::info("Fetched tournament teams from TeamService", [
                 'tournament_id' => $tournamentId,
                 'response' => $responseContent
@@ -48,10 +57,10 @@ class TeamServiceClient
             ];
         } catch (RequestException $e) {
             // Check if it's a connection/timeout error (service not available)
-            $isConnectionError = str_contains($e->getMessage(), 'timed out') || 
+            $isConnectionError = str_contains($e->getMessage(), 'timed out') ||
                                 str_contains($e->getMessage(), 'Connection refused') ||
                                 str_contains($e->getMessage(), 'cURL error 28');
-            
+
             if ($isConnectionError) {
                 Log::warning("TeamService is not available (connection/timeout error)", [
                     'tournament_id' => $tournamentId,

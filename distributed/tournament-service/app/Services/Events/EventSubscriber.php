@@ -9,7 +9,7 @@ use Closure;
 
 /**
  * Base Event Subscriber for Redis Pub/Sub
- * 
+ *
  * Used by ALL services to subscribe to Redis channels and handle events
  */
 class EventSubscriber
@@ -65,7 +65,7 @@ class EventSubscriber
                 $reconnectAttempts = 0; // Reset on successful connection
             } catch (Exception $e) {
                 $reconnectAttempts++;
-                
+
                 Log::error('Event subscriber connection failed', [
                     'service' => $this->serviceName,
                     'channels' => $this->channels,
@@ -106,7 +106,7 @@ class EventSubscriber
 
         // Create Redis pub/sub context
         $pubsub = Redis::connection()->pubSubLoop();
-        
+
         // Subscribe to channels
         foreach ($this->channels as $channel) {
             $pubsub->subscribe($channel);
@@ -207,7 +207,7 @@ class EventSubscriber
     protected function parseEvent(string $payload): ?array
     {
         $event = json_decode($payload, true);
-        
+
         if (json_last_error() !== JSON_ERROR_NONE) {
             Log::warning('JSON decode failed', [
                 'service' => $this->serviceName,
@@ -229,7 +229,7 @@ class EventSubscriber
     protected function validateEvent(array $event): bool
     {
         $requiredFields = ['event_id', 'event_type', 'service', 'payload', 'timestamp', 'version'];
-        
+
         foreach ($requiredFields as $field) {
             if (!isset($event[$field])) {
                 return false;
@@ -258,7 +258,7 @@ class EventSubscriber
     {
         if (function_exists('pcntl_signal')) {
             pcntl_async_signals(true);
-            
+
             $this->signalHandlers = [
                 SIGTERM => [$this, 'handleShutdown'],
                 SIGINT => [$this, 'handleShutdown'],

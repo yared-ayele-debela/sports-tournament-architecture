@@ -476,17 +476,47 @@ curl -X POST http://localhost:8002/api/tournaments/1/settings \
   }'
 ```
 
-## Error Codes
+## Error Responses
 
-| Code | Description |
-|------|-------------|
-| `VALIDATION_ERROR` | Request validation failed |
-| `RESOURCE_NOT_FOUND` | Requested resource not found |
-| `UNAUTHORIZED` | Authentication required |
-| `FORBIDDEN` | Insufficient permissions |
-| `SPORT_NOT_FOUND` | Sport not found |
-| `TOURNAMENT_NOT_FOUND` | Tournament not found |
-| `VENUE_NOT_FOUND` | Venue not found |
+All error responses follow a standardized format:
+
+```json
+{
+    "success": false,
+    "message": "Error message",
+    "error_code": "ERROR_CODE",
+    "errors": { /* optional validation errors */ },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Common Error Codes
+
+| Error Code | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `BAD_REQUEST` | 400 | Invalid request |
+| `UNAUTHORIZED` | 401 | Authentication required |
+| `FORBIDDEN` | 403 | Access denied |
+| `NOT_FOUND` | 404 | Resource not found |
+| `RESOURCE_NOT_FOUND` | 404 | Resource not found (alternative) |
+| `METHOD_NOT_ALLOWED` | 405 | HTTP method not allowed |
+| `VALIDATION_ERROR` | 422 | Validation failed |
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
+| `INTERNAL_SERVER_ERROR` | 500 | Server error |
+| `SERVICE_UNAVAILABLE` | 503 | Service temporarily unavailable |
+
+### Service-Specific Error Codes
+
+| Error Code | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `TOURNAMENT_NOT_FOUND` | 404 | Tournament not found |
+| `TOURNAMENT_ALREADY_STARTED` | 400 | Tournament has already started |
+| `TOURNAMENT_INVALID_STATE` | 400 | Tournament is in an invalid state for this operation |
+| `TOURNAMENT_ALREADY_EXISTS` | 422 | Tournament with this name already exists |
+| `SPORT_NOT_FOUND` | 404 | Sport not found |
+| `VENUE_NOT_FOUND` | 404 | Venue not found |
+
+For a complete list of error codes, see [ERROR_CODES.md](../ERROR_CODES.md).
 | `INVALID_STATUS` | Invalid tournament status |
 | `INTERNAL_SERVER_ERROR` | Server error occurred |
 

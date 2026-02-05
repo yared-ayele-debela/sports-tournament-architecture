@@ -26,6 +26,7 @@ Route::prefix('tournaments')->group(function () {
     Route::get('{id}/overview', [TournamentController::class, 'getTournamentOverview']); // GET /api/tournaments/{id}/overview
     Route::get('{id}/statistics', [TournamentController::class, 'getTournamentStatistics']); // GET /api/tournaments/{id}/statistics
     Route::get('{id}/standings', [TournamentController::class, 'getTournamentStandings']); // GET /api/tournaments/{id}/standings
+    Route::get('{id}/validate', [TournamentController::class, 'validateTournament']); // GET /api/tournaments/{id}/validate (service-to-service)
 });
 
 
@@ -66,7 +67,6 @@ Route::middleware(['auth.passport'])->group(function () {
         Route::put('{id}', [TournamentController::class, 'update']);         // PUT /api/tournaments/{id}
         Route::delete('{id}', [TournamentController::class, 'destroy']);      // DELETE /api/tournaments/{id}
         Route::patch('{id}/status', [TournamentController::class, 'updateStatus']); // PATCH /api/tournaments/{id}/status
-        Route::get('{id}/validate', [TournamentController::class, 'validateTournament']); // GET /api/tournaments/{id}/validate
     });
     
     /*

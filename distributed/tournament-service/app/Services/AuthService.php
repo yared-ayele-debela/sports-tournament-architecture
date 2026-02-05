@@ -23,7 +23,7 @@ class AuthService
         try {
             $response = Http::timeout(5)
                 ->withToken($token)
-                ->get(config('services.auth.url') . '/api/auth/me');
+                ->get('http://localhost:8001'.'/api/auth/me');
 
             $statusCode = $response->status();
 
@@ -82,7 +82,7 @@ class AuthService
         try {
             $response = Http::timeout(5)
                 ->withToken($token)
-                ->get(config('services.auth.url') . "/api/users/{$userId}");
+                ->get('http://localhost:8001' . "/api/users/{$userId}");
 
             $statusCode = $response->status();
 

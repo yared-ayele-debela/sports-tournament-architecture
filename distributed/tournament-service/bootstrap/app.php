@@ -20,8 +20,9 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Apply CORS middleware globally to all API routes
+        // Apply correlation ID and CORS middleware globally to all API routes
         $middleware->api(prepend: [
+            \App\Http\Middleware\CorrelationIdMiddleware::class,
             \App\Http\Middleware\CorsMiddleware::class,
         ]);
 

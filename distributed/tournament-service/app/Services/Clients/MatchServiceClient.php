@@ -31,8 +31,16 @@ class MatchServiceClient
     public function getTournamentMatches(int $tournamentId, array $filters = []): array
     {
         try {
+            $headers = [];
+
+            // Forward correlation ID from incoming request
+            if (request()->header('X-Request-ID')) {
+                $headers['X-Request-ID'] = request()->header('X-Request-ID');
+            }
+
             $response = $this->httpClient->get("/api/public/tournaments/{$tournamentId}/matches", [
-                'query' => $filters
+                'query' => $filters,
+                'headers' => $headers,
             ]);
             $responseContent = $response->getBody()->getContents();
             Log::info("Fetched tournament matches from MatchService", [
@@ -49,10 +57,10 @@ class MatchServiceClient
             ];
         } catch (RequestException $e) {
             // Check if it's a connection/timeout error (service not available)
-            $isConnectionError = str_contains($e->getMessage(), 'timed out') || 
+            $isConnectionError = str_contains($e->getMessage(), 'timed out') ||
                                 str_contains($e->getMessage(), 'Connection refused') ||
                                 str_contains($e->getMessage(), 'cURL error 28');
-            
+
             if ($isConnectionError) {
                 Log::warning("MatchService is not available (connection/timeout error)", [
                     'tournament_id' => $tournamentId,

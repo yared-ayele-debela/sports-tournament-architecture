@@ -31,9 +31,18 @@ class ResultsServiceClient
     public function getStandings(int $tournamentId): array
     {
         try {
-            $response = $this->httpClient->get("/api/tournaments/{$tournamentId}/standings");
+            $headers = [];
+
+            // Forward correlation ID from incoming request
+            if (request()->header('X-Request-ID')) {
+                $headers['X-Request-ID'] = request()->header('X-Request-ID');
+            }
+
+            $response = $this->httpClient->get("/api/tournaments/{$tournamentId}/standings", [
+                'headers' => $headers,
+            ]);
             $responseContent = $response->getBody()->getContents();
-            
+
             Log::info("Fetched tournament standings from ResultsService", [
                 'tournament_id' => $tournamentId,
                 'response' => $responseContent
@@ -78,9 +87,18 @@ class ResultsServiceClient
     public function getTournamentStatistics(int $tournamentId): array
     {
         try {
-            $response = $this->httpClient->get("/api/tournaments/{$tournamentId}/statistics");
+            $headers = [];
+
+            // Forward correlation ID from incoming request
+            if (request()->header('X-Request-ID')) {
+                $headers['X-Request-ID'] = request()->header('X-Request-ID');
+            }
+
+            $response = $this->httpClient->get("/api/tournaments/{$tournamentId}/statistics", [
+                'headers' => $headers,
+            ]);
             $responseContent = $response->getBody()->getContents();
-            
+
             Log::info("Fetched tournament statistics from ResultsService", [
                 'tournament_id' => $tournamentId,
                 'response' => $responseContent
@@ -125,11 +143,19 @@ class ResultsServiceClient
     public function getTopScorers(int $tournamentId, int $limit = 10): array
     {
         try {
+            $headers = [];
+
+            // Forward correlation ID from incoming request
+            if (request()->header('X-Request-ID')) {
+                $headers['X-Request-ID'] = request()->header('X-Request-ID');
+            }
+
             $response = $this->httpClient->get("/api/tournaments/{$tournamentId}/top-scorers", [
-                'query' => ['limit' => $limit]
+                'query' => ['limit' => $limit],
+                'headers' => $headers,
             ]);
             $responseContent = $response->getBody()->getContents();
-            
+
             Log::info("Fetched top scorers from ResultsService", [
                 'tournament_id' => $tournamentId,
                 'limit' => $limit,

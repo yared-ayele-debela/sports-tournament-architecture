@@ -23,7 +23,7 @@ class TokenValidationCache
 
     public function __construct()
     {
-        $this->authServiceUrl = config('services.auth.url', env('AUTH_SERVICE_URL', 'http://localhost:8001'));
+        $this->authServiceUrl ='http://localhost:8001';
         $this->cacheTtl = config('services.auth.token_cache_ttl', $this->defaultTtl);
     }
 

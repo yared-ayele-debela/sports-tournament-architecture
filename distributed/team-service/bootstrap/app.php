@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Add correlation ID middleware to all API routes
+        $middleware->api(prepend: [
+            \App\Http\Middleware\CorrelationIdMiddleware::class,
+        ]);
+
         $middleware->api(\Laravel\Passport\Http\Middleware\CreateFreshApiToken::class);
         $middleware->alias([
             'auth.api' => \Laravel\Passport\Http\Middleware\CheckClientCredentials::class,

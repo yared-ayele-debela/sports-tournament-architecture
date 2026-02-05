@@ -18,15 +18,15 @@ class TeamSeeder extends Seeder
 
         // Fetch tournaments from Tournament Service
         try {
-            $response = Http::get(config('services.tournament.url') . '/api/tournaments');
-            
+            $response = Http::get(config('http://localhost:8002') . '/api/tournaments');
+
             if ($response->status() !== 200) {
                 $this->command->error('Failed to fetch tournaments from Tournament Service');
                 return;
             }
 
             $tournaments = $response->json()['data'] ?? [];
-            
+
             if (empty($tournaments)) {
                 $this->command->error('No tournaments found');
                 return;
@@ -42,7 +42,7 @@ class TeamSeeder extends Seeder
 
             foreach ($tournaments as $tournament) {
                 $this->command->info("Creating teams for tournament: {$tournament['name']}");
-                
+
                 foreach ($teamNames as $index => $teamName) {
                     $team = Team::create([
                         'tournament_id' => $tournament['id'],

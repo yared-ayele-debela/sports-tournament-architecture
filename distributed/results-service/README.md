@@ -337,17 +337,46 @@ Cache is automatically invalidated when:
 - A match result is finalized
 - Standings are recalculated
 
-## Error Codes
+## Error Responses
 
-| Code | Description |
-|------|-------------|
-| `VALIDATION_ERROR` | Request validation failed |
-| `RESOURCE_NOT_FOUND` | Requested resource not found |
-| `UNAUTHORIZED` | Authentication required |
-| `TOURNAMENT_NOT_FOUND` | Tournament not found |
-| `MATCH_NOT_FOUND` | Match not found |
-| `MATCH_ALREADY_FINALIZED` | Match result already finalized |
-| `INTERNAL_SERVER_ERROR` | Server error occurred |
+All error responses follow a standardized format:
+
+```json
+{
+    "success": false,
+    "message": "Error message",
+    "error_code": "ERROR_CODE",
+    "errors": { /* optional validation errors */ },
+    "timestamp": "2024-01-01T00:00:00.000000Z"
+}
+```
+
+### Common Error Codes
+
+| Error Code | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `BAD_REQUEST` | 400 | Invalid request |
+| `UNAUTHORIZED` | 401 | Authentication required |
+| `FORBIDDEN` | 403 | Access denied |
+| `NOT_FOUND` | 404 | Resource not found |
+| `RESOURCE_NOT_FOUND` | 404 | Resource not found (alternative) |
+| `METHOD_NOT_ALLOWED` | 405 | HTTP method not allowed |
+| `VALIDATION_ERROR` | 422 | Validation failed |
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests |
+| `INTERNAL_SERVER_ERROR` | 500 | Server error |
+| `SERVICE_UNAVAILABLE` | 503 | Service temporarily unavailable |
+
+### Service-Specific Error Codes
+
+| Error Code | HTTP Status | Description |
+|-----------|-------------|-------------|
+| `RESULT_NOT_FOUND` | 404 | Result not found |
+| `RESULT_ALREADY_EXISTS` | 422 | Result already exists for this match |
+| `RESULT_INVALID_DATA` | 400 | Invalid result data provided |
+| `STANDINGS_NOT_FOUND` | 404 | Standings not found |
+| `STATISTICS_NOT_FOUND` | 404 | Statistics not found |
+
+For a complete list of error codes, see [ERROR_CODES.md](../ERROR_CODES.md).
 
 ## Development
 

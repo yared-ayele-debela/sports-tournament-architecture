@@ -42,6 +42,15 @@ class TeamController extends Controller
             $query->where('tournament_id', $request->tournament_id);
         }
 
+        // Apply search filter
+        if ($request->has('search') && !empty($request->search)) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('logo', 'LIKE', '%' . $searchTerm . '%');
+            });
+        }
+
         $perPage = (int) $request->query('per_page', 20);
         $perPage = max(1, min(100, $perPage));
 
@@ -60,6 +69,15 @@ class TeamController extends Controller
 
         if ($request->has('tournament_id')) {
             $query->where('tournament_id', $request->tournament_id);
+        }
+
+        // Apply search filter
+        if ($request->has('search') && !empty($request->search)) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('name', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('logo', 'LIKE', '%' . $searchTerm . '%');
+            });
         }
 
         // If user is coach, only show their teams

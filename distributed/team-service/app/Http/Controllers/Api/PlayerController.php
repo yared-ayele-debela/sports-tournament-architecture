@@ -39,6 +39,15 @@ class PlayerController extends Controller
             $query->where('team_id', $request->team_id);
         }
 
+        // Apply search filter
+        if ($request->has('search') && !empty($request->search)) {
+            $searchTerm = $request->search;
+            $query->where(function ($q) use ($searchTerm) {
+                $q->where('full_name', 'LIKE', '%' . $searchTerm . '%')
+                  ->orWhere('position', 'LIKE', '%' . $searchTerm . '%');
+            });
+        }
+
         // If user is coach, only show players from their teams
         if (AuthHelper::isCoach()) {
             $query->whereHas('team', function ($q) {

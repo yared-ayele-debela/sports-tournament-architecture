@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Public;
 
 use App\Http\Controllers\Controller;
+use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -72,24 +73,8 @@ abstract class PublicApiController extends Controller
         int $statusCode = 200,
         ?int $cacheTtl = null
     ): JsonResponse {
-        $response = [
-            'success' => true,
-            'message' => $message ?? 'Data retrieved successfully',
-            'data' => $data,
-            'timestamp' => Carbon::now()->toISOString(),
-        ];
-
-        // Add cache metadata if TTL is provided
-        if ($cacheTtl !== null) {
-            $response['cached'] = true;
-            $response['cache_expires_at'] = Carbon::now()->addSeconds($cacheTtl)->toISOString();
-        } else {
-            $response['cached'] = false;
-        }
-
-        return $this->addCorsHeaders(
-            response()->json($response, $statusCode)
-        );
+        $response = ApiResponse::success($data, $message ?? 'Success', $statusCode, $cacheTtl);
+        return $this->addCorsHeaders($response);
     }
 
     /**
@@ -107,23 +92,8 @@ abstract class PublicApiController extends Controller
         $errors = null,
         ?string $errorCode = null
     ): JsonResponse {
-        $response = [
-            'success' => false,
-            'message' => $message,
-            'timestamp' => Carbon::now()->toISOString(),
-        ];
-
-        if ($errors !== null) {
-            $response['errors'] = $errors;
-        }
-
-        if ($errorCode !== null) {
-            $response['error_code'] = $errorCode;
-        }
-
-        return $this->addCorsHeaders(
-            response()->json($response, $statusCode)
-        );
+        $response = ApiResponse::error($message, $statusCode, $errors, $errorCode);
+        return $this->addCorsHeaders($response);
     }
 
     /**

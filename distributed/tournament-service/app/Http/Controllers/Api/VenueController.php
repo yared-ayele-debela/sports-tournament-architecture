@@ -30,10 +30,21 @@ class VenueController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
+            $query = Venue::query();
+
+            // Apply search filter
+            if ($request->has('search') && !empty($request->search)) {
+                $searchTerm = $request->search;
+                $query->where(function ($q) use ($searchTerm) {
+                    $q->where('name', 'LIKE', '%' . $searchTerm . '%')
+                      ->orWhere('location', 'LIKE', '%' . $searchTerm . '%');
+                });
+            }
+
             $perPage = (int) $request->query('per_page', 20);
             $perPage = max(1, min(100, $perPage));
 
-            $venues = Venue::orderByDesc('id')->paginate($perPage);
+            $venues = $query->orderByDesc('id')->paginate($perPage);
 
             return ApiResponse::paginated($venues, 'Venues retrieved successfully');
         } catch (\Exception $e) {

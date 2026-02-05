@@ -313,13 +313,10 @@ class PublicTournamentController extends PublicApiController
 
         $tournaments = $query->paginate($limit, ['*'], 'page', $page);
 
-        // Get team and match counts for each tournament
-        $tournamentIds = $tournaments->pluck('id')->toArray();
-        $teamCounts = $this->getTeamCounts($tournamentIds);
-        $matchCounts = $this->getMatchCounts($tournamentIds);
-
+        // Don't enrich lists with team/match counts to avoid cascading requests
+        // Counts are only fetched for single tournament views (fetchTournamentDetails)
         // Transform data
-        $data = $tournaments->map(function ($tournament) use ($teamCounts, $matchCounts) {
+        $data = $tournaments->map(function ($tournament) {
             return [
                 'id' => $tournament->id,
                 'name' => $tournament->name,
@@ -331,8 +328,8 @@ class PublicTournamentController extends PublicApiController
                 'end_date' => $tournament->end_date->toISOString(),
                 'status' => $tournament->status,
                 'venue_count' => 1, // Since location is a string, we count it as 1
-                'team_count' => $teamCounts[$tournament->id] ?? 0,
-                'match_count' => $matchCounts[$tournament->id] ?? 0,
+                'team_count' => null, // Not fetched for lists to avoid service overload
+                'match_count' => null, // Not fetched for lists to avoid service overload
                 'settings' => $tournament->settings ? [
                     'match_duration' => $tournament->settings->match_duration,
                     'win_rest_time' => $tournament->settings->win_rest_time,
@@ -380,11 +377,9 @@ class PublicTournamentController extends PublicApiController
             ->limit(5)
             ->get();
 
-        $tournamentIds = $tournaments->pluck('id')->toArray();
-        $teamCounts = $this->getTeamCounts($tournamentIds);
-        $matchCounts = $this->getMatchCounts($tournamentIds);
-
-        return $tournaments->map(function ($tournament) use ($teamCounts, $matchCounts) {
+        // Don't enrich lists with team/match counts to avoid cascading requests
+        // Counts are only fetched for single tournament views (fetchTournamentDetails)
+        return $tournaments->map(function ($tournament) {
             return [
                 'id' => $tournament->id,
                 'name' => $tournament->name,
@@ -396,8 +391,8 @@ class PublicTournamentController extends PublicApiController
                 'end_date' => $tournament->end_date->toISOString(),
                 'status' => $tournament->status,
                 'venue_count' => 1,
-                'team_count' => $teamCounts[$tournament->id] ?? 0,
-                'match_count' => $matchCounts[$tournament->id] ?? 0,
+                'team_count' => null, // Not fetched for lists to avoid service overload
+                'match_count' => null, // Not fetched for lists to avoid service overload
                 'settings' => $tournament->settings ? [
                     'match_duration' => $tournament->settings->match_duration,
                     'win_rest_time' => $tournament->settings->win_rest_time,
@@ -433,11 +428,9 @@ class PublicTournamentController extends PublicApiController
             ->limit(10)
             ->get();
 
-        $tournamentIds = $tournaments->pluck('id')->toArray();
-        $teamCounts = $this->getTeamCounts($tournamentIds);
-        $matchCounts = $this->getMatchCounts($tournamentIds);
-
-        return $tournaments->map(function ($tournament) use ($teamCounts, $matchCounts) {
+        // Don't enrich lists with team/match counts to avoid cascading requests
+        // Counts are only fetched for single tournament views (fetchTournamentDetails)
+        return $tournaments->map(function ($tournament) {
             return [
                 'id' => $tournament->id,
                 'name' => $tournament->name,
@@ -449,8 +442,8 @@ class PublicTournamentController extends PublicApiController
                 'end_date' => $tournament->end_date->toISOString(),
                 'status' => $tournament->status,
                 'venue_count' => 1,
-                'team_count' => $teamCounts[$tournament->id] ?? 0,
-                'match_count' => $matchCounts[$tournament->id] ?? 0,
+                'team_count' => null, // Not fetched for lists to avoid service overload
+                'match_count' => null, // Not fetched for lists to avoid service overload
                 'settings' => $tournament->settings ? [
                     'match_duration' => $tournament->settings->match_duration,
                     'win_rest_time' => $tournament->settings->win_rest_time,

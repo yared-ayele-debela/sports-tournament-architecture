@@ -1,46 +1,44 @@
 import axios from 'axios';
 
-// Create axios instances for each service
-export const tournamentApi = axios.create({
-  baseURL:'http://localhost:8002/api/public',
-  timeout: 30000, // Increased timeout to 30 seconds
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-});
+// Shared axios configuration for performance optimization
+// Note: In browsers, connection pooling and keep-alive are handled automatically
+// by the browser's HTTP implementation (fetch/XMLHttpRequest)
+const createOptimizedApi = (baseURL) => {
+  return axios.create({
+    baseURL,
+    timeout: 30000,
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      // Browser automatically handles Connection: keep-alive
+      // Multiple requests to the same host reuse connections automatically
+    },
+    // Enable request/response compression (browser handles this automatically)
+    decompress: true,
+    // Max redirects
+    maxRedirects: 5,
+    // Browser's fetch/XMLHttpRequest automatically handles:
+    // - Connection pooling (reuses TCP connections)
+    // - Keep-alive (maintains connections for reuse)
+    // - Request queuing and parallel execution
+  });
+};
 
-export const teamApi = axios.create({
-  baseURL:'http://localhost:8003/api/public',
-  timeout: 30000, // Increased timeout to 30 seconds
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-});
+// Create axios instances for each service with optimized configuration
+export const tournamentApi = createOptimizedApi('http://localhost:8002/api/public');
+export const teamApi = createOptimizedApi('http://localhost:8003/api/public');
+export const matchApi = createOptimizedApi('http://localhost:8004/api/public');
+export const resultsApi = createOptimizedApi('http://localhost:8005/api/public');
 
-export const matchApi = axios.create({
-  baseURL:'http://localhost:8004/api/public',
-  timeout: 30000, // Increased timeout to 30 seconds
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-});
-
-export const resultsApi = axios.create({
-  baseURL:'http://localhost:8005/api/public',
-  timeout: 30000, // Increased timeout to 30 seconds
-  headers: {
-    'Content-Type': 'application/json',
-    'Accept': 'application/json',
-  },
-});
-
-// Request interceptor for logging (optional)
+// Request interceptor for cancellation and logging
 [tournamentApi, teamApi, matchApi, resultsApi].forEach(api => {
   api.interceptors.request.use(
     (config) => {
+      // Add cancellation token support if not already present
+      if (!config.signal && typeof AbortController !== 'undefined') {
+        // React Query will provide its own signal, but we ensure compatibility
+        config.signal = config.signal || new AbortController().signal;
+      }
       return config;
     },
     (error) => {

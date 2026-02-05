@@ -1,22 +1,53 @@
 import { matchApi } from './axios';
-import { tournamentApi } from './axios';
 
 export const matchService = {
   // Get all matches with filters
   // Note: Public API doesn't have a general /matches endpoint
   // This will use tournament matches if tournament_id is provided, otherwise combine live/today/upcoming
   getAll: async (params = {}) => {
-    // If tournament_id is provided, use tournament matches endpoint
-    if (params.tournament_id) {
-      const response = await tournamentApi.get(`/tournaments/${params.tournament_id}/matches`, { 
-        params: {
-          status: params.status,
-          date: params.date || params.start_date,
-          limit: params.limit || params.per_page,
-          page: params.page,
+    // If tournament_id is provided, use MATCH-SERVICE public tournament matches endpoint
+    // Handle both string and number, and filter out empty strings
+    const tournamentId = params.tournament_id;
+    if (tournamentId && tournamentId !== '' && tournamentId !== '0') {
+      try {
+        // Match Service public route:
+        // GET http://localhost:8004/api/public/tournaments/{tournamentId}/matches
+        const response = await matchApi.get(`/tournaments/${tournamentId}/matches`, { 
+          params: {
+            status: params.status,
+            date: params.date || params.start_date,
+            limit: params.limit || params.per_page,
+            page: params.page,
+          }
+        });
+        return response.data;
+      } catch (error) {
+        // Handle 404 specifically - tournament not found
+        if (error.response?.status === 404) {
+          const errorData = error.response?.data;
+          if (errorData?.error_code === 'TOURNAMENT_NOT_FOUND') {
+            // Tournament doesn't exist - return empty matches instead of throwing
+            console.warn(`Tournament ${tournamentId} not found`);
+            return {
+              success: true,
+              data: {
+                matches: [],
+                pagination: null,
+              },
+            };
+          }
         }
-      });
-      return response.data;
+        
+        console.error('Error fetching tournament matches:', {
+          tournamentId,
+          error: error.message,
+          status: error.response?.status,
+          errorCode: error.response?.data?.error_code,
+          url: error.config?.url,
+          baseURL: error.config?.baseURL,
+        });
+        throw error;
+      }
     }
 
     // Otherwise, combine available endpoints based on status

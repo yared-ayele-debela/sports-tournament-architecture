@@ -18,8 +18,19 @@ const TeamOverview = ({ team }) => {
     enabled: !!team.tournament?.id,
   });
 
-  const standings = standingsData?.data?.data || standingsData?.data || [];
-  const currentPosition = standings.findIndex(s => s.team_id === team.id) + 1;
+  // Extract standings array from response structure
+  // API returns: { data: { standings: [...], count: ... } }
+  const standingsResponse = standingsData?.data?.data || standingsData?.data || {};
+  const standings = Array.isArray(standingsResponse.standings) 
+    ? standingsResponse.standings 
+    : Array.isArray(standingsResponse) 
+    ? standingsResponse 
+    : [];
+  
+  // Find team position in standings (using team.id or team.team.id)
+  const currentPosition = standings.length > 0 
+    ? standings.findIndex(s => (s.team_id === team.id) || (s.team?.id === team.id)) + 1 
+    : 0;
 
   // Fetch recent matches for form
   const { data: matchesData } = useQuery({
@@ -28,11 +39,24 @@ const TeamOverview = ({ team }) => {
     enabled: !!team.id,
   });
 
-  const recentMatches = matchesData?.data?.data || matchesData?.data || [];
+  // Extract matches array from response structure
+  // API returns: { data: { matches: [...], pagination: {...} } }
+  const matchesResponse = matchesData?.data?.data || matchesData?.data || {};
+  const recentMatches = Array.isArray(matchesResponse.matches)
+    ? matchesResponse.matches
+    : Array.isArray(matchesResponse)
+    ? matchesResponse
+    : [];
+  
   const form = recentMatches.slice(0, 5).reverse().map(match => {
-    const isHome = match.home_team_id === team.id;
-    const teamScore = isHome ? match.home_score : match.away_score;
-    const opponentScore = isHome ? match.away_score : match.home_score;
+    // Handle different match response structures
+    const isHome = match.is_home ?? (match.home_team_id === team.id) ?? false;
+    const teamScore = isHome 
+      ? (match.score?.team ?? match.home_score ?? null)
+      : (match.score?.team ?? match.away_score ?? null);
+    const opponentScore = isHome 
+      ? (match.score?.opponent ?? match.away_score ?? null)
+      : (match.score?.opponent ?? match.home_score ?? null);
     
     if (teamScore > opponentScore) return 'W';
     if (teamScore < opponentScore) return 'L';

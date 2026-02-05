@@ -22,8 +22,18 @@ const TeamPlayers = ({ teamId }) => {
     enabled: !!teamId,
   });
 
-  const players = playersData?.data?.data || playersData?.data || [];
-  const pagination = playersData?.data?.pagination || playersData?.pagination || null;
+  // Extract players array from response structure
+  // API returns: { data: { data: [...], pagination: {...} } } OR { data: { players: [...], pagination: {...} } }
+  const playersResponse = playersData?.data?.data || playersData?.data || {};
+  const players = Array.isArray(playersResponse.players)
+    ? playersResponse.players
+    : Array.isArray(playersResponse.data)
+    ? playersResponse.data
+    : Array.isArray(playersResponse)
+    ? playersResponse
+    : [];
+  
+  const pagination = playersResponse?.pagination || playersData?.data?.pagination || playersData?.pagination || null;
 
   // Get unique positions
   const positions = useMemo(() => {

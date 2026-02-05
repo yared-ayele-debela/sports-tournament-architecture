@@ -40,15 +40,32 @@ const TeamMatches = ({ teamId, team }) => {
     enabled: !!teamId,
   });
 
-  const matches = matchesData?.data?.data || matchesData?.data || matchesData?.matches || [];
-  const pagination = matchesData?.data?.pagination || matchesData?.pagination || null;
+  // Extract matches array from response structure
+  // API returns: { data: { matches: [...], pagination: {...} } }
+  const matchesResponse = matchesData?.data?.data || matchesData?.data || {};
+  const matches = Array.isArray(matchesResponse.matches)
+    ? matchesResponse.matches
+    : Array.isArray(matchesResponse)
+    ? matchesResponse
+    : [];
+  
+  const pagination = matchesResponse?.pagination || matchesData?.data?.pagination || matchesData?.pagination || null;
 
   // Enhance matches with result information
   const enhancedMatches = useMemo(() => {
+    if (!Array.isArray(matches) || matches.length === 0) {
+      return [];
+    }
+    
     return matches.map(match => {
-      const isHome = match.home_team_id === team.id || match.home_team?.id === team.id;
-      const teamScore = isHome ? match.home_score : match.away_score;
-      const opponentScore = isHome ? match.away_score : match.home_score;
+      // Handle different match response structures
+      const isHome = match.is_home ?? (match.home_team_id === team.id) ?? (match.home_team?.id === team.id) ?? false;
+      const teamScore = isHome 
+        ? (match.score?.team ?? match.home_score ?? null)
+        : (match.score?.team ?? match.away_score ?? null);
+      const opponentScore = isHome 
+        ? (match.score?.opponent ?? match.away_score ?? null)
+        : (match.score?.opponent ?? match.home_score ?? null);
       
       let result = null;
       if (match.status === 'completed') {

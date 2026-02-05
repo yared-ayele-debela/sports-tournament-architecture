@@ -7,17 +7,10 @@ const TeamHeader = ({ team }) => {
       <div className="flex flex-col md:flex-row md:items-center gap-6">
         {/* Team Logo */}
         <div className="flex-shrink-0">
-          {team.logo ? (
-            <img
-              src={team.logo}
-              alt={team.name}
-              className="h-32 w-32 object-contain"
-            />
-          ) : (
+          
             <div className="h-32 w-32 bg-gray-200 rounded-lg flex items-center justify-center">
               <Users className="h-16 w-16 text-gray-400" />
             </div>
-          )}
         </div>
 
         {/* Team Info */}

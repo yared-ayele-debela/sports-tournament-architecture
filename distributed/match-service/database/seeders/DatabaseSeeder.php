@@ -18,10 +18,10 @@ class DatabaseSeeder extends Seeder
         $this->command->info('Starting Match Service database seeding...');
 
         // Create test user
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        // User::factory()->create([
+        //     'name' => 'Test User',
+        //     'email' => 'test@example.com',
+        // ]);
 
         // Seed matches first (required for events and reports)
         $this->call([

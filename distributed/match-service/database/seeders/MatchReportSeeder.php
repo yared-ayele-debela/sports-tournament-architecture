@@ -34,7 +34,9 @@ class MatchReportSeeder extends Seeder
 
         // Insert reports in batches
         if (!empty($reports)) {
-            MatchReport::insert($reports);
+            foreach ($reports as $report) {
+                MatchReport::firstOrCreate(['match_id' => $report['match_id']], $report);
+            }
             $this->command->info('Generated ' . count($reports) . ' match reports');
         }
     }

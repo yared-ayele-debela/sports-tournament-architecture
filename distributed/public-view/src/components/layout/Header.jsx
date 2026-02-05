@@ -1,30 +1,16 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Menu, X, Search, Moon, Sun } from 'lucide-react';
-import SearchBar from '../common/SearchBar';
-import { useTheme } from '../../context/ThemeContext';
+import { Link } from 'react-router-dom';
+import { Menu, X } from 'lucide-react';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
 
   const navigation = [
     { name: 'Home', path: '/' },
     { name: 'Tournaments', path: '/tournaments' },
     { name: 'Matches', path: '/matches' },
     { name: 'Teams', path: '/teams' },
-    { name: 'Standings', path: '/standings' },
-    { name: 'Statistics', path: '/statistics' },
   ];
-
-  const handleSearch = (query) => {
-    if (query.trim()) {
-      navigate(`/search?q=${encodeURIComponent(query)}`);
-      setSearchOpen(false);
-    }
-  };
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-40">
@@ -50,25 +36,6 @@ const Header = () => {
             ))}
           </div>
 
-          {/* Right side actions */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
-            {/* Search toggle */}
-            <button
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="p-2 text-gray-700 hover:text-primary-600 transition-colors"
-            >
-              <Search className="h-5 w-5" />
-            </button>
-
-            {/* Theme toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 text-gray-700 hover:text-primary-600 transition-colors"
-            >
-              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-            </button>
-          </div>
-
           {/* Mobile menu button */}
           <div className="md:hidden">
             <button
@@ -79,13 +46,6 @@ const Header = () => {
             </button>
           </div>
         </div>
-
-        {/* Search bar (desktop) */}
-        {searchOpen && (
-          <div className="hidden md:block pb-4">
-            <SearchBar onSearch={handleSearch} />
-          </div>
-        )}
 
         {/* Mobile menu */}
         {mobileMenuOpen && (
@@ -101,9 +61,6 @@ const Header = () => {
                   {item.name}
                 </Link>
               ))}
-              <div className="pt-4">
-                <SearchBar onSearch={handleSearch} />
-              </div>
             </div>
           </div>
         )}

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Standardized API Response Handler
- * 
+ *
  * Provides consistent error and success response formats across all services
  */
 class ApiResponse
@@ -19,16 +19,25 @@ class ApiResponse
      * @param mixed $data
      * @param string|null $message
      * @param int $code
+     * @param int|null $cacheTtl Cache TTL in seconds (null = no cache metadata)
      * @return JsonResponse
      */
-    public static function success($data = null, ?string $message = null, int $code = 200): JsonResponse
+    public static function success($data = null, ?string $message = null, int $code = 200, ?int $cacheTtl = null): JsonResponse
     {
-        return response()->json([
+        $response = [
             'success' => true,
             'message' => $message ?? 'Success',
             'data' => $data,
             'timestamp' => now()->toISOString(),
-        ], $code);
+        ];
+
+        // Add cache metadata if TTL is provided
+        if ($cacheTtl !== null) {
+            $response['cached'] = true;
+            $response['cache_expires_at'] = now()->addSeconds($cacheTtl)->toISOString();
+        }
+
+        return response()->json($response, $code);
     }
 
     /**
@@ -64,11 +73,12 @@ class ApiResponse
      *
      * @param LengthAwarePaginator $paginator
      * @param string $message
+     * @param int|null $cacheTtl Cache TTL in seconds (null = no cache metadata)
      * @return JsonResponse
      */
-    public static function paginated(LengthAwarePaginator $paginator, string $message): JsonResponse
+    public static function paginated(LengthAwarePaginator $paginator, string $message, ?int $cacheTtl = null): JsonResponse
     {
-        return response()->json([
+        $response = [
             'success' => true,
             'message' => $message,
             'data' => $paginator->items(),
@@ -83,7 +93,15 @@ class ApiResponse
                 'has_previous' => $paginator->currentPage() > 1,
             ],
             'timestamp' => now()->toISOString(),
-        ]);
+        ];
+
+        // Add cache metadata if TTL is provided
+        if ($cacheTtl !== null) {
+            $response['cached'] = true;
+            $response['cache_expires_at'] = now()->addSeconds($cacheTtl)->toISOString();
+        }
+
+        return response()->json($response);
     }
 
     /**
@@ -129,6 +147,17 @@ class ApiResponse
     public static function forbidden(string $message = 'Forbidden'): JsonResponse
     {
         return self::error($message, 403, null, 'FORBIDDEN');
+    }
+
+    /**
+     * Method not allowed response
+     *
+     * @param string $message
+     * @return JsonResponse
+     */
+    public static function methodNotAllowed(string $message = 'Method not allowed'): JsonResponse
+    {
+        return self::error($message, 405, null, 'METHOD_NOT_ALLOWED');
     }
 
     /**

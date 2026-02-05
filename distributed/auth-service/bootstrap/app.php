@@ -12,7 +12,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Add correlation ID middleware to all API routes
+        $middleware->api(prepend: [
+            \App\Http\Middleware\CorrelationIdMiddleware::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Use custom exception handler for standardized error responses

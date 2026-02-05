@@ -62,6 +62,12 @@ class PermissionSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
+            [
+                'name' => 'manage_users',
+                'description' => 'Manage users and user accounts',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
         ];
 
         foreach ($permissions as $permission) {

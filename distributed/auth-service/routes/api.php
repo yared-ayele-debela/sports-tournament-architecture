@@ -108,31 +108,5 @@ use Illuminate\Support\Facades\Route;
     | Service Info (Public)
     |--------------------------------------------------------------------------
     */
-    Route::get('info', function () {
-        return response()->json([
-            'success' => true,
-            'service' => 'auth-service',
-            'description' => 'Authentication and Authorization Service',
-            'version' => '1.0.0',
-            'endpoints' => [
-                'public' => [
-                    'POST /api/v1/auth/register' => 'Register new user',
-                    'POST /api/v1/auth/login' => 'User login',
-                    'GET /api/v1/health' => 'Health check',
-                    'GET /api/v1/info' => 'Service information'
-                ],
-                'protected' => [
-                    'POST /api/v1/auth/logout' => 'User logout',
-                    'POST /api/v1/auth/refresh' => 'Refresh Passport token',
-                    'GET /api/v1/auth/me' => 'Get authenticated user profile'
-                ],
-                'internal' => [
-                    'GET /api/v1/users/{id}' => 'Get user details',
-                    'POST /api/v1/users/{id}/roles' => 'Assign role to user',
-                    'GET /api/v1/users/{id}/permissions' => 'Get user permissions',
-                    'POST /api/v1/users/validate' => 'Validate user existence'
-                ]
-            ]
-        ]);
-    });
+ 
 

@@ -41,13 +41,15 @@
                     </svg>
                     Back to Tournaments
                 </a>
-                
+
+                @if(auth()->user()->hasPermission('manage_tournaments'))
                 <a href="{{ route('admin.tournaments.edit', $tournament->id) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-4h-4v4m0 0l4-4m-4 0v6m0 0l4 4" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                     </svg>
                     Edit Tournament
                 </a>
+                @endif
             </div>
         </div>
     </div>
@@ -72,10 +74,10 @@
                             <div class="flex justify-between py-2 border-b border-gray-200">
                                 <dt class="text-sm font-medium text-gray-500">Status</dt>
                                 <dd>
-                                    <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full 
-                                        {{ $tournament->status === 'active' ? 'bg-green-100 text-green-800' : 
-                                           ($tournament->status === 'completed' ? 'bg-blue-100 text-blue-800' : 
-                                           ($tournament->status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                                    <span class="inline-flex px-3 py-1 text-xs font-semibold rounded-full
+                                        {{ $tournament->status === 'active' ? 'bg-green-100 text-green-800' :
+                                           ($tournament->status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                                           ($tournament->status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                            'bg-gray-100 text-gray-800')) }}">
                                         {{ ucfirst($tournament->status) }}
                                     </span>
@@ -149,7 +151,7 @@
                                 </svg>
                                 Edit Tournament
                             </a>
-                            
+
                             <form action="{{ route('admin.tournaments.schedule-matches', $tournament->id) }}" method="POST" onsubmit="return confirm('This will generate a round-robin schedule for all registered teams. Are you sure?')">
                                 @csrf
                                 <button type="submit" class="block w-full text-center px-4 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
@@ -159,7 +161,17 @@
                                     Generate Schedule
                                 </button>
                             </form>
-                            
+
+                            <form action="{{ route('admin.tournaments.recalculate-standings', $tournament->id) }}" method="POST" onsubmit="return confirm('This will recalculate standings for all teams in this tournament. Continue?')">
+                                @csrf
+                                <button type="submit" class="block w-full text-center px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors">
+                                    <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    Recalculate Standings
+                                </button>
+                            </form>
+
                             <form action="{{ route('admin.tournaments.destroy', $tournament->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this tournament? This action cannot be undone.')">
                                 @csrf
                                 @method('DELETE')
@@ -215,7 +227,7 @@
                                     <div class="text-sm text-gray-500">{{ $team->players_count ?? 0 }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-500">{{ $team->pivot->created_at
+                                    <div class="text-sm text-gray-500">{{ $team->created_at}}
                             </tr>
                         @endforeach
                     </tbody>

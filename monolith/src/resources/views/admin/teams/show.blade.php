@@ -3,7 +3,7 @@
 @section('title', $team->name)
 
 @section('content')
-<div class="p-6">
+<div class="max-w-10xl mx-auto">
     <!-- Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
@@ -18,7 +18,7 @@
                     </svg>
                     Back to Teams
                 </a>
-                
+
                 <a href="{{ route('admin.teams.edit', $team->id) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-4h-4v4m0 0l4-4m-4 0v6m0 0l4 4" />
@@ -93,7 +93,7 @@
                                 </svg>
                                 Edit Team
                             </a>
-                            
+
                             <form action="{{ route('admin.teams.destroy', $team->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this team? This action cannot be undone.')">
                                 @csrf
                                 @method('DELETE')

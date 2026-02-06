@@ -3,7 +3,7 @@
 @section('title', 'Edit Team')
 
 @section('content')
-<div class="p-6">
+<div class="max-w-10xl mx-auto">
     <!-- Header -->
     <div class="mb-8">
         <div class="flex items-center justify-between">
@@ -25,15 +25,15 @@
         <form action="{{ route('admin.teams.update', $team->id) }}" method="POST" enctype="multipart/form-data" class="p-6">
             @csrf
             @method('PUT')
-            
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Tournament Field -->
                 <div>
                     <label for="tournament_id" class="block text-sm font-medium text-gray-700 mb-2">
                         Tournament <span class="text-red-500">*</span>
                     </label>
-                    <select id="tournament_id" 
-                            name="tournament_id" 
+                    <select id="tournament_id"
+                            name="tournament_id"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('tournament_id') ? 'border-red-500' : '' @enderror"
                             required>
                         <option value="">Select a tournament</option>
@@ -53,9 +53,9 @@
                     <label for="name" class="block text-sm font-medium text-gray-700 mb-2">
                         Team Name <span class="text-red-500">*</span>
                     </label>
-                    <input type="text" 
-                           id="name" 
-                           name="name" 
+                    <input type="text"
+                           id="name"
+                           name="name"
                            value="{{ old('name', $team->name) }}"
                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('name') ? 'border-red-500' : '' @enderror"
                            placeholder="Enter team name"
@@ -70,8 +70,8 @@
                     <label for="coach_id" class="block text-sm font-medium text-gray-700 mb-2">
                         Assign Coach
                     </label>
-                    <select id="coach_id" 
-                            name="coach_id" 
+                    <select id="coach_id"
+                            name="coach_id"
                             class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('coach_id') ? 'border-red-500' : '' @enderror">
                         <option value="">No Coach Assigned</option>
                         @foreach($coaches as $coach)
@@ -91,16 +91,16 @@
                     <label for="logo" class="block text-sm font-medium text-gray-700 mb-2">
                         Team Logo
                     </label>
-                    <input type="file" 
-                           id="logo" 
-                           name="logo" 
+                    <input type="file"
+                           id="logo"
+                           name="logo"
                            accept="image/*"
                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('logo') ? 'border-red-500' : '' @enderror">
                     @error('logo')
                         <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                     <p class="mt-1 text-xs text-gray-500">Optional: Upload new team logo (JPEG, PNG, GIF, SVG - Max 2MB)</p>
-                    
+
                     @if($team->logo)
                         <div class="mt-3">
                             <p class="text-xs text-gray-500 mb-2">Current logo:</p>

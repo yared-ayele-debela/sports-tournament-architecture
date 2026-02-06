@@ -16,11 +16,15 @@ class StandingsCalculator
     {
         DB::transaction(function () use ($tournament) {
             $teams = $tournament->teams;
-            
+
+            // Calculate standings for each team
             foreach ($teams as $team) {
                 $this->calculateTeamStanding($tournament, $team);
             }
-            
+
+            // Calculate positions after all standings are updated
+            $this->calculatePositions($tournament);
+
             $this->clearCache($tournament);
         });
     }
@@ -62,6 +66,9 @@ class StandingsCalculator
             }
         }
 
+        // Calculate goal difference
+        $goalDifference = $goalsFor - $goalsAgainst;
+
         return Standing::updateOrCreate(
             ['tournament_id' => $tournament->id, 'team_id' => $team->id],
             [
@@ -71,6 +78,7 @@ class StandingsCalculator
                 'lost' => $lost,
                 'goals_for' => $goalsFor,
                 'goals_against' => $goalsAgainst,
+                'goal_difference' => $goalDifference,
                 'points' => $points,
             ]
         );
@@ -79,23 +87,42 @@ class StandingsCalculator
     public function getTournamentStandings(Tournament $tournament): array
     {
         $cacheKey = "tournament_standings_{$tournament->id}";
-        
+
         return Cache::remember($cacheKey, 3600, function () use ($tournament) {
             return $tournament->standings()
                 ->with('team')
-                ->orderBy('points', 'desc')
-                ->orderBy('goals_for', 'desc')
-                ->orderBy('goals_against', 'asc')
+                ->orderBy('position')
                 ->get()
                 ->toArray();
         });
+    }
+
+    /**
+     * Calculate and assign positions to all teams in a tournament
+     * Standard football/soccer sorting: Points (desc) -> Goal Difference (desc) -> Goals For (desc) -> Goals Against (asc)
+     */
+    private function calculatePositions(Tournament $tournament): void
+    {
+        $standings = Standing::where('tournament_id', $tournament->id)
+            ->orderBy('points', 'desc')
+            ->orderBy('goal_difference', 'desc')
+            ->orderBy('goals_for', 'desc')
+            ->orderBy('goals_against', 'asc')
+            ->get();
+
+        $position = 1;
+        foreach ($standings as $standing) {
+            $standing->position = $position;
+            $standing->save();
+            $position++;
+        }
     }
 
     private function clearCache(Tournament $tournament): void
     {
         $cacheKey = "tournament_standings_{$tournament->id}";
         Cache::forget($cacheKey);
-        
+
         if (Redis::exists($cacheKey)) {
             Redis::del($cacheKey);
         }
@@ -104,7 +131,7 @@ class StandingsCalculator
     public function recalculateAllStandings(): void
     {
         $tournaments = Tournament::all();
-        
+
         foreach ($tournaments as $tournament) {
             $this->calculateTournamentStandings($tournament);
         }

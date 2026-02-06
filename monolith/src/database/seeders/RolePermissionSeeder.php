@@ -35,7 +35,7 @@ class RolePermissionSeeder extends Seeder
             ],
             'Referee' => [
                 'view_referee_dashboard',
-                'manage_matches',
+                'manage_my_matches',
                 'record_events',
                 'submit_reports',
                 'view_public',
@@ -47,7 +47,7 @@ class RolePermissionSeeder extends Seeder
 
         foreach ($rolePermissions as $roleName => $permissions) {
             $role = Role::where('name', $roleName)->first();
-            
+
             if ($role) {
                 foreach ($permissions as $permissionName) {
                     $permission = Permission::where('name', $permissionName)->first();

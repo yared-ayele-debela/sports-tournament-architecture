@@ -21,6 +21,7 @@ class PermissionSeeder extends Seeder
             ['name' => 'manage_teams'],
             ['name' => 'manage_players'],
             ['name' => 'manage_matches'],
+            ['name' => 'manage_my_matches'],
             ['name' => 'record_events'],
             ['name' => 'submit_reports'],
             ['name' => 'view_public'],

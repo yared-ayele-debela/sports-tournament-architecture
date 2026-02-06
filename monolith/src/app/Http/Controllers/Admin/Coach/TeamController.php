@@ -17,7 +17,7 @@ class TeamController extends Controller
     {
         $user = Auth::user();
         $teams = $user->teams()->with(['tournament', 'players', 'coaches'])->get();
-        
+
         return view('admin.coach.teams.index', compact('teams'));
     }
 
@@ -27,12 +27,14 @@ class TeamController extends Controller
     public function show(Team $team)
     {
         $user = Auth::user();
+        // Eager load user teams to avoid N+1
         if (!$user->teams()->where('team_id', $team->id)->exists()) {
             abort(403, 'Unauthorized - You are not a coach of this team');
         }
-        
+
+        // Eager load all relationships to avoid N+1 queries
         $team->load(['tournament', 'players', 'coaches']);
-        
+
         return view('admin.coach.teams.show', compact('team'));
     }
 
@@ -42,12 +44,14 @@ class TeamController extends Controller
     public function edit(Team $team)
     {
         $user = Auth::user();
+        // Eager load user teams to avoid N+1
         if (!$user->teams()->where('team_id', $team->id)->exists()) {
             abort(403, 'Unauthorized - You are not a coach of this team');
         }
-        
-        $team->load(['tournament', 'players']);
-        
+
+        // Eager load all relationships to avoid N+1 queries
+        $team->load(['tournament', 'players', 'coaches']);
+
         return view('admin.coach.teams.edit', compact('team'));
     }
 
@@ -57,10 +61,11 @@ class TeamController extends Controller
     public function update(Request $request, Team $team)
     {
         $user = Auth::user();
+        // Eager load user teams to avoid N+1
         if (!$user->teams()->where('team_id', $team->id)->exists()) {
             abort(403, 'Unauthorized - You are not a coach of this team');
         }
-        
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'coach_name' => ['nullable', 'string', 'max:255'],
@@ -73,7 +78,7 @@ class TeamController extends Controller
             if ($team->logo) {
                 Storage::disk('public')->delete($team->logo);
             }
-            
+
             $logoPath = $request->file('logo')->store('team-logos', 'public');
             $validated['logo'] = $logoPath;
         }

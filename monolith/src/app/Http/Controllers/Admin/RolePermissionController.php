@@ -18,7 +18,7 @@ class RolePermissionController extends Controller
     {
         $roles = Role::with('permissions')->orderBy('name')->get();
         $permissions = Permission::orderBy('name')->get();
-        
+
         // Group permissions by category
         $groupedPermissions = $permissions->groupBy(function ($permission) {
             if (str_starts_with($permission->name, 'manage_')) {
@@ -50,7 +50,7 @@ class RolePermissionController extends Controller
     {
         $role->load('permissions');
         $permissions = Permission::orderBy('name')->get();
-        
+
         // Group permissions by category
         $groupedPermissions = $permissions->groupBy(function ($permission) {
             if (str_starts_with($permission->name, 'manage_')) {
@@ -95,7 +95,7 @@ class RolePermissionController extends Controller
             return redirect()
                 ->route('admin.role-permissions.index')
                 ->with('success', 'Permissions updated for role: ' . $role->name);
-                
+
         } catch (\Exception $e) {
             return redirect()
                 ->back()
@@ -110,7 +110,7 @@ class RolePermissionController extends Controller
     public function show(Role $role): View
     {
         $role->load('permissions');
-        
+
         // Group permissions by category
         $groupedPermissions = $role->permissions->groupBy(function ($permission) {
             if (str_starts_with($permission->name, 'manage_')) {

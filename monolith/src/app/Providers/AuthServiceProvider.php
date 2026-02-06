@@ -5,8 +5,6 @@ namespace App\Providers;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Models\User;
-use App\Models\Role;
-use App\Models\Permission;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -31,110 +29,78 @@ class AuthServiceProvider extends ServiceProvider
 
     /**
      * Register the application's gates.
+     * Only uses permissions that exist in the database.
      */
     protected function registerGates(): void
     {
         // Super admin gate - bypass all checks
         Gate::before(function (User $user) {
-            if ($user->hasRole('admin')) {
+            // Check for both 'admin' and 'Administrator' role names
+            if ($user->hasRole('admin') || $user->hasRole('Administrator')) {
                 return true;
             }
         });
 
-        // User management gates
+        // ============================================
+        // Direct Permission Gates (using actual permissions from DB)
+        // ============================================
+
+        // User management
         Gate::define('manage_users', function (User $user) {
             return $user->hasPermission('manage_users');
         });
 
-        Gate::define('view_users', function (User $user) {
-            return $user->hasPermission('view_users');
-        });
-
-        Gate::define('create_users', function (User $user) {
-            return $user->hasPermission('create_users');
-        });
-
-        Gate::define('edit_users', function (User $user) {
-            return $user->hasPermission('edit_users');
-        });
-
-        Gate::define('delete_users', function (User $user) {
-            return $user->hasPermission('delete_users');
-        });
-
-        // Match management gates
-        Gate::define('manage_matches', function (User $user) {
-            return $user->hasPermission('manage_matches');
-        });
-
-        Gate::define('view_matches', function (User $user) {
-            return $user->hasPermission('view_matches');
-        });
-
-        Gate::define('create_matches', function (User $user) {
-            return $user->hasPermission('create_matches');
-        });
-
-        Gate::define('edit_matches', function (User $user) {
-            return $user->hasPermission('edit_matches');
-        });
-
-        Gate::define('delete_matches', function (User $user) {
-            return $user->hasPermission('delete_matches');
-        });
-
-        // Tournament management gates
+        // Tournament management
         Gate::define('manage_tournaments', function (User $user) {
             return $user->hasPermission('manage_tournaments');
         });
 
-        Gate::define('view_tournaments', function (User $user) {
-            return $user->hasPermission('view_tournaments');
+        // Sports management
+        Gate::define('manage_sports', function (User $user) {
+            return $user->hasPermission('manage_sports');
         });
 
-        Gate::define('create_tournaments', function (User $user) {
-            return $user->hasPermission('create_tournaments');
+        // Venues management
+        Gate::define('manage_venues', function (User $user) {
+            return $user->hasPermission('manage_venues');
         });
 
-        Gate::define('edit_tournaments', function (User $user) {
-            return $user->hasPermission('edit_tournaments');
-        });
-
-        Gate::define('delete_tournaments', function (User $user) {
-            return $user->hasPermission('delete_tournaments');
-        });
-
-        // Team management gates
+        // Teams management
         Gate::define('manage_teams', function (User $user) {
             return $user->hasPermission('manage_teams');
         });
 
-        Gate::define('view_teams', function (User $user) {
-            return $user->hasPermission('view_teams');
+        // Players management
+        Gate::define('manage_players', function (User $user) {
+            return $user->hasPermission('manage_players');
         });
 
-        Gate::define('create_teams', function (User $user) {
-            return $user->hasPermission('create_teams');
+        // Matches management
+        Gate::define('manage_matches', function (User $user) {
+            return $user->hasPermission('manage_matches');
         });
 
-        Gate::define('edit_teams', function (User $user) {
-            return $user->hasPermission('edit_teams');
+        // Referee: Manage own assigned matches only
+        Gate::define('manage_my_matches', function (User $user) {
+            return $user->hasPermission('manage_my_matches');
         });
 
-        Gate::define('delete_teams', function (User $user) {
-            return $user->hasPermission('delete_teams');
+        // Match events
+        Gate::define('record_events', function (User $user) {
+            return $user->hasPermission('record_events');
         });
 
-        // Report viewing gates
-        Gate::define('view_reports', function (User $user) {
-            return $user->hasPermission('view_reports');
+        // Reports
+        Gate::define('submit_reports', function (User $user) {
+            return $user->hasPermission('submit_reports');
         });
 
-        Gate::define('view_analytics', function (User $user) {
-            return $user->hasPermission('view_analytics');
+        // Public access
+        Gate::define('view_public', function (User $user) {
+            return $user->hasPermission('view_public');
         });
 
-        // Role and permission management gates
+        // Role and permission management
         Gate::define('manage_roles', function (User $user) {
             return $user->hasPermission('manage_roles');
         });
@@ -143,40 +109,179 @@ class AuthServiceProvider extends ServiceProvider
             return $user->hasPermission('manage_permissions');
         });
 
-        Gate::define('assign_permissions', function (User $user) {
-            return $user->hasPermission('assign_permissions');
+        // Coach-specific permissions
+        Gate::define('manage_own_teams', function (User $user) {
+            return $user->hasPermission('manage_own_teams');
         });
 
-        // Content moderation gates
-        Gate::define('moderate_content', function (User $user) {
-            return $user->hasPermission('moderate_content');
+        Gate::define('manage_own_players', function (User $user) {
+            return $user->hasPermission('manage_own_players');
         });
 
-        // Data operation gates
-        Gate::define('export_data', function (User $user) {
-            return $user->hasPermission('export_data');
+        // ============================================
+        // Resource.action format gates (for controllers and views)
+        // ============================================
+
+        // Users - all actions use manage_users
+        Gate::define('users.view', function (User $user) {
+            return $user->hasPermission('manage_users');
+        });
+        Gate::define('users.create', function (User $user) {
+            return $user->hasPermission('manage_users');
+        });
+        Gate::define('users.edit', function (User $user) {
+            return $user->hasPermission('manage_users');
+        });
+        Gate::define('users.delete', function (User $user) {
+            return $user->hasPermission('manage_users');
         });
 
-        Gate::define('import_data', function (User $user) {
-            return $user->hasPermission('import_data');
+        // Tournaments - all actions use manage_tournaments
+        Gate::define('tournaments.view', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournaments.create', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournaments.edit', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournaments.delete', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournaments.schedule-matches', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournaments.recalculate-standings', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
         });
 
-        // System management gates
-        Gate::define('manage_settings', function (User $user) {
-            return $user->hasPermission('manage_settings');
+        // Sports - all actions use manage_sports
+        Gate::define('sports.view', function (User $user) {
+            return $user->hasPermission('manage_sports');
+        });
+        Gate::define('sports.create', function (User $user) {
+            return $user->hasPermission('manage_sports');
+        });
+        Gate::define('sports.edit', function (User $user) {
+            return $user->hasPermission('manage_sports');
+        });
+        Gate::define('sports.delete', function (User $user) {
+            return $user->hasPermission('manage_sports');
         });
 
-        Gate::define('view_logs', function (User $user) {
-            return $user->hasPermission('view_logs');
+        // Venues - all actions use manage_venues
+        Gate::define('venues.view', function (User $user) {
+            return $user->hasPermission('manage_venues');
+        });
+        Gate::define('venues.create', function (User $user) {
+            return $user->hasPermission('manage_venues');
+        });
+        Gate::define('venues.edit', function (User $user) {
+            return $user->hasPermission('manage_venues');
+        });
+        Gate::define('venues.delete', function (User $user) {
+            return $user->hasPermission('manage_venues');
         });
 
-        Gate::define('backup_system', function (User $user) {
-            return $user->hasPermission('backup_system');
+        // Teams - all actions use manage_teams
+        Gate::define('teams.view', function (User $user) {
+            return $user->hasPermission('manage_teams');
+        });
+        Gate::define('teams.create', function (User $user) {
+            return $user->hasPermission('manage_teams');
+        });
+        Gate::define('teams.edit', function (User $user) {
+            return $user->hasPermission('manage_teams');
+        });
+        Gate::define('teams.delete', function (User $user) {
+            return $user->hasPermission('manage_teams');
         });
 
-        // Dynamic permission gates for any custom permissions
-        Gate::define('access_api', function (User $user) {
-            return $user->hasPermission('access_api');
+        // Matches - all actions use manage_matches
+        Gate::define('matches.view', function (User $user) {
+            return $user->hasPermission('manage_matches');
+        });
+        Gate::define('matches.create', function (User $user) {
+            return $user->hasPermission('manage_matches');
+        });
+        Gate::define('matches.edit', function (User $user) {
+            return $user->hasPermission('manage_matches');
+        });
+        Gate::define('matches.delete', function (User $user) {
+            return $user->hasPermission('manage_matches');
+        });
+
+        // Roles - all actions use manage_roles
+        Gate::define('roles.view', function (User $user) {
+            return $user->hasPermission('manage_roles');
+        });
+        Gate::define('roles.create', function (User $user) {
+            return $user->hasPermission('manage_roles');
+        });
+        Gate::define('roles.edit', function (User $user) {
+            return $user->hasPermission('manage_roles');
+        });
+        Gate::define('roles.delete', function (User $user) {
+            return $user->hasPermission('manage_roles');
+        });
+
+        // Permissions - all actions use manage_permissions
+        Gate::define('permissions.view', function (User $user) {
+            return $user->hasPermission('manage_permissions');
+        });
+        Gate::define('permissions.create', function (User $user) {
+            return $user->hasPermission('manage_permissions');
+        });
+        Gate::define('permissions.edit', function (User $user) {
+            return $user->hasPermission('manage_permissions');
+        });
+        Gate::define('permissions.delete', function (User $user) {
+            return $user->hasPermission('manage_permissions');
+        });
+
+        // Role Permissions - uses manage_roles
+        Gate::define('role-permissions.view', function (User $user) {
+            return $user->hasPermission('manage_roles');
+        });
+        Gate::define('role-permissions.edit', function (User $user) {
+            return $user->hasPermission('manage_roles');
+        });
+
+        // Tournament Settings - uses manage_tournaments
+        Gate::define('tournament-settings.view', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournament-settings.create', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournament-settings.edit', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+        Gate::define('tournament-settings.delete', function (User $user) {
+            return $user->hasPermission('manage_tournaments');
+        });
+
+        // ============================================
+        // Dashboard Gates
+        // ============================================
+
+        // Admin Dashboard
+        Gate::define('dashboard.view', function (User $user) {
+            return $user->hasPermission('view_admin_dashboard');
+        });
+        Gate::define('admin.dashboard.view', function (User $user) {
+            return $user->hasPermission('view_admin_dashboard');
+        });
+
+        // Coach Dashboard
+        Gate::define('view_coach_dashboard', function (User $user) {
+            return $user->hasPermission('view_coach_dashboard');
+        });
+
+        // Referee Dashboard
+        Gate::define('view_referee_dashboard', function (User $user) {
+            return $user->hasPermission('view_referee_dashboard');
         });
     }
 }

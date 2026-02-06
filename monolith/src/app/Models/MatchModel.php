@@ -63,9 +63,6 @@ class MatchModel extends Model
     {
         return $this->belongsTo(User::class, 'referee_id');
     }
-
-  
-
     public function matchEvents()
 {
     return $this->hasMany(MatchEvent::class, 'match_id');
@@ -73,7 +70,7 @@ class MatchModel extends Model
 
     public function matchReport()
     {
-        return $this->hasOne(MatchReport::class);
+        return $this->hasOne(MatchReport::class, 'match_id');
     }
     // Match.php
 public function statusBadgeClasses(): string

@@ -8,15 +8,13 @@ class Sport extends Model
 {
     protected $fillable = [
         'name',
-        'team_based',
-
-        'rules',
+        'is_active',
+        'description',
         'created_at',
         'updated_at'
     ];
 
     protected $casts = [
-        'team_based' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];

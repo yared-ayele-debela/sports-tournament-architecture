@@ -55,14 +55,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the permissions that the user belongs to.
-     */
-    public function permissions()
-    {
-        return $this->belongsToMany(Permission::class);
-    }
-
-    /**
      * Check if the user has a specific role.
      *
      * @param string $roleName
@@ -75,13 +67,17 @@ class User extends Authenticatable
 
     /**
      * Check if the user has a specific permission.
+     * Permissions are checked through roles only (no direct user-permission relationship).
      *
      * @param string $permissionName
      * @return bool
      */
     public function hasPermission($permissionName)
     {
-        return $this->permissions()->where('name', $permissionName)->exists();
+        // Check permissions through roles
+        return $this->roles()->whereHas('permissions', function ($query) use ($permissionName) {
+            $query->where('name', $permissionName);
+        })->exists();
     }
 
     /**

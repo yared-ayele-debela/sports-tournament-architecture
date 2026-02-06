@@ -17,7 +17,9 @@ class Standing extends Model
         'lost',
         'goals_for',
         'goals_against',
+        'goal_difference',
         'points',
+        'position',
         'created_at',
         'updated_at'
     ];
@@ -29,7 +31,9 @@ class Standing extends Model
         'lost' => 'integer',
         'goals_for' => 'integer',
         'goals_against' => 'integer',
+        'goal_difference' => 'integer',
         'points' => 'integer',
+        'position' => 'integer',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];

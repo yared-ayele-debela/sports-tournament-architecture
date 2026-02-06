@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AdminProfileController;
 use App\Http\Controllers\Admin\Coach\PlayerController;
@@ -12,44 +11,38 @@ use App\Http\Controllers\Admin\VenueController;
 use App\Http\Controllers\Admin\TeamController;
 use App\Http\Controllers\Admin\MatchController;
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\RoleController;
-use App\Http\Controllers\Admin\PermissionController;
 use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Middleware\AdminMiddleware;
-use App\Http\Controllers\Coach\DashboardController as CoachDashboardController;
-
-use App\Http\Middleware\CoachAccess;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
-// Route::get('/', function () {
-//     return view('welcome');
-// });
-
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
 
 // Admin Routes - Administrator Only
 Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
-
-    
-
-    // Profile Management
+    // Profile Management (with rate limiting for sensitive operations)
     Route::get('/profile', [AdminProfileController::class, 'edit'])->name('profile.edit');
-    Route::put('/profile', [AdminProfileController::class, 'update'])->name('profile.update');
-    Route::put('/profile/password', [AdminProfileController::class, 'updatePassword'])->name('profile.password.update');
-    Route::delete('/profile', [AdminProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::put('/profile', [AdminProfileController::class, 'update'])
+        ->middleware('throttle:admin')
+        ->name('profile.update');
+    Route::put('/profile/password', [AdminProfileController::class, 'updatePassword'])
+        ->middleware('throttle:sensitive')
+        ->name('profile.password.update');
+    Route::delete('/profile', [AdminProfileController::class, 'destroy'])
+        ->middleware('throttle:sensitive')
+        ->name('profile.destroy');
     Route::get('/profile/activity', [AdminProfileController::class, 'activity'])->name('profile.activity');
 
     // Sports Management
     Route::resource('sports', SportController::class);
 
-    // Tournaments Management
+    // Tournaments Management (with rate limiting for heavy operations)
     Route::resource('tournaments', TournamentController::class);
-    Route::post('tournaments/{tournament}/schedule-matches', [TournamentController::class, 'scheduleMatches'])->name('tournaments.schedule-matches');
+    Route::post('tournaments/{tournament}/schedule-matches', [TournamentController::class, 'scheduleMatches'])
+        ->middleware('throttle:sensitive')
+        ->name('tournaments.schedule-matches');
+    Route::post('tournaments/{tournament}/recalculate-standings', [TournamentController::class, 'recalculateStandings'])
+        ->middleware('throttle:sensitive')
+        ->name('tournaments.recalculate-standings');
 
     // Tournament Settings Management
     Route::resource('tournament-settings', TournamentSettingsController::class);
@@ -66,12 +59,6 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     // Users Management
     Route::resource('users', UserController::class);
 
-    // Roles Management
-    Route::resource('roles', RoleController::class);
-
-    // Permissions Management
-    Route::resource('permissions', PermissionController::class);
-
     // Role Permissions Management
     Route::prefix('role-permissions')->name('role-permissions.')->group(function () {
         Route::get('/', [RolePermissionController::class, 'index'])->name('index');
@@ -80,8 +67,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
         Route::put('/{role}', [RolePermissionController::class, 'update'])->name('update');
     });
 
-
-// Coach Routes
+    // Coach Routes
     Route::get('/coach-dashboard', [AdminDashboardController::class, 'coachDashboard'])->name('coach-dashboard');
     Route::prefix('coach')->name('coach.')->group(function () {
         Route::resource('teams', CoachTeamController::class);
@@ -93,10 +79,7 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
         Route::get('/teams/{team}/players/{player}/edit', [PlayerController::class, 'edit'])->name('players.edit');
         Route::put('/teams/{team}/players/{player}', [PlayerController::class, 'update'])->name('players.update');
         Route::delete('/teams/{team}/players/{player}', [PlayerController::class, 'destroy'])->name('players.destroy');
-
     });
-
-    
 });
 
 // Referee Routes - Referee Only

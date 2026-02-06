@@ -4,192 +4,148 @@
 
 @section('content')
 <div class="max-w-10xl mx-auto">
+    <!-- Page Header -->
+    <x-ui.page-header 
+        title="Dashboard" 
+        subtitle="Overview of your tournament management system"
+    />
+
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4 gap-6 mb-8">
-        <!-- Total Tournaments -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-indigo-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Total Tournaments</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['tournaments'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Active Tournaments -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Active Tournaments</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['active_tournaments'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Matches -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h18M7 12h.01M7 12h.01M7 12h.01M7 12h.01M7 12h.01M7 12h.01" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Total Matches</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['matches'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Completed Matches -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Completed Matches</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['completed_matches'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Teams -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-orange-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Total Teams</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['teams'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Total Users -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-teal-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Total Users</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['users'] }}</p>
-                </div>
-            </div>
-        </div>
-
-        <!-- Referees Count -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
-            <div class="flex items-center">
-                <div class="flex-shrink-0 bg-red-100 rounded-lg p-3">
-                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                    </svg>
-                </div>
-                <div class="ml-4">
-                    <p class="text-sm font-medium text-gray-600">Referees</p>
-                    <p class="text-2xl font-semibold text-gray-900">{{ $stats['referees'] }}</p>
-                </div>
-            </div>
-        </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <x-ui.stat-card 
+            title="Total Tournaments" 
+            :value="$stats['tournaments']" 
+            icon="fas fa-trophy" 
+            icon-color="indigo"
+        />
+        
+        <x-ui.stat-card 
+            title="Active Tournaments" 
+            :value="$stats['active_tournaments']" 
+            icon="fas fa-check-circle" 
+            icon-color="green"
+        />
+        
+        <x-ui.stat-card 
+            title="Total Matches" 
+            :value="$stats['matches']" 
+            icon="fas fa-calendar-alt" 
+            icon-color="blue"
+        />
+        
+        <x-ui.stat-card 
+            title="Completed Matches" 
+            :value="$stats['completed_matches']" 
+            icon="fas fa-check-double" 
+            icon-color="purple"
+        />
+        
+        <x-ui.stat-card 
+            title="Total Teams" 
+            :value="$stats['teams']" 
+            icon="fas fa-users" 
+            icon-color="orange"
+        />
+        
+        <x-ui.stat-card 
+            title="Total Users" 
+            :value="$stats['users']" 
+            icon="fas fa-user-friends" 
+            icon-color="teal"
+        />
+        
+        <x-ui.stat-card 
+            title="Referees" 
+            :value="$stats['referees']" 
+            icon="fas fa-user-shield" 
+            icon-color="red"
+        />
+        
+        <x-ui.stat-card 
+            title="Venues" 
+            :value="$stats['venues']" 
+            icon="fas fa-map-marker-alt" 
+            icon-color="yellow"
+        />
     </div>
 
     <!-- Charts Section -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        <!-- Match Status Chart -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Match Status Distribution</h2>
+        <x-ui.card title="Match Status Distribution" icon="fas fa-chart-pie">
             <div class="relative h-64">
                 <canvas id="matchStatusChart" height="400"></canvas>
             </div>
-        </div>
+        </x-ui.card>
 
-        <!-- Matches Per Day Chart -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Matches Per Day (Last 7 Days)</h2>
+        <x-ui.card title="Matches Per Day (Last 7 Days)" icon="fas fa-chart-line">
             <div class="relative h-64">
                 <canvas id="dailyMatchesChart" height="400"></canvas>
             </div>
-        </div>
+        </x-ui.card>
     </div>
 
     <!-- Recent Activity Panels -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <!-- Recent Matches -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Matches</h2>
+        <x-ui.card title="Recent Matches" icon="fas fa-clock">
             <div class="space-y-3">
                 @forelse ($recentMatches as $match)
-                    <div class="flex items-start justify-between">
+                    <div class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-900">{{ $match['teams'] }}</p>
                             <div class="flex items-center mt-1">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $match['status_badge'] }}">
+                                <x-ui.badge :variant="str_replace('_', '-', $match['status']) === 'completed' ? 'success' : (str_replace('_', '-', $match['status']) === 'in-progress' ? 'warning' : 'info')">
                                     {{ ucfirst(str_replace('_', ' ', $match['status'])) }}
-                                </span>
+                                </x-ui.badge>
                             </div>
                         </div>
-                        <span class="text-xs text-gray-500">{{ $match['created_at'] }}</span>
+                        <span class="text-xs text-gray-500 ml-4">{{ $match['created_at'] }}</span>
                     </div>
                 @empty
-                    <p class="text-sm text-gray-500">No recent matches</p>
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>
+                        <p class="text-sm text-gray-500">No recent matches</p>
+                    </div>
                 @endforelse
             </div>
-        </div>
+        </x-ui.card>
 
-        <!-- Recent Users -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Users</h2>
+        <x-ui.card title="Recent Users" icon="fas fa-user-plus">
             <div class="space-y-3">
                 @forelse ($recentUsers as $user)
-                    <div class="flex items-start justify-between">
+                    <div class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-900">{{ $user['name'] }}</p>
-                            <p class="text-xs text-gray-500">{{ $user['email'] }}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">{{ $user['email'] }}</p>
                         </div>
-                        <span class="text-xs text-gray-500">{{ $user['created_at'] }}</span>
+                        <span class="text-xs text-gray-500 ml-4">{{ $user['created_at'] }}</span>
                     </div>
                 @empty
-                    <p class="text-sm text-gray-500">No recent users</p>
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>
+                        <p class="text-sm text-gray-500">No recent users</p>
+                    </div>
                 @endforelse
             </div>
-        </div>
+        </x-ui.card>
 
-        <!-- Recent Completed Matches -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">Recent Completed Matches</h2>
+        <x-ui.card title="Recent Completed Matches" icon="fas fa-check-double">
             <div class="space-y-3">
                 @forelse ($recentCompletedMatches as $match)
-                    <div class="flex items-start justify-between">
+                    <div class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-900">{{ $match['teams'] }}</p>
-                            <p class="text-sm font-semibold text-gray-700 mt-1">{{ $match['score'] }}</p>
+                            <p class="text-sm font-semibold text-indigo-600 mt-1">{{ $match['score'] }}</p>
                         </div>
-                        <span class="text-xs text-gray-500">{{ $match['completed_at'] }}</span>
+                        <span class="text-xs text-gray-500 ml-4">{{ $match['completed_at'] }}</span>
                     </div>
                 @empty
-                    <p class="text-sm text-gray-500">No completed matches</p>
+                    <div class="text-center py-8">
+                        <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>
+                        <p class="text-sm text-gray-500">No completed matches</p>
+                    </div>
                 @endforelse
             </div>
-        </div>
+        </x-ui.card>
     </div>
 </div>
 

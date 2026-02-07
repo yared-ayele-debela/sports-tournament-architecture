@@ -43,4 +43,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('/matches', [MatchApiController::class, 'index']);
     Route::get('/matches/{id}', [MatchApiController::class, 'show']);
     Route::get('/matches/recent', [MatchApiController::class, 'recent']);
+
+    // Match Events endpoints (public, fast, cached)
+    Route::get('/matches/{matchId}/events', [\App\Http\Controllers\Api\MatchEventApiController::class, 'index']);
+    Route::get('/matches/{matchId}/events/latest', [\App\Http\Controllers\Api\MatchEventApiController::class, 'latest']);
+    Route::get('/matches/{matchId}/live', [\App\Http\Controllers\Api\MatchEventApiController::class, 'live']);
+    
+    // DISABLED: SSE endpoint causes server blocking with Apache
+    // Real-time streaming endpoint (Server-Sent Events) - DISABLED
+    // Route::get('/matches/{matchId}/stream', [\App\Http\Controllers\Api\MatchLiveController::class, 'stream']);
 });

@@ -20,6 +20,7 @@ Route::get('/teams/{team}', [TeamController::class, 'show'])->name('teams.show')
 // Match Routes
 Route::get('/matches', [MatchController::class, 'index'])->name('matches.index');
 Route::get('/matches/{match}', [MatchController::class, 'show'])->name('matches.show');
+Route::get('/matches/{match}/live', [MatchController::class, 'live'])->name('matches.live');
 
 // Tournament-specific routes (nested)
 Route::get('/tournaments/{tournament}/matches', [TournamentController::class, 'matches'])->name('tournaments.matches');

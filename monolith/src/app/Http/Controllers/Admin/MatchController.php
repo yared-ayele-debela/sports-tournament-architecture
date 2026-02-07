@@ -26,7 +26,7 @@ class MatchController extends Controller
     public function index()
     {
         $this->checkPermission('manage_matches');
-        $matches = MatchModel::with(['tournament', 'homeTeam', 'awayTeam', 'venue', 'referee'])
+        $matches = MatchModel::with(['tournament', 'homeTeam', 'awayTeam', 'venue', 'referee', 'matchReport'])
             ->orderBy('match_date', 'desc')
             ->paginate(10);
         return view('admin.matches.index', compact('matches'));
@@ -98,7 +98,7 @@ class MatchController extends Controller
     public function show(MatchModel $match)
     {
         $this->checkPermission('manage_matches');
-        $match->load(['tournament', 'homeTeam', 'awayTeam', 'venue', 'referee']);
+        $match->load(['tournament', 'homeTeam', 'awayTeam', 'venue', 'referee', 'matchReport']);
         return view('admin.matches.show', compact('match'));
     }
 

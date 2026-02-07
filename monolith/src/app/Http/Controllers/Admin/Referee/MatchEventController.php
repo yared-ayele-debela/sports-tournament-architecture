@@ -7,9 +7,13 @@ use App\Models\MatchModel;
 use App\Models\MatchEvent;
 use App\Models\Player;
 use App\Models\Team;
+use App\Events\MatchEventCreated;
+use App\Events\MatchUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Facades\Gate;
 
 class MatchEventController extends Controller
@@ -73,6 +77,24 @@ class MatchEventController extends Controller
 
             DB::commit();
 
+            // Clear cache (works with both Redis and other cache drivers)
+            Cache::forget("match_events_{$match->id}");
+            Cache::forget("match_live_{$match->id}");
+
+            // Also clear Redis directly if using Redis
+            if (config('cache.default') === 'redis' && Redis::connection()->ping()) {
+                Redis::del("match_events_{$match->id}");
+                Redis::del("match_live_{$match->id}");
+            }
+
+            // Broadcast event for real-time updates
+            event(new MatchEventCreated($event));
+
+            // Broadcast match update if score changed
+            if ($validated['event_type'] === 'goal') {
+                event(new MatchUpdated($match->fresh(), ['score' => true]));
+            }
+
             return redirect()
                 ->route('admin.referee.matches.show', $match)
                 ->with('success', 'Event recorded successfully');
@@ -126,11 +148,23 @@ class MatchEventController extends Controller
             abort(403, 'Event does not belong to this match.');
         }
 
+        $eventType = $event->event_type;
         $event->delete();
 
+        // Clear cache (works with both Redis and other cache drivers)
+        Cache::forget("match_events_{$match->id}");
+        Cache::forget("match_live_{$match->id}");
+
+        // Also clear Redis directly if using Redis
+        if (config('cache.default') === 'redis' && Redis::connection()->ping()) {
+            Redis::del("match_events_{$match->id}");
+            Redis::del("match_live_{$match->id}");
+        }
+
         // Update match score if it was a goal
-        if ($event->event_type === 'goal') {
+        if ($eventType === 'goal') {
             $this->updateMatchScore($match);
+            event(new MatchUpdated($match->fresh(), ['score' => true]));
         }
 
         return redirect()

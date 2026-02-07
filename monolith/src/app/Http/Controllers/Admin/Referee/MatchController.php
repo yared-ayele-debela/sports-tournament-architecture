@@ -5,12 +5,17 @@ namespace App\Http\Controllers\Admin\Referee;
 use App\Http\Controllers\Controller;
 use App\Models\MatchModel;
 use App\Models\MatchEvent;
+use App\Services\MatchTimerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
 
 class MatchController extends Controller
 {
+    public function __construct(
+        protected MatchTimerService $timerService
+    ) {}
+
     /**
      * Display referee dashboard
      */
@@ -63,7 +68,7 @@ class MatchController extends Controller
         }
 
         $match->load([
-            'tournament',
+            'tournament.settings',
             'homeTeam.players',
             'awayTeam.players',
             'venue',
@@ -72,7 +77,29 @@ class MatchController extends Controller
             'matchEvents.player',
             'matchEvents.team'
         ]);
-        // dd($match);
+
+        // Update minute if match is in progress
+        if ($match->status === 'in_progress') {
+            $this->timerService->updateMinute($match);
+            $match->refresh();
+
+            // Auto-end match if duration reached
+            $matchDuration = $match->tournament->settings->match_duration ?? 90;
+            if ($match->current_minute >= $matchDuration) {
+                $this->timerService->end($match);
+                $match->refresh();
+            }
+        }
+
+        // Return JSON for AJAX requests
+        if (request()->expectsJson() || request()->ajax()) {
+            return response()->json([
+                'current_minute' => $match->current_minute,
+                'status' => $match->status,
+                'home_score' => $match->home_score,
+                'away_score' => $match->away_score,
+            ]);
+        }
 
         return view('admin.referee.matches.show', compact('match'));
     }
@@ -87,10 +114,7 @@ class MatchController extends Controller
             abort(403, 'You are not authorized to manage this match.');
         }
 
-        $match->update([
-            'status' => 'in_progress',
-            'current_minute' => 0
-        ]);
+        $this->timerService->start($match);
 
         return redirect()
             ->route('admin.referee.matches.show', $match)
@@ -107,11 +131,28 @@ class MatchController extends Controller
             abort(403, 'You are not authorized to manage this match.');
         }
 
-        $match->update(['status' => 'paused']);
+        $this->timerService->pause($match);
 
         return redirect()
             ->route('admin.referee.matches.show', $match)
             ->with('success', 'Match paused successfully.');
+    }
+
+    /**
+     * Resume the match
+     */
+    public function resume(MatchModel $match, Request $request)
+    {
+        // Authorization: Check if the match belongs to the authenticated referee
+        if ($match->referee_id !== Auth::id()) {
+            abort(403, 'You are not authorized to manage this match.');
+        }
+
+        $this->timerService->resume($match);
+
+        return redirect()
+            ->route('admin.referee.matches.show', $match)
+            ->with('success', 'Match resumed successfully.');
     }
 
     /**
@@ -124,7 +165,7 @@ class MatchController extends Controller
             abort(403, 'You are not authorized to manage this match.');
         }
 
-        $match->update(['status' => 'completed']);
+        $this->timerService->end($match);
 
         return redirect()
             ->route('admin.referee.matches.show', $match)

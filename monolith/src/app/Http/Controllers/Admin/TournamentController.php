@@ -19,6 +19,7 @@ class TournamentController extends Controller
     {
         $this->checkPermission('manage_tournaments');
         $tournaments = Tournament::with('sport')
+            ->withCount('teams')
             ->orderBy('start_date', 'desc')
             ->paginate(10);
 
@@ -255,5 +256,36 @@ class TournamentController extends Controller
                 ->route('admin.tournaments.show', $tournament->id)
                 ->with('error', 'Failed to recalculate standings: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Display tournament teams
+     */
+    public function teams(Tournament $tournament)
+    {
+        $this->checkPermission('manage_tournaments');
+        $tournament->load('sport');
+        $teams = $tournament->teams()
+            ->withCount('players')
+            ->with('coaches')
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.tournaments.teams', compact('tournament', 'teams'));
+    }
+
+    /**
+     * Display tournament standings
+     */
+    public function standings(Tournament $tournament)
+    {
+        $this->checkPermission('manage_tournaments');
+        $tournament->load('sport');
+        $standings = $tournament->standings()
+            ->with('team')
+            ->orderBy('position')
+            ->get();
+
+        return view('admin.tournaments.standings', compact('tournament', 'standings'));
     }
 }

@@ -25,6 +25,10 @@ class MatchModel extends Model
         'home_score',
         'away_score',
         'current_minute',
+        'started_at',
+        'paused_at',
+        'total_paused_seconds',
+        'last_minute_update',
         'created_at',
         'updated_at'
     ];
@@ -35,6 +39,10 @@ class MatchModel extends Model
         'home_score' => 'integer',
         'away_score' => 'integer',
         'current_minute' => 'integer',
+        'started_at' => 'datetime',
+        'paused_at' => 'datetime',
+        'total_paused_seconds' => 'integer',
+        'last_minute_update' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime'
     ];

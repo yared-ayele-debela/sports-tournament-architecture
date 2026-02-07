@@ -18,12 +18,12 @@ class MatchController extends Controller
     {
         $query = MatchModel::with(['homeTeam', 'awayTeam', 'venue', 'tournament'])
                 ->orderBy('match_date', 'desc');
-        
+
         // Filter by tournament
         if ($request->filled('tournament')) {
             $query->where('tournament_id', $request->tournament);
         }
-        
+
         // Filter by team
         if ($request->filled('team')) {
             $query->where(function ($q) use ($request) {
@@ -31,12 +31,12 @@ class MatchController extends Controller
                   ->orWhere('away_team_id', $request->team);
             });
         }
-        
+
         // Filter by status
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-        
+
         // Filter by date range
         if ($request->filled('date_from')) {
             $query->where('match_date', '>=', $request->date_from);
@@ -44,7 +44,7 @@ class MatchController extends Controller
         if ($request->filled('date_to')) {
             $query->where('match_date', '<=', $request->date_to);
         }
-        
+
         $matches = $query->paginate(20);
 
         // Get available tournaments for filtering
@@ -59,8 +59,8 @@ class MatchController extends Controller
     public function show(MatchModel $match): View
     {
         $match->load([
-            'homeTeam.players',
-            'awayTeam.players',
+            'homeTeam',
+            'awayTeam',
             'venue',
             'tournament',
             'matchEvents.player',
@@ -103,5 +103,20 @@ class MatchController extends Controller
             ->get();
 
         return view('public.matches.show', compact('match', 'stats', 'headToHead'));
+    }
+
+    /**
+     * Display live match view with real-time updates
+     */
+    public function live(MatchModel $match): View
+    {
+        $match->load([
+            'homeTeam',
+            'awayTeam',
+            'venue',
+            'tournament',
+        ]);
+
+        return view('public.matches.live', compact('match'));
     }
 }

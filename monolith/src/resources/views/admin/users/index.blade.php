@@ -14,46 +14,6 @@
     </x-ui.page-header>
 
     <!-- Search and Filter -->
-    <x-ui.card class="mb-6">
-        <form method="GET" action="{{ route('admin.users.index') }}" class="flex flex-wrap gap-4">
-            <!-- Search -->
-            <div class="flex-1 min-w-64">
-                <x-ui.form-group label="Search">
-                    <x-ui.input 
-                        type="text"
-                        name="search"
-                        value="{{ request('search') }}"
-                        placeholder="Search by name or email..."
-                        icon="fas fa-search"
-                    />
-                </x-ui.form-group>
-            </div>
-
-            <!-- Role Filter -->
-            <div class="min-w-48">
-                <x-ui.form-group label="Role">
-                    @php
-                        $roleOptions = collect($roles)->mapWithKeys(function($role) {
-                            return [$role->name => ucfirst($role->name)];
-                        })->toArray();
-                        $roleOptions = ['' => 'All Roles'] + $roleOptions;
-                    @endphp
-                    <x-ui.select 
-                        name="role" 
-                        :options="$roleOptions"
-                        :value="request('role')"
-                        icon="fas fa-user-tag"
-                    />
-                </x-ui.form-group>
-            </div>
-
-            <!-- Submit -->
-            <div class="flex items-end">
-                <x-ui.button type="submit" variant="secondary" icon="fas fa-filter">Filter</x-ui.button>
-            </div>
-        </form>
-    </x-ui.card>
-
     <!-- Users Table -->
     <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">

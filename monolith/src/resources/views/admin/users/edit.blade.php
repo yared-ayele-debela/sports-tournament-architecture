@@ -4,6 +4,8 @@
 
 @section('content')
 <!-- Page Header -->
+<div class="max-w-10xl mx-auto">
+
     <div class="mb-6">
         <h1 class="text-2xl font-semibold text-gray-900">{{ __('Edit User') }}</h1>
         <p class="mt-2 text-sm text-gray-600">{{ __('Update user information and role assignment.') }}</p>
@@ -17,21 +19,21 @@
 
             <!-- Name -->
             <div>
-                <x-input-label for="name" :value="__('Full Name')" />
-                <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" value="{{ old('name', $user->name) }}" required autofocus autocomplete="name" />
+                <x-input-label :value="__('Full Name')" />
+                <x-text-input class="block mt-1 w-full" type="text" name="name" value="{{ old('name', $user->name) }}" required autofocus autocomplete="name" />
                 <x-input-error :messages="$errors->get('name')" class="mt-2" />
             </div>
 
             <!-- Email -->
             <div>
-                <x-input-label for="email" :value="__('Email Address')" />
-                <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" value="{{ old('email', $user->email) }}" required autocomplete="email" />
+                <x-input-label :value="__('Email Address')" />
+                <x-text-input class="block mt-1 w-full" type="email" name="email" value="{{ old('email', $user->email) }}" required autocomplete="email" />
                 <x-input-error :messages="$errors->get('email')" class="mt-2" />
             </div>
 
             <!-- Role -->
             <div>
-                <x-input-label for="role" :value="__('Role')" />
+                <x-input-label :value="__('Role')" />
                 <select id="role" name="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
                     @foreach($roles as $role)
                         <option value="{{ $role->name }}" {{ $userRole == $role->name ? 'selected' : '' }}>
@@ -49,15 +51,15 @@
 
                 <!-- New Password -->
                 <div>
-                    <x-input-label for="password" :value="__('New Password')" />
-                    <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" autocomplete="new-password" />
+                    <x-input-label :value="__('New Password')" />
+                    <x-text-input class="block mt-1 w-full" type="password" name="password" autocomplete="new-password" />
                     <x-input-error :messages="$errors->get('password')" class="mt-2" />
                 </div>
 
                 <!-- Confirm New Password -->
                 <div>
-                    <x-input-label for="password_confirmation" :value="__('Confirm New Password')" />
-                    <x-text-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" autocomplete="new-password" />
+                    <x-input-label :value="__('Confirm New Password')" />
+                    <x-text-input class="block mt-1 w-full" type="password" name="password_confirmation" autocomplete="new-password" />
                     <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
                 </div>
             </div>
@@ -73,15 +75,7 @@
             </div>
         </form>
     </div>
-
+</div>
     <!-- User Information -->
-    <div class="mt-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
-        <h3 class="text-sm font-semibold text-gray-900 mb-2">{{ __('User Information') }}</h3>
-        <div class="space-y-2 text-xs text-gray-700">
-            <div><strong>{{ __('Current Role:') }}</strong> {{ ucfirst($userRole) }}</div>
-            <div><strong>{{ __('Account Created:') }}</strong> {{ $user->created_at->format('M j, Y g:i A') }}</div>
-            <div><strong>{{ __('Last Updated:') }}</strong> {{ $user->updated_at->format('M j, Y g:i A') }}</div>
-            <div><strong>{{ __('Email Verified:') }}</strong> {{ $user->email_verified_at ? $user->email_verified_at->format('M j, Y') : __('Not verified') }}</div>
-        </div>
-    </div>
+
 @endsection

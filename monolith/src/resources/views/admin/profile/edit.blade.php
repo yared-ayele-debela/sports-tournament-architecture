@@ -190,12 +190,7 @@
                         </div>
                     @endif
                     
-                    <div class="pt-3 border-t border-gray-200">
-                        <a href="{{ route('admin.profile.activity') }}" 
-                           class="text-sm text-indigo-600 hover:text-indigo-800 font-medium">
-                            View Account Activity →
-                        </a>
-                    </div>
+                   
                 </div>
             </div>
 

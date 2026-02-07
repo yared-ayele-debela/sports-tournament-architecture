@@ -30,7 +30,6 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::delete('/profile', [AdminProfileController::class, 'destroy'])
         ->middleware('throttle:sensitive')
         ->name('profile.destroy');
-    Route::get('/profile/activity', [AdminProfileController::class, 'activity'])->name('profile.activity');
 
     // Sports Management
     Route::resource('sports', SportController::class);

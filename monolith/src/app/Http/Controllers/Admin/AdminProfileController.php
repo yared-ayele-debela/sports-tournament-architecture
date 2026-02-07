@@ -18,13 +18,13 @@ class AdminProfileController extends Controller
     public function edit(Request $request): View
     {
         $user = $request->user();
-        
+
         // Get all permissions through roles
         $permissions = collect();
         foreach ($user->roles as $role) {
             $permissions = $permissions->merge($role->permissions);
         }
-        
+
         return view('admin.profile.edit', [
             'user' => $user,
             'roles' => $user->roles,
@@ -103,30 +103,7 @@ class AdminProfileController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return Redirect::to('/')->with('success', 'Account deleted successfully.');
+        return Redirect::route('login')->with('success', 'Account deleted successfully.');
     }
 
-    /**
-     * Get admin activity log.
-     */
-    public function activity(Request $request): View
-    {
-        $user = $request->user();
-        
-        // You can implement activity logging here
-        // For now, we'll show basic information
-        $activities = collect([
-            [
-                'action' => 'Account Created',
-                'description' => 'Your admin account was created',
-                'ip_address' => $user->created_at->format('Y-m-d H:i:s'),
-                'created_at' => $user->created_at,
-            ]
-        ]);
-
-        return view('admin.profile.activity', [
-            'user' => $user,
-            'activities' => $activities,
-        ]);
     }
-}

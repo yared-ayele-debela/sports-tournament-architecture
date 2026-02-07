@@ -144,12 +144,6 @@
                     Edit Profile
                 </a>
 
-                <a href="{{ route('admin.profile.activity') }}"
-                   class="flex items-center px-3 py-2 text-sm text-gray-300 hover:bg-slate-600 hover:text-white">
-                    <i class="fas fa-clock w-4 h-4 mr-3"></i>
-                    Account Activity
-                </a>
-
                 <hr class="border-slate-600 my-1">
 
                 <button onclick="event.preventDefault(); document.getElementById('logout-form').submit();"

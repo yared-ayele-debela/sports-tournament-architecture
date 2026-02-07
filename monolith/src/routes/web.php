@@ -42,6 +42,10 @@ Route::middleware([AdminMiddleware::class])->prefix('admin')->name('admin.')->gr
     Route::post('tournaments/{tournament}/recalculate-standings', [TournamentController::class, 'recalculateStandings'])
         ->middleware('throttle:sensitive')
         ->name('tournaments.recalculate-standings');
+    Route::get('tournaments/{tournament}/teams', [TournamentController::class, 'teams'])
+        ->name('tournaments.teams');
+    Route::get('tournaments/{tournament}/standings', [TournamentController::class, 'standings'])
+        ->name('tournaments.standings');
 
     // Tournament Settings Management
     Route::resource('tournament-settings', TournamentSettingsController::class);

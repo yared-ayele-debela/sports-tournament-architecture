@@ -11,6 +11,7 @@ use App\Services\TeamService;
 use App\Services\MatchService;
 use App\Services\UserService;
 use App\Services\DashboardService;
+use App\Services\MatchTimerService;
 use App\Observers\MatchObserver;
 use App\Models\MatchModel;
 
@@ -41,6 +42,10 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(DashboardService::class, function ($app) {
             return new DashboardService();
+        });
+
+        $this->app->singleton(MatchTimerService::class, function ($app) {
+            return new MatchTimerService();
         });
     }
 

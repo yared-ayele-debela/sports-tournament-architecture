@@ -20,6 +20,9 @@ Route::middleware(['auth', 'role:referee'])->prefix('admin/referee')->name('admi
     Route::post('/matches/{match}/pause', [MatchController::class, 'pause'])
         ->middleware('throttle:admin')
         ->name('matches.pause');
+    Route::post('/matches/{match}/resume', [MatchController::class, 'resume'])
+        ->middleware('throttle:admin')
+        ->name('matches.resume');
     Route::post('/matches/{match}/end', [MatchController::class, 'end'])
         ->middleware('throttle:admin')
         ->name('matches.end');

@@ -3,7 +3,7 @@
 @section('title', 'Match Report - ' . $match->homeTeam->name . ' vs ' . $match->awayTeam->name)
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="max-w-10xl mx-auto">
     <!-- Header -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div class="flex items-center justify-between">

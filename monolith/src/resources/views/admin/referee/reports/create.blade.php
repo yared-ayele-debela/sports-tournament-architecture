@@ -3,7 +3,7 @@
 @section('title', 'Create Match Report - ' . $match->homeTeam->name . ' vs ' . $match->awayTeam->name)
 
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="max-w-10xl mx-auto">
     <!-- Header -->
     <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
         <div class="flex items-center justify-between">
@@ -70,9 +70,9 @@
                 <label for="summary" class="block text-sm font-medium text-gray-700 mb-2">
                     Match Summary <span class="text-red-500">*</span>
                 </label>
-                <textarea 
-                    id="summary" 
-                    name="summary" 
+                <textarea
+                    id="summary"
+                    name="summary"
                     rows="10"
                     required
                     minlength="10"
@@ -90,10 +90,10 @@
                 <label for="referee" class="block text-sm font-medium text-gray-700 mb-2">
                     Referee Name
                 </label>
-                <input 
-                    type="text" 
-                    id="referee" 
-                    name="referee" 
+                <input
+                    type="text"
+                    id="referee"
+                    name="referee"
                     value="{{ old('referee', Auth::user()->name) }}"
                     maxlength="255"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('referee') border-red-500 @enderror"
@@ -109,10 +109,10 @@
                 <label for="attendance" class="block text-sm font-medium text-gray-700 mb-2">
                     Attendance
                 </label>
-                <input 
-                    type="text" 
-                    id="attendance" 
-                    name="attendance" 
+                <input
+                    type="text"
+                    id="attendance"
+                    name="attendance"
                     value="{{ old('attendance') }}"
                     maxlength="255"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('attendance') border-red-500 @enderror"

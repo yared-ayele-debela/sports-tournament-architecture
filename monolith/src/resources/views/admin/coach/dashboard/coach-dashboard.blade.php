@@ -77,7 +77,7 @@
                             </div>
                         </div>
                         <x-ui.button 
-                            href="{{ route('admin.teams.show', $team->id) }}" 
+                            href="{{ route('admin.coach.teams.show', $team->id) }}" 
                             variant="primary" 
                             size="sm"
                             icon="fas fa-eye"

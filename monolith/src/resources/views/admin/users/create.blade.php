@@ -3,79 +3,147 @@
 @section('title', 'Create User')
 
 @section('content')
+<div class="max-w-10xl mx-auto">
     <!-- Page Header -->
-    <div class="mb-6">
-        <h1 class="text-2xl font-semibold text-gray-900">{{ __('Create User') }}</h1>
-        <p class="mt-2 text-sm text-gray-600">{{ __('Create a new user account and assign appropriate role.') }}</p>
-    </div>
+    <x-ui.page-header title="Create User" subtitle="Add a new user account with appropriate role">
+        <x-slot name="actions">
+            <x-ui.button href="{{ route('admin.users.index') }}" variant="secondary" icon="fas fa-arrow-left">Back to Users</x-ui.button>
+        </x-slot>
+    </x-ui.page-header>
+
+    <!-- Success/Error Messages -->
+    @if(session('success'))
+        <x-ui.alert type="success" class="mb-6">
+            {{ session('success') }}
+        </x-ui.alert>
+    @endif
+
+    @if(session('error'))
+        <x-ui.alert type="error" class="mb-6">
+            {{ session('error') }}
+        </x-ui.alert>
+    @endif
 
     <!-- Form -->
-    <div class="bg-white shadow sm:rounded-lg">
-        <form method="POST" action="{{ route('admin.users.store') }}" class="space-y-6">
+    <x-ui.card>
+        <form action="{{ route('admin.users.store') }}" method="POST">
             @csrf
 
-            <!-- Name -->
-            <div>
-                <x-input-label for="name" :value="__('Full Name')" />
-                <x-text-input id="name" class="block mt-1 w-full" type="text" name="name" value="{{ old('name') }}" required autofocus autocomplete="name" />
-                <x-input-error :messages="$errors->get('name')" class="mt-2" />
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Name Field -->
+                <x-ui.form-group label="Full Name" :required="true" :error="$errors->first('name')">
+                    <x-ui.input
+                        type="text"
+                        name="name"
+                        value="{{ old('name') }}"
+                        placeholder="Enter full name"
+                        :required="true"
+                        :error="$errors->first('name')"
+                        icon="fas fa-user"
+                    />
+                </x-ui.form-group>
+
+                <!-- Email Field -->
+                <x-ui.form-group label="Email Address" :required="true" :error="$errors->first('email')">
+                    <x-ui.input
+                        type="email"
+                        name="email"
+                        value="{{ old('email') }}"
+                        placeholder="Enter email address"
+                        :required="true"
+                        :error="$errors->first('email')"
+                        icon="fas fa-envelope"
+                    />
+                </x-ui.form-group>
+
+                <!-- Password Field -->
+                <x-ui.form-group label="Password" :required="true" :error="$errors->first('password')">
+                    <x-ui.input
+                        type="password"
+                        name="password"
+                        placeholder="Enter password"
+                        :required="true"
+                        :error="$errors->first('password')"
+                        icon="fas fa-lock"
+                    />
+                </x-ui.form-group>
+
+                <!-- Confirm Password Field -->
+                <x-ui.form-group label="Confirm Password" :required="true" :error="$errors->first('password_confirmation')">
+                    <x-ui.input
+                        type="password"
+                        name="password_confirmation"
+                        placeholder="Confirm password"
+                        :required="true"
+                        :error="$errors->first('password_confirmation')"
+                        icon="fas fa-lock"
+                    />
+                </x-ui.form-group>
+
+                <!-- Role Field -->
+                <x-ui.form-group label="Role" :required="true" :error="$errors->first('role')">
+                    @php
+                        $roleOptions = collect($roles)->mapWithKeys(function($role) {
+                            return [$role->name => ucfirst($role->name)];
+                        })->toArray();
+                    @endphp
+                    <x-ui.select
+                        name="role"
+                        :options="$roleOptions"
+                        placeholder="Select a role"
+                        :required="true"
+                        :error="$errors->first('role')"
+                        icon="fas fa-user-tag"
+                    />
+                </x-ui.form-group>
             </div>
 
-            <!-- Email -->
-            <div>
-                <x-input-label for="email" :value="__('Email Address')" />
-                <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" value="{{ old('email') }}" required autocomplete="email" />
-                <x-input-error :messages="$errors->get('email')" class="mt-2" />
-            </div>
-
-            <!-- Password -->
-            <div>
-                <x-input-label for="password" :value="__('Password')" />
-                <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
-                <x-input-error :messages="$errors->get('password')" class="mt-2" />
-            </div>
-
-            <!-- Confirm Password -->
-            <div>
-                <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-                <x-text-input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password" />
-                <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
-            </div>
-
-            <!-- Role -->
-            <div>
-                <x-input-label for="role" :value="__('Role')" />
-                <select id="role" name="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500" required>
-                    @foreach($roles as $role)
-                        <option value="{{ $role->name }}" {{ old('role') == $role->name ? 'selected' : '' }}>
-                            {{ ucfirst($role->name) }}
-                        </option>
-                    @endforeach
-                </select>
-                <x-input-error :messages="$errors->get('role')" class="mt-2" />
-            </div>
-
-            <!-- Submit Button -->
-            <div class="flex items-center justify-between">
-                <a href="{{ route('admin.users.index') }}" class="text-sm text-gray-600 hover:text-gray-900">
-                    {{ __('Cancel') }}
-                </a>
-                <x-primary-button>
-                    {{ __('Create User') }}
-                </x-primary-button>
+            <!-- Form Actions -->
+            <div class="mt-6 flex items-center justify-end space-x-3">
+                <x-ui.button href="{{ route('admin.users.index') }}" variant="secondary">Cancel</x-ui.button>
+                <x-ui.button type="submit" variant="primary" icon="fas fa-save">Create User</x-ui.button>
             </div>
         </form>
-    </div>
+    </x-ui.card>
 
     <!-- Role Information -->
-    <div class="mt-8 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <h3 class="text-sm font-semibold text-blue-900 mb-2">{{ __('User Roles') }}</h3>
-        <div class="space-y-2 text-xs text-blue-700">
-            <div><strong>{{ __('Admin:') }}</strong> {{ __('Full system access, can manage all users and settings') }}</div>
-            <div><strong>{{ __('Referee:') }}</strong> {{ __('Can officiate matches and manage events') }}</div>
-            <div><strong>{{ __('Coach:') }}</strong> {{ __('Can manage assigned teams and players') }}</div>
-            <div><strong>{{ __('User:') }}</strong> {{ __('Basic access, can view public content') }}</div>
+    <x-ui.card class="mt-6">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 class="text-sm font-semibold text-blue-900 mb-3 flex items-center">
+                <i class="fas fa-info-circle mr-2"></i>
+                User Roles Guide
+            </h3>
+            <div class="space-y-2 text-sm text-blue-800">
+                <div class="flex items-start">
+                    <i class="fas fa-crown mt-0.5 mr-2 text-blue-600"></i>
+                    <div>
+                        <strong>Admin:</strong> Full system access, can manage all users and settings
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-whistle mt-0.5 mr-2 text-blue-600"></i>
+                    <div>
+                        <strong>Referee:</strong> Can officiate matches and manage events
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-clipboard mt-0.5 mr-2 text-blue-600"></i>
+                    <div>
+                        <strong>Coach:</strong> Can manage assigned teams and players
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-user mt-0.5 mr-2 text-blue-600"></i>
+                    <div>
+                        <strong>User:</strong> Basic access, can view public content
+                    </div>
+                </div>
+            </div>
+            <p class="mt-3 text-xs text-blue-600 italic">
+                <i class="fas fa-lightbulb mr-1"></i>
+                Note: Assign appropriate role based on user's responsibilities.
+            </p>
         </div>
-        <p class="mt-3 text-xs text-blue-600">{{ __('Note: Assign appropriate role based on user\'s responsibilities.') }}</p>
-    </div>
+    </x-ui.card>
+</div>
 @endsection

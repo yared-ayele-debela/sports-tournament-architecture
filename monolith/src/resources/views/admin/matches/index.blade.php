@@ -32,6 +32,7 @@
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Date & Time</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Score</th>
+                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Report</th>
                         <th class="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -96,6 +97,18 @@
                                     @endif
                                 </div>
                             </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @if($match->matchReport)
+                                    <x-ui.badge variant="success" class="inline-flex items-center">
+                                        <i class="fas fa-file-alt mr-1 text-xs"></i>
+                                        Available
+                                    </x-ui.badge>
+                                @else
+                                    <span class="text-xs text-gray-400">
+                                        <i class="fas fa-file-alt mr-1"></i>No report
+                                    </span>
+                                @endif
+                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end space-x-2">
                                     @if(auth()->user()->hasPermission('manage_matches'))
@@ -118,7 +131,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-6 py-12 text-center">
+                            <td colspan="10" class="px-6 py-12 text-center">
                                 <div class="text-gray-500">
                                     <i class="fas fa-calendar-times text-4xl text-gray-300 mb-3"></i>
                                     <p class="text-lg font-medium">No matches found</p>

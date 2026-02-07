@@ -17,35 +17,6 @@
     <div class="container mx-auto px-4">
         @if($standings->count() > 0)
             <!-- Top 3 Teams -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                @php
-                    $podiumTeams = $standings->take(3);
-                    $positions = ['1st', '2nd', '3rd'];
-                    $medals = ['🥇', '🥈', '🥉'];
-                    $colors = ['bg-yellow-100 border-yellow-400', 'bg-gray-100 border-gray-400', 'bg-orange-100 border-orange-400'];
-                @endphp
-                
-                @foreach($podiumTeams as $index => $standing)
-                    <div class="bg-white rounded-lg shadow-md p-6 border-2 {{ $colors[$index] }} text-center">
-                        <div class="text-4xl mb-2">{{ $medals[$index] }}</div>
-                        <div class="text-2xl font-bold mb-2">{{ $positions[$index] }} Place</div>
-                        <div class="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-3">
-                            <span class="text-white font-bold text-xl">{{ substr($standing->team->name, 0, 1) }}</span>
-                        </div>
-                        <h3 class="text-lg font-bold mb-2">{{ $standing->team->name }}</h3>
-                        <div class="text-3xl font-bold text-primary mb-1">{{ $standing->points }}</div>
-                        <div class="text-sm text-gray-600">Points</div>
-                        <div class="mt-4 text-sm text-gray-600">
-                            <span class="text-success font-semibold">{{ $standing->won }}W</span>
-                            <span class="mx-2">-</span>
-                            <span class="text-gray-600">{{ $standing->drawn }}D</span>
-                            <span class="mx-2">-</span>
-                            <span class="text-danger font-semibold">{{ $standing->lost }}L</span>
-                        </div>
-                    </div>
-                @endforeach
-            </div>
-
             <!-- Full Standings Table -->
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="p-6 border-b">

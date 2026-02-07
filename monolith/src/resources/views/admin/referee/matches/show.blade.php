@@ -45,8 +45,9 @@
                             <span class="px-3 py-1 text-xs font-semibold rounded-full
                                 {{ $match->status === 'completed' ? 'bg-green-100 text-green-800' :
                                    ($match->status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                                   ($match->status === 'paused' ? 'bg-orange-100 text-orange-800' :
                                    ($match->status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                   'bg-blue-100 text-blue-800')) }}">
+                                   'bg-blue-100 text-blue-800'))) }}">
                                 {{ ucfirst(str_replace('_', ' ', $match->status)) }}
                             </span>
                         </div>
@@ -73,13 +74,19 @@
                         </div>
                     </div>
 
-                    @if($match->current_minute !== null)
-                        <div class="text-center mt-4">
-                            <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-medium">
-                                Minute: {{ $match->current_minute }}
-                            </span>
+                    <div class="text-center mt-4">
+                        <div id="current-minute-display" class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-medium text-lg">
+                            Minute: <span id="current-minute-value">{{ $match->current_minute ?? 0 }}</span>'
+                            @if($match->status === 'in_progress')
+                                <span class="ml-2 text-xs animate-pulse">●</span>
+                            @endif
                         </div>
-                    @endif
+                        @if($match->status === 'in_progress' && $match->tournament->settings)
+                            <div class="text-xs text-gray-500 mt-2">
+                                Match Duration: {{ $match->tournament->settings->match_duration ?? 90 }} minutes
+                            </div>
+                        @endif
+                    </div>
                 </div>
 
                 <!-- Match Controls -->
@@ -92,7 +99,7 @@
                                 @csrf
                                 <button type="submit"
                                         class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
-                                    Start Match
+                                    <i class="fas fa-play mr-2"></i>Start Match
                                 </button>
                             </form>
                         @endif
@@ -101,8 +108,8 @@
                             <form action="{{ route('admin.referee.matches.pause', $match) }}" method="POST">
                                 @csrf
                                 <button type="submit"
-                                        class="w-full px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors">
-                                    Pause Match
+                                        class="w-full px-4 py-2 bg-amber-600 text-white rounded-md hover:bg-amber-700 transition-colors font-semibold">
+                                    <i class="fas fa-pause mr-2"></i>Pause Match
                                 </button>
                             </form>
 
@@ -110,7 +117,25 @@
                                 @csrf
                                 <button type="submit"
                                         class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
-                                    End Match
+                                    <i class="fas fa-stop mr-2"></i>End Match
+                                </button>
+                            </form>
+                        @endif
+
+                        @if($match->status === 'paused')
+                            <form action="{{ route('admin.referee.matches.resume', $match) }}" method="POST">
+                                @csrf
+                                <button type="submit"
+                                        class="w-full px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors font-semibold">
+                                    <i class="fas fa-play mr-2"></i>Resume Match
+                                </button>
+                            </form>
+
+                            <form action="{{ route('admin.referee.matches.end', $match) }}" method="POST">
+                                @csrf
+                                <button type="submit"
+                                        class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
+                                    <i class="fas fa-stop mr-2"></i>End Match
                                 </button>
                             </form>
                         @endif
@@ -118,14 +143,14 @@
                         @if($match->status !== 'completed')
                             <button onclick="showUpdateMinuteModal()"
                                     class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
-                                Update Minute
+                                <i class="fas fa-clock mr-2"></i>Update Minute
                             </button>
                         @endif
 
                         @if($match->status !== 'completed')
                             <button onclick="showUpdateScoreModal()"
                                     class="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors">
-                                Update Score
+                                <i class="fas fa-futbol mr-2"></i>Update Score
                             </button>
                         @endif
                     </div>
@@ -356,6 +381,63 @@
 </div>
 
 <script>
+// Real-time minute updates for in-progress matches
+@if($match->status === 'in_progress')
+let minuteUpdateInterval;
+
+function updateMatchMinute() {
+    fetch('{{ route('admin.referee.matches.show', $match) }}', {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.current_minute !== undefined) {
+            const minuteElement = document.getElementById('current-minute-value');
+            if (minuteElement) {
+                minuteElement.textContent = data.current_minute;
+            }
+        }
+
+        // Check if match should auto-end
+        if (data.status === 'completed') {
+            clearInterval(minuteUpdateInterval);
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+    })
+    .catch(error => {
+        console.error('Error updating minute:', error);
+    });
+}
+
+// Start auto-updating every 10 seconds
+document.addEventListener('DOMContentLoaded', function() {
+    // Update immediately
+    updateMatchMinute();
+
+    // Then update every 10 seconds
+    minuteUpdateInterval = setInterval(updateMatchMinute, 10000);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (minuteUpdateInterval) {
+            clearInterval(minuteUpdateInterval);
+        }
+    });
+});
+@endif
+
 // Dynamic player loading based on team selection
 document.addEventListener('DOMContentLoaded', function() {
     const teamSelect = document.getElementById('teamSelect');

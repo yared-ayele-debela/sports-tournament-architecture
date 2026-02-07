@@ -29,18 +29,18 @@
         <div class="px-6 py-4 border-b border-gray-200">
             <h3 class="text-lg font-medium text-gray-900">Edit Team: {{ $team->name }}</h3>
         </div>
-        <form action="{{ route('coach.teams.update', $team->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6 p-6">
+        <form action="{{ route('admin.coach.teams.update', $team->id) }}" method="POST" enctype="multipart/form-data" class="space-y-6 p-6">
             @csrf
             @method('PUT')
-            
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- Team Name -->
                 <div>
                     <label for="name" class="block text-sm font-medium text-gray-700">Team Name</label>
-                    <input type="text" 
-                           id="name" 
-                           name="name" 
-                           value="{{ old('name', $team->name) }}" 
+                    <input type="text"
+                           id="name"
+                           name="name"
+                           value="{{ old('name', $team->name) }}"
                            required
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     @error('name')
@@ -51,10 +51,10 @@
                 <!-- Coach Name -->
                 <div>
                     <label for="coach_name" class="block text-sm font-medium text-gray-700">Coach Name</label>
-                    <input type="text" 
-                           id="coach_name" 
-                           name="coach_name" 
-                           value="{{ old('coach_name', $team->coach_name) }}" 
+                    <input type="text"
+                           id="coach_name"
+                           name="coach_name"
+                           value="{{ old('coach_name', $team->coach_name) }}"
                            class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                     @error('coach_name')
                         <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
@@ -67,9 +67,9 @@
                 <label for="logo" class="block text-sm font-medium text-gray-700">Team Logo</label>
                 <div class="mt-1 flex items-center space-x-4">
                     <div class="flex-1">
-                        <input type="file" 
-                               id="logo" 
-                               name="logo" 
+                        <input type="file"
+                               id="logo"
+                               name="logo"
                                accept="image/*"
                                class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
                         @error('logo')
@@ -88,7 +88,7 @@
 
             <!-- Form Actions -->
             <div class="flex items-center justify-end space-x-4 px-6 py-4 bg-gray-50">
-                <a href="{{ route('coach.teams.show', $team->id) }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <a href="{{ route('admin.coach.teams.show', $team->id) }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Cancel
                 </a>
                 <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">

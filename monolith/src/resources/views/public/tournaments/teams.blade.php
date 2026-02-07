@@ -30,55 +30,23 @@
                                 <h3 class="text-lg font-bold text-white">{{ $team->name }}</h3>
                             </div>
                         </div>
-                        
+
                         <div class="p-5">
                             <div class="flex items-center justify-between mb-3">
                                 <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-primary text-white">
-                                    {{ $team->sport->name ?? 'Sport' }}
+                                    {{ $tournament->sport->name ?? 'Sport' }}
                                 </span>
+                                @if($team->coach_name)
                                 <span class="text-xs text-gray-500">
-                                    <i class="fas fa-user mr-1"></i>{{ $team->coach_name ?? 'No Coach' }}
+                                    <i class="fas fa-user mr-1"></i>{{ $team->coach_name }}
                                 </span>
+                                @endif
                             </div>
-                            
-                            <div class="grid grid-cols-3 gap-2 mb-4 text-center">
-                                <div>
-                                    <div class="text-lg font-bold text-success">
-                                        {{ \App\Models\MatchModel::where(function($query) use ($team) {
-                                            $query->where('home_team_id', $team->id)->where('home_score', '>', 'away_score');
-                                        })->orWhere(function($query) use ($team) {
-                                            $query->where('away_team_id', $team->id)->where('away_score', '>', 'home_score');
-                                        })->count() }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">Wins</div>
-                                </div>
-                                <div>
-                                    <div class="text-lg font-bold text-primary">
-                                        {{ \App\Models\MatchModel::where(function($query) use ($team) {
-                                            $query->where('home_team_id', $team->id)->where('home_score', '=', 'away_score');
-                                        })->orWhere(function($query) use ($team) {
-                                            $query->where('away_team_id', $team->id)->where('away_score', '=', 'home_score');
-                                        })->count() }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">Draws</div>
-                                </div>
-                                <div>
-                                    <div class="text-lg font-bold text-danger">
-                                        {{ \App\Models\MatchModel::where(function($query) use ($team) {
-                                            $query->where('home_team_id', $team->id)->where('home_score', '<', 'away_score');
-                                        })->orWhere(function($query) use ($team) {
-                                            $query->where('away_team_id', $team->id)->where('away_score', '<', 'home_score');
-                                        })->count() }}
-                                    </div>
-                                    <div class="text-xs text-gray-600">Losses</div>
-                                </div>
-                            </div>
-                            
+
                             <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
                                 <span><i class="fas fa-users mr-1"></i>{{ $team->players_count ?? $team->players->count() }} Players</span>
-                                <span><i class="fas fa-chart-line mr-1"></i>{{ $team->homeMatches->count() + $team->awayMatches->count() }} Matches</span>
                             </div>
-                            
+
                             <div class="grid grid-cols-2 gap-2">
                                 <a href="{{ route('teams.show', $team->id) }}" class="text-center px-2 py-2 bg-primary text-white text-xs rounded hover:bg-blue-600 transition">
                                     Profile

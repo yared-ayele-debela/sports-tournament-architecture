@@ -76,22 +76,23 @@
                     @foreach($featuredTournaments as $tournament)
                         <div class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
                             <div class="relative">
-                                {{-- <img src="https://picsum.photos/seed/{{ str_slug($tournament->name) }}/400/250.jpg" alt="{{ $tournament->name }}" class="w-full h-48 object-cover"> --}}
-                                <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full 
-                                    {{ $tournament->start_date <= now() && $tournament->end_date >= now() ? 'bg-success text-white' : 
-                                       ($tournament->start_date > now() ? 'bg-accent text-white' : 
+                                <span class="absolute top-3 right-3 px-2 py-1 text-xs font-semibold rounded-full
+                                    {{ $tournament->start_date <= now() && $tournament->end_date >= now() ? 'bg-success text-white' :
+                                       ($tournament->start_date > now() ? 'bg-accent text-white' :
                                        'bg-secondary text-white') }}">
-                                    {{ $tournament->start_date > now() ? 'Upcoming' : 
+                                    {{ $tournament->start_date > now() ? 'Upcoming' :
                                        ($tournament->end_date < now() ? 'Completed' : 'Live') }}
                                 </span>
                             </div>
                             <div class="p-5">
-                                <div class="flex items-center justify-between mb-2">
+                                {{-- <div class="flex items-center justify-between mb-2">
                                     <span class="inline-block px-2 py-1 text-xs font-semibold rounded-full bg-primary text-white">{{ $tournament->sport->name ?? 'Sport' }}</span>
                                     <span class="text-xs text-gray-500"><i class="fas fa-calendar mr-1"></i> {{ $tournament->start_date->format('M Y') }}</span>
-                                </div>
+                                </div> --}}
                                 <h3 class="text-lg font-bold mb-2">{{ $tournament->name }}</h3>
-                                <p class="text-sm text-gray-600 mb-3">{{ $tournament->description ?? 'Exciting tournament competition featuring the best teams.' }}</p>
+                                @if($tournament->description)
+                                <p class="text-sm text-gray-600 mb-3">{{ $tournament->description }}</p>
+                                @endif
                                 <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
                                     <span><i class="fas fa-map-marker-alt mr-1"></i> {{ $tournament->location ?? 'TBD' }}</span>
                                     <span><i class="fas fa-users mr-1"></i> {{ $tournament->teams->count() }} Teams</span>
@@ -111,7 +112,7 @@
                         </div>
                     @endforeach
                 </div>
-                
+
                 <!-- Pagination -->
                 @if(method_exists($featuredTournaments, 'links'))
                     <div class="mt-12">
@@ -126,7 +127,7 @@
                     <h3 class="mt-2 text-sm font-medium text-gray-900">No tournaments found</h3>
                     <p class="mt-1 text-sm text-gray-500">
                         @if(request()->hasAny(['search', 'sport', 'status']))
-                            Try adjusting your filters or 
+                            Try adjusting your filters or
                             <a href="{{ route('tournaments.index') }}" class="text-primary hover:text-primary-800 font-medium">
                                 clear all filters
                             </a>
@@ -163,15 +164,15 @@
                         <div class="p-4">
                             <div class="flex justify-between items-center text-gray-700">
                                 <div class="text-sm opacity-90">{{ $match->tournament->name }}</div>
-                                <div class="px-2 py-1 text-xs font-semibold rounded-full 
-                                    {{ $match->status === 'completed' ? 'bg-success text-white' : 
-                                       ($match->status === 'in_progress' ? 'bg-accent text-white' : 
+                                <div class="px-2 py-1 text-xs font-semibold rounded-full
+                                    {{ $match->status === 'completed' ? 'bg-success text-white' :
+                                       ($match->status === 'in_progress' ? 'bg-accent text-white' :
                                        'bg-gray-200 text-gray-700') }}">
                                     {{ ucfirst(str_replace('_', ' ', $match->status)) }}
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Match Content -->
                         <div class="p-6">
                             <div class="flex items-center justify-between mb-4">
@@ -181,7 +182,7 @@
                                     </div>
                                     <div class="font-semibold">{{ $match->homeTeam->name }}</div>
                                 </div>
-                                
+
                                 <div class="px-4">
                                     <div class="text-2xl font-bold text-center">
                                         {{ $match->home_score ?? '-' }} : {{ $match->away_score ?? '-' }}
@@ -190,7 +191,7 @@
                                         {{ $match->match_date->format('M j, H:i') }}
                                     </div>
                                 </div>
-                                
+
                                 <div class="text-center flex-1">
                                     <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-2">
                                         <span class="text-primary font-bold">{{ substr($match->awayTeam->name, 0, 1) }}</span>
@@ -198,12 +199,17 @@
                                     <div class="font-semibold">{{ $match->awayTeam->name }}</div>
                                 </div>
                             </div>
-                            
+
                             <div class="flex items-center justify-between text-sm text-gray-500 mb-4">
                                 <span><i class="fas fa-map-marker-alt mr-1"></i>{{ $match->venue->name ?? 'TBD' }}</span>
                                 <span><i class="far fa-clock mr-1"></i>{{ $match->match_date->format('H:i') }}</span>
                             </div>
-                            
+
+                            @if($match->status === 'in_progress')
+                                <a href="{{ route('matches.live', $match) }}" class="block w-full text-center bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition font-semibold mb-2">
+                                    <i class="fas fa-video mr-2"></i>Watch Live
+                                </a>
+                            @endif
                             <a href="{{ route('matches.show', $match) }}" class="block w-full text-center bg-primary text-white py-2 rounded-lg hover:bg-blue-600 transition">
                                 View Match Details
                             </a>

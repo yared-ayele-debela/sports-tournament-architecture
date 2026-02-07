@@ -61,16 +61,25 @@
                                 </x-ui.badge>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <i class="fas fa-users text-xs mr-1"></i>{{ $tournament->teams_count ?? 0 }} / {{ $tournament->max_teams ?? '∞' }}
+                                <i class="fas fa-users text-xs mr-1"></i>{{ $tournament->teams_count ?? 0 }}
+                                @if($tournament->max_teams)
+                                    / {{ $tournament->max_teams }}
+                                @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end space-x-2">
                                     @if(auth()->user()->hasPermission('manage_tournaments'))
-                                        <a href="{{ route('admin.tournaments.show', $tournament->id) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors" title="View">
+                                        <a href="{{ route('admin.tournaments.show', $tournament->id) }}" class="text-indigo-600 hover:text-indigo-900 transition-colors" title="View Details">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         <a href="{{ route('admin.tournaments.edit', $tournament->id) }}" class="text-blue-600 hover:text-blue-900 transition-colors" title="Edit">
                                             <i class="fas fa-edit"></i>
+                                        </a>
+                                        <a href="{{ route('admin.tournaments.teams', $tournament->id) }}" class="text-green-600 hover:text-green-900 transition-colors" title="View Teams">
+                                            <i class="fas fa-users"></i>
+                                        </a>
+                                        <a href="{{ route('admin.tournaments.standings', $tournament->id) }}" class="text-purple-600 hover:text-purple-900 transition-colors" title="View Standings">
+                                            <i class="fas fa-trophy"></i>
                                         </a>
                                         <form action="{{ route('admin.tournaments.destroy', $tournament->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this tournament?')" class="inline">
                                             @csrf

@@ -18,7 +18,7 @@
 
   <div class="flex items-center gap-3">
     <!-- Search (desktop) -->
-    
+
 
     <!-- User -->
     <div class="relative">
@@ -36,7 +36,7 @@
           <p class="text-sm font-medium text-slate-900">{{ Auth::user()->name ?? 'Admin' }}</p>
           <p class="text-xs text-slate-500">{{ Auth::user()->email ?? 'you@example.com' }}</p>
         </div>
-        <a href="" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Profile</a>
+        <a href="{{ route('admin.profile.edit') }}" class="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Profile</a>
         <form method="POST" action="{{ route('logout') }}">
           @csrf
           <button type="submit" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">Sign out</button>

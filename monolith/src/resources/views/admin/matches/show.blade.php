@@ -129,6 +129,59 @@
                         </dl>
                     </div>
 
+                    <!-- Match Report Section -->
+                    @if($match->matchReport)
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Match Report</h3>
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                            <div class="space-y-3">
+                                @if($match->matchReport->summary)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-700 mb-1">Summary</dt>
+                                    <dd class="text-sm text-gray-600">{{ $match->matchReport->summary }}</dd>
+                                </div>
+                                @endif
+
+                                @if($match->matchReport->referee)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-700 mb-1">Referee Notes</dt>
+                                    <dd class="text-sm text-gray-600">{{ $match->matchReport->referee }}</dd>
+                                </div>
+                                @endif
+
+                                @if($match->matchReport->attendance)
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-700 mb-1">Attendance</dt>
+                                    <dd class="text-sm text-gray-600">{{ $match->matchReport->attendance }}</dd>
+                                </div>
+                                @endif
+
+                                <div class="pt-2 border-t border-gray-200">
+                                    <p class="text-xs text-gray-500">
+                                        <i class="fas fa-calendar mr-1"></i>
+                                        Created: {{ $match->matchReport->created_at->format('M j, Y H:i') }}
+                                        @if($match->matchReport->updated_at != $match->matchReport->created_at)
+                                            <span class="ml-3">
+                                                <i class="fas fa-edit mr-1"></i>
+                                                Updated: {{ $match->matchReport->updated_at->format('M j, Y H:i') }}
+                                            </span>
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    @else
+                    <div>
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">Match Report</h3>
+                        <div class="bg-yellow-50 rounded-lg p-4 border border-yellow-200 text-center">
+                            <i class="fas fa-file-alt text-3xl text-yellow-600 mb-2"></i>
+                            <p class="text-sm text-gray-600">No match report available</p>
+                            <p class="text-xs text-gray-500 mt-1">The referee has not submitted a report for this match yet.</p>
+                        </div>
+                    </div>
+                    @endif
+
                     <div>
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Quick Actions</h3>
                         <div class="space-y-3">

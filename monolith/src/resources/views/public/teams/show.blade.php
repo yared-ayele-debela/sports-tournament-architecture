@@ -10,25 +10,26 @@
 ])
 
 <!-- Team Overview -->
-<section class="py-12">
+<section class="py-6">
     <div class="container mx-auto px-4">
         <div class="bg-white rounded-lg shadow-md p-8">
             <div class="flex flex-col md:flex-row items-center gap-8">
                 <div class="w-24 h-24 bg-primary rounded-full flex items-center justify-center">
                     <span class="text-white font-bold text-3xl">{{ substr($team->name, 0, 1) }}</span>
                 </div>
-                
+
                 <div class="text-center md:text-left flex-1">
                     <div class="mb-2">
                         <span class="inline-block px-3 py-1 bg-primary bg-opacity-10 rounded-full text-sm font-semibold text-primary">
-                            {{ $team->sport->name ?? 'Sport' }}
+                            {{ $team->tournament->sport->name ?? 'Sport' }}
                         </span>
                     </div>
                     <h1 class="text-3xl font-bold mb-2">{{ $team->name }}</h1>
                     <div class="text-gray-600 space-y-1">
                         <div><i class="fas fa-trophy mr-2"></i>{{ $team->tournament->name ?? 'No Tournament' }}</div>
-                        <div><i class="fas fa-user mr-2"></i>Coach: {{ $team->coach_name ?? 'Not Assigned' }}</div>
-                        <div><i class="fas fa-calendar mr-2"></i>Founded {{ $team->founded_year ?? 'N/A' }}</div>
+                        @if($team->coach_name)
+                        <div><i class="fas fa-user mr-2"></i>Coach: {{ $team->coach_name }}</div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -37,7 +38,7 @@
 </section>
 
 <!-- Statistics -->
-<section class="py-12 bg-gray-50">
+<section class="py-6 bg-gray-50">
     <div class="container mx-auto px-4">
         <h2 class="text-2xl font-bold text-center mb-8">Performance Statistics</h2>
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -62,11 +63,11 @@
 </section>
 
 <!-- Players -->
-<section class="py-12">
+<section class="py-6">
     <div class="container mx-auto px-4">
         <h2 class="text-2xl font-bold text-center mb-8">Team Players</h2>
         @if($team->players->count() > 0)
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 @foreach($team->players as $player)
                     <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300">
                         <div class="flex items-center mb-4">
@@ -79,8 +80,8 @@
                             </div>
                         </div>
                         <div class="text-sm text-gray-600">
-                            <div><i class="fas fa-birthday-cake mr-1"></i>Age: {{ $player->age ?? 'N/A' }}</div>
-                            <div><i class="fas fa-flag mr-1"></i>{{ $player->nationality ?? 'Nationality' }}</div>
+                            <div><i class="fas fa-hashtag mr-1"></i>Jersey #{{ $player->jersey_number }}</div>
+                            <div><i class="fas fa-futbol mr-1"></i>{{ $player->position ?? 'Player' }}</div>
                         </div>
                     </div>
                 @endforeach
@@ -100,16 +101,16 @@
     <div class="container mx-auto px-4">
         <h2 class="text-2xl font-bold text-center mb-8">Recent Matches</h2>
         @if(isset($recentMatches) && $recentMatches->count() > 0)
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 @foreach($recentMatches as $match)
                     <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-all duration-300">
                         <div class="flex items-center justify-between mb-4">
                             <div class="text-sm text-gray-500">
                                 <i class="fas fa-calendar mr-1"></i>{{ $match->match_date->format('M j, H:i') }}
                             </div>
-                            <div class="px-2 py-1 text-xs font-semibold rounded-full 
-                                {{ $match->status === 'completed' ? 'bg-success text-white' : 
-                                   ($match->status === 'in_progress' ? 'bg-accent text-white' : 
+                            <div class="px-2 py-1 text-xs font-semibold rounded-full
+                                {{ $match->status === 'completed' ? 'bg-success text-white' :
+                                   ($match->status === 'in_progress' ? 'bg-accent text-white' :
                                    'bg-gray-200 text-gray-700') }}">
                                 {{ ucfirst(str_replace('_', ' ', $match->status)) }}
                             </div>
@@ -127,7 +128,12 @@
                                 <div class="font-semibold">{{ $match->awayTeam->name }}</div>
                             </div>
                         </div>
-                        <div class="text-center mt-4">
+                        <div class="text-center mt-4 space-y-2">
+                            @if($match->status === 'in_progress')
+                                <a href="{{ route('matches.live', $match) }}" class="block w-full text-center bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition font-semibold">
+                                    <i class="fas fa-video mr-2"></i>Watch Live
+                                </a>
+                            @endif
                             <a href="{{ route('matches.show', $match->id) }}" class="text-primary hover:text-primary-800 text-sm font-semibold">
                                 View Match Details
                             </a>

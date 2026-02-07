@@ -32,4 +32,13 @@ class Player extends Model
     {
         return $this->hasMany(MatchEvent::class);
     }
+
+    /**
+     * Get the player's name (alias for full_name)
+     * This allows using $player->name instead of $player->full_name
+     */
+    public function getNameAttribute()
+    {
+        return $this->full_name ?? 'Unknown Player';
+    }
 }

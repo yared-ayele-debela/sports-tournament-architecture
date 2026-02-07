@@ -28,7 +28,19 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended('admin/dashboard');
+        $user = Auth::user();
+
+        // Check user roles and redirect accordingly
+        if ($user->hasRole('Administrator') || $user->hasRole('admin')) {
+            return redirect()->intended(route('admin.dashboard'));
+        } elseif ($user->hasRole('coach')) {
+            return redirect()->intended(route('admin.coach-dashboard'));
+        } elseif ($user->hasRole('referee')) {
+            return redirect()->intended(route('admin.referee.dashboard'));
+        }
+
+        // Default fallback to admin dashboard if no role matches
+        return redirect()->intended(route('admin.dashboard'));
     }
 
     /**
@@ -42,6 +54,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }

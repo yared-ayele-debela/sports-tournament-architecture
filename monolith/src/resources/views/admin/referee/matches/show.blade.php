@@ -26,7 +26,7 @@
                 <!-- Match Details -->
                 <div class="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Match Details</h2>
-                    
+
                     <div class="grid md:grid-cols-2 gap-6">
                         <div>
                             <div class="text-sm text-gray-600 mb-2">Tournament</div>
@@ -42,10 +42,10 @@
                         </div>
                         <div>
                             <div class="text-sm text-gray-600 mb-2">Status</div>
-                            <span class="px-3 py-1 text-xs font-semibold rounded-full 
-                                {{ $match->status === 'completed' ? 'bg-green-100 text-green-800' : 
-                                   ($match->status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' : 
-                                   ($match->status === 'cancelled' ? 'bg-red-100 text-red-800' : 
+                            <span class="px-3 py-1 text-xs font-semibold rounded-full
+                                {{ $match->status === 'completed' ? 'bg-green-100 text-green-800' :
+                                   ($match->status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
+                                   ($match->status === 'cancelled' ? 'bg-red-100 text-red-800' :
                                    'bg-blue-100 text-blue-800')) }}">
                                 {{ ucfirst(str_replace('_', ' ', $match->status)) }}
                             </span>
@@ -56,23 +56,23 @@
                 <!-- Score Display -->
                 <div class="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Current Score</h2>
-                    
+
                     <div class="flex items-center justify-between">
                         <div class="text-center flex-1">
                             <div class="text-sm text-gray-600 mb-2">{{ $match->homeTeam->name }}</div>
                             <div class="text-4xl font-bold text-gray-900">{{ $match->home_score ?? 0 }}</div>
                         </div>
-                        
+
                         <div class="px-8">
                             <div class="text-3xl font-bold text-gray-500">:</div>
                         </div>
-                        
+
                         <div class="text-center flex-1">
                             <div class="text-sm text-gray-600 mb-2">{{ $match->awayTeam->name }}</div>
                             <div class="text-4xl font-bold text-gray-900">{{ $match->away_score ?? 0 }}</div>
                         </div>
                     </div>
-                    
+
                     @if($match->current_minute !== null)
                         <div class="text-center mt-4">
                             <span class="px-4 py-2 bg-blue-100 text-blue-800 rounded-full font-medium">
@@ -85,45 +85,45 @@
                 <!-- Match Controls -->
                 <div class="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Match Controls</h2>
-                    
+
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                         @if($match->status === 'scheduled')
                             <form action="{{ route('admin.referee.matches.start', $match) }}" method="POST">
                                 @csrf
-                                <button type="submit" 
+                                <button type="submit"
                                         class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
                                     Start Match
                                 </button>
                             </form>
                         @endif
-                        
+
                         @if($match->status === 'in_progress')
                             <form action="{{ route('admin.referee.matches.pause', $match) }}" method="POST">
                                 @csrf
-                                <button type="submit" 
+                                <button type="submit"
                                         class="w-full px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors">
                                     Pause Match
                                 </button>
                             </form>
-                            
+
                             <form action="{{ route('admin.referee.matches.end', $match) }}" method="POST">
                                 @csrf
-                                <button type="submit" 
+                                <button type="submit"
                                         class="w-full px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors">
                                     End Match
                                 </button>
                             </form>
                         @endif
-                        
+
                         @if($match->status !== 'completed')
-                            <button onclick="showUpdateMinuteModal()" 
+                            <button onclick="showUpdateMinuteModal()"
                                     class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
                                 Update Minute
                             </button>
                         @endif
-                        
+
                         @if($match->status !== 'completed')
-                            <button onclick="showUpdateScoreModal()" 
+                            <button onclick="showUpdateScoreModal()"
                                     class="w-full px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors">
                                 Update Score
                             </button>
@@ -131,20 +131,75 @@
                     </div>
                 </div>
 
+                <!-- Match Report Section -->
+                @if(auth()->user()->hasPermission('submit_reports'))
+                <div class="bg-white rounded-lg border border-gray-200 p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">Match Report</h2>
+                        @if($match->matchReport)
+                            <div class="flex space-x-2">
+                                <a href="{{ route('admin.referee.reports.show', $match) }}"
+                                   class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
+                                    <i class="fas fa-eye w-4 h-4 mr-2"></i>
+                                    View Report
+                                </a>
+                                <a href="{{ route('admin.referee.reports.edit', $match) }}"
+                                   class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors">
+                                    <i class="fas fa-edit w-4 h-4 mr-2"></i>
+                                    Edit Report
+                                </a>
+                            </div>
+                        @else
+                            <a href="{{ route('admin.referee.reports.create', $match) }}"
+                               class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors">
+                                <i class="fas fa-file-alt w-4 h-4 mr-2"></i>
+                                Create Report
+                            </a>
+                        @endif
+                    </div>
+
+                    @if($match->matchReport)
+                        <div class="bg-gray-50 rounded-lg p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <p class="text-sm text-gray-600 mb-2">Report Status: <span class="font-medium text-green-600">Submitted</span></p>
+                                    <p class="text-sm text-gray-600">Created: {{ $match->matchReport->created_at->format('M j, Y H:i') }}</p>
+                                    @if($match->matchReport->updated_at != $match->matchReport->created_at)
+                                        <p class="text-sm text-gray-600">Last Updated: {{ $match->matchReport->updated_at->format('M j, Y H:i') }}</p>
+                                    @endif
+                                </div>
+                            </div>
+                            @if($match->matchReport->summary)
+                                <div class="mt-4">
+                                    <p class="text-sm font-medium text-gray-700 mb-2">Summary Preview:</p>
+                                    <p class="text-sm text-gray-600 line-clamp-3">{{ \Illuminate\Support\Str::limit($match->matchReport->summary, 200) }}</p>
+                                </div>
+                            @endif
+                        </div>
+                    @else
+                        <div class="bg-yellow-50 rounded-lg p-4 text-center">
+                            <i class="fas fa-file-alt text-3xl text-yellow-600 mb-2"></i>
+                            <p class="text-sm text-gray-600">No match report has been created yet.</p>
+                            <p class="text-xs text-gray-500 mt-1">Create a report to document match details, key moments, and observations.</p>
+                        </div>
+                    @endif
+                </div>
+                @endif
+
                 <!-- Event Timeline -->
                 <div class="bg-white rounded-lg border border-gray-200 p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-xl font-bold text-gray-800">Event Timeline</h2>
-                        <a href="{{ route('admin.referee.events.index', $match) }}" 
+                        <a href="{{ route('admin.referee.events.index', $match) }}"
                            class="text-blue-600 hover:text-blue-800 text-sm font-medium">
                             View All Events
                         </a>
                     </div>
-                    
+
                     @if($match->matchEvents->count() > 0)
                         <div class="space-y-3 max-h-96 overflow-y-auto">
                             @foreach($match->matchEvents as $event)
-                                <div class="flex items-start space-x-3 p-3 rounded-lg 
+                                <div class="flex items-start space-x-3 p-3 rounded-lg
                                     @if($event->event_type === 'goal')
                                         bg-green-50
                                     @elseif($event->event_type === 'yellow_card')
@@ -162,7 +217,7 @@
                                     <div class="flex-1">
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-2">
-                                                <span class="px-2 py-1 text-xs font-semibold rounded-full 
+                                                <span class="px-2 py-1 text-xs font-semibold rounded-full
                                                     @if($event->event_type === 'goal')
                                                         bg-green-100 text-green-800
                                                     @elseif($event->event_type === 'yellow_card')
@@ -199,7 +254,7 @@
                                                 <form action="{{ route('admin.referee.events.update', [$match, $event]) }}" method="POST">
                                                     @csrf
                                                     @method('PUT')
-                                                    <button type="submit" 
+                                                    <button type="submit"
                                                             class="text-blue-600 hover:text-blue-800 text-sm">
                                                         Edit
                                                     </button>
@@ -207,7 +262,7 @@
                                                 <form action="{{ route('admin.referee.events.destroy', [$match, $event]) }}" method="POST">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" 
+                                                    <button type="submit"
                                                             class="text-red-600 hover:text-red-800 text-sm"
                                                             onclick="return confirm('Are you sure you want to delete this event?')">
                                                         Delete
@@ -237,7 +292,7 @@
                 <!-- Add Event Form -->
                 <div class="bg-white rounded-lg border border-gray-200 p-6">
                     <h2 class="text-xl font-bold text-gray-800 mb-4">Add Event</h2>
-                    
+
                     <form action="{{ route('admin.referee.events.store', $match) }}" method="POST">
                         @csrf
                         <div class="space-y-4">
@@ -252,7 +307,7 @@
                                     <option value="substitution">🔄 Substitution</option>
                                 </select>
                             </div>
-                            
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Team</label>
                                 <select name="team_id" required id="teamSelect"
@@ -262,7 +317,7 @@
                                     <option value="{{ $match->away_team_id }}" data-players='@json($match->awayTeam->players ?? [])'>{{ $match->awayTeam->name }}</option>
                                 </select>
                             </div>
-                            
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Player</label>
                                 <select name="player_id" id="playerSelect"
@@ -270,22 +325,22 @@
                                     <option value="">Select Team First</option>
                                 </select>
                             </div>
-                            
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Minute</label>
                                 <input type="number" name="minute" required min="1" max="120"
                                        placeholder="Enter match minute"
                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                             </div>
-                            
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-2">Description (Optional)</label>
                                 <textarea name="description" rows="3"
                                           placeholder="Add event details..."
                                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
                             </div>
-                            
-                            <button type="submit" 
+
+                            <button type="submit"
                                     class="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors">
                                 Add Event
                             </button>
@@ -305,15 +360,15 @@
 document.addEventListener('DOMContentLoaded', function() {
     const teamSelect = document.getElementById('teamSelect');
     const playerSelect = document.getElementById('playerSelect');
-    
+
     if (teamSelect && playerSelect) {
         teamSelect.addEventListener('change', function() {
             const selectedOption = this.options[this.selectedIndex];
             const players = JSON.parse(selectedOption.getAttribute('data-players') || '[]');
-            
+
             // Clear current player options
             playerSelect.innerHTML = '<option value="">Select Player (Optional)</option>';
-            
+
             // Add players for selected team
             players.forEach(function(player) {
                 const option = document.createElement('option');
@@ -335,19 +390,19 @@ function showUpdateMinuteModal() {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '{{ route('admin.referee.matches.update-minute', $match) }}';
-        
+
         const csrf = document.createElement('input');
         csrf.type = 'hidden';
         csrf.name = '_token';
         csrf.value = '{{ csrf_token() }}';
         form.appendChild(csrf);
-        
+
         const minuteInput = document.createElement('input');
         minuteInput.type = 'hidden';
         minuteInput.name = 'current_minute';
         minuteInput.value = minute;
         form.appendChild(minuteInput);
-        
+
         document.body.appendChild(form);
         form.submit();
     }
@@ -356,30 +411,30 @@ function showUpdateMinuteModal() {
 function showUpdateScoreModal() {
     const homeScore = prompt('Enter home score:', '{{ $match->home_score ?? 0 }}');
     const awayScore = prompt('Enter away score:', '{{ $match->away_score ?? 0 }}');
-    
+
     if (homeScore !== null && awayScore !== null && !isNaN(homeScore) && !isNaN(awayScore)) {
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '{{ route('admin.referee.matches.update-score', $match) }}';
-        
+
         const csrf = document.createElement('input');
         csrf.type = 'hidden';
         csrf.name = '_token';
         csrf.value = '{{ csrf_token() }}';
         form.appendChild(csrf);
-        
+
         const homeInput = document.createElement('input');
         homeInput.type = 'hidden';
         homeInput.name = 'home_score';
         homeInput.value = homeScore;
         form.appendChild(homeInput);
-        
+
         const awayInput = document.createElement('input');
         awayInput.type = 'hidden';
         awayInput.name = 'away_score';
         awayInput.value = awayScore;
         form.appendChild(awayInput);
-        
+
         document.body.appendChild(form);
         form.submit();
     }

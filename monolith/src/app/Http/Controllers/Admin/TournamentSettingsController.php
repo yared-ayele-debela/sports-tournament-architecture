@@ -15,11 +15,12 @@ class TournamentSettingsController extends Controller
      */
     public function index()
     {
+        $this->checkPermission('manage_tournaments');
         $tournaments = Tournament::orderBy('name')->get();
         $settings = TournamentSettings::with('tournament')
             ->orderBy('created_at', 'desc')
             ->get();
-            
+
         return view('admin.tournament-settings.index', compact('tournaments', 'settings'));
     }
 
@@ -28,6 +29,7 @@ class TournamentSettingsController extends Controller
      */
     public function create()
     {
+        $this->checkPermission('manage_tournaments');
         $tournaments = Tournament::orderBy('name')->get();
         return view('admin.tournament-settings.create', compact('tournaments'));
     }
@@ -37,6 +39,7 @@ class TournamentSettingsController extends Controller
      */
     public function store(Request $request)
     {
+        $this->checkPermission('manage_tournaments');
         $validated = $request->validate([
             'tournament_id' => [
                 'required',
@@ -80,6 +83,7 @@ class TournamentSettingsController extends Controller
      */
     public function show(TournamentSettings $tournamentSetting)
     {
+        $this->checkPermission('manage_tournaments');
         $tournamentSetting = $tournamentSetting->load('tournament');
         return view('admin.tournament-settings.show', compact('tournamentSetting'));
     }
@@ -89,6 +93,7 @@ class TournamentSettingsController extends Controller
      */
     public function edit(TournamentSettings $tournamentSetting)
     {
+        $this->checkPermission('manage_tournaments');
         $tournaments = Tournament::orderBy('name')->get();
         return view('admin.tournament-settings.edit', compact('tournamentSetting', 'tournaments'));
     }
@@ -98,6 +103,7 @@ class TournamentSettingsController extends Controller
      */
     public function update(Request $request, TournamentSettings $tournamentSetting)
     {
+        $this->checkPermission('manage_tournaments');
         $validated = $request->validate([
             'tournament_id' => [
                 'required',
@@ -141,6 +147,7 @@ class TournamentSettingsController extends Controller
      */
     public function destroy(TournamentSettings $tournamentSetting)
     {
+        $this->checkPermission('manage_tournaments');
         $tournamentSetting->delete();
 
         return redirect()

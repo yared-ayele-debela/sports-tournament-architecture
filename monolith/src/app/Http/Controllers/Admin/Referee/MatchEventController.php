@@ -10,6 +10,7 @@ use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class MatchEventController extends Controller
 {
@@ -18,6 +19,9 @@ class MatchEventController extends Controller
      */
     public function index(MatchModel $match)
     {
+        $this->checkPermission('manage_my_matches');
+
+
         // Authorization: Check if the match belongs to the authenticated referee
         if ($match->referee_id !== Auth::id()) {
             abort(403, 'You are not authorized to access this match.');
@@ -27,7 +31,7 @@ class MatchEventController extends Controller
             ->with(['player', 'team'])
             ->orderBy('minute', 'asc')
             ->get();
-            
+
         return view('admin.referee.events.index', compact('match', 'events'));
     }
 

@@ -8,16 +8,24 @@ use App\Models\Tournament;
 use App\Models\Team;
 use App\Models\Venue;
 use App\Models\User;
+use App\Services\MatchService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
 class MatchController extends Controller
 {
+    protected MatchService $matchService;
+
+    public function __construct(MatchService $matchService)
+    {
+        $this->matchService = $matchService;
+    }
     /**
      * Display a listing of matches.
      */
     public function index()
     {
+        $this->checkPermission('manage_matches');
         $matches = MatchModel::with(['tournament', 'homeTeam', 'awayTeam', 'venue', 'referee'])
             ->orderBy('match_date', 'desc')
             ->paginate(10);
@@ -29,6 +37,7 @@ class MatchController extends Controller
      */
     public function create()
     {
+        $this->checkPermission('manage_matches');
         $tournaments = Tournament::orderBy('name')->get();
         $teams = Team::orderBy('name')->get();
         $venues = Venue::orderBy('name')->get();
@@ -43,6 +52,7 @@ class MatchController extends Controller
      */
     public function store(Request $request)
     {
+        $this->checkPermission('manage_matches');
         $validated = $request->validate([
             'tournament_id' => ['required', 'exists:tournaments,id', 'integer'],
             'venue_id' => ['nullable', 'exists:venues,id', 'integer'],
@@ -57,23 +67,29 @@ class MatchController extends Controller
             'current_minute' => ['nullable', 'integer', 'min:0', 'max:120']
         ]);
 
-        // Validate teams belong to same tournament
-        $homeTeam = Team::find($validated['home_team_id']);
-        $awayTeam = Team::find($validated['away_team_id']);
-        
-        if ($homeTeam->tournament_id != $validated['tournament_id'] || 
-            $awayTeam->tournament_id != $validated['tournament_id']) {
+        try {
+            // Use service to create match (includes validation)
+            $this->matchService->createMatch($validated);
+
+            return redirect()
+                ->route('admin.matches.index')
+                ->with('success', 'Match created successfully.');
+        } catch (\App\Exceptions\BusinessLogicException $e) {
             return redirect()
                 ->back()
-                ->withErrors(['teams' => 'Both teams must belong to the same tournament'])
+                ->with('error', $e->getUserMessage())
+                ->withInput();
+        } catch (\App\Exceptions\ResourceNotFoundException $e) {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage())
+                ->withInput();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()
+                ->back()
+                ->withErrors($e->errors())
                 ->withInput();
         }
-
-        MatchModel::create($validated);
-
-        return redirect()
-            ->route('admin.matches.index')
-            ->with('success', 'Match created successfully.');
     }
 
     /**
@@ -81,6 +97,7 @@ class MatchController extends Controller
      */
     public function show(MatchModel $match)
     {
+        $this->checkPermission('manage_matches');
         $match->load(['tournament', 'homeTeam', 'awayTeam', 'venue', 'referee']);
         return view('admin.matches.show', compact('match'));
     }
@@ -90,6 +107,7 @@ class MatchController extends Controller
      */
     public function edit(MatchModel $match)
     {
+        $this->checkPermission('manage_matches');
         $tournaments = Tournament::orderBy('name')->get();
         $teams = Team::orderBy('name')->get();
         $venues = Venue::orderBy('name')->get();
@@ -104,6 +122,7 @@ class MatchController extends Controller
      */
     public function update(Request $request, MatchModel $match)
     {
+        $this->checkPermission('manage_matches');
         $validated = $request->validate([
             'tournament_id' => ['required', 'exists:tournaments,id', 'integer'],
             'venue_id' => ['nullable', 'exists:venues,id', 'integer'],
@@ -118,23 +137,29 @@ class MatchController extends Controller
             'current_minute' => ['nullable', 'integer', 'min:0', 'max:120']
         ]);
 
-        // Validate teams belong to same tournament
-        $homeTeam = Team::find($validated['home_team_id']);
-        $awayTeam = Team::find($validated['away_team_id']);
-        
-        if ($homeTeam->tournament_id != $validated['tournament_id'] || 
-            $awayTeam->tournament_id != $validated['tournament_id']) {
+        try {
+            // Use service to update match (includes validation)
+            $this->matchService->updateMatch($match, $validated);
+
+            return redirect()
+                ->route('admin.matches.index')
+                ->with('success', 'Match updated successfully.');
+        } catch (\App\Exceptions\BusinessLogicException $e) {
             return redirect()
                 ->back()
-                ->withErrors(['teams' => 'Both teams must belong to the same tournament'])
+                ->with('error', $e->getUserMessage())
+                ->withInput();
+        } catch (\App\Exceptions\ResourceNotFoundException $e) {
+            return redirect()
+                ->back()
+                ->with('error', $e->getMessage())
+                ->withInput();
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return redirect()
+                ->back()
+                ->withErrors($e->errors())
                 ->withInput();
         }
-
-        $match->update($validated);
-
-        return redirect()
-            ->route('admin.matches.index')
-            ->with('success', 'Match updated successfully.');
     }
 
     /**
@@ -142,6 +167,7 @@ class MatchController extends Controller
      */
     public function destroy(MatchModel $match)
     {
+        $this->checkPermission('manage_matches');
         $match->delete();
 
         return redirect()

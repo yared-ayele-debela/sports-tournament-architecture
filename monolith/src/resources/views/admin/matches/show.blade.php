@@ -18,7 +18,7 @@
                     </svg>
                     Back to Matches
                 </a>
-                
+
                 <a href="{{ route('admin.matches.edit', $match->id) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-4h-4v4m0 0l4-4m-4 0v6m0 0l4 4" />
@@ -88,7 +88,9 @@
                                 <dt class="text-sm font-medium text-gray-500">Status</dt>
                                 <dd class="text-sm font-medium">
                                                                  <span class="px-2 py-1 text-xs font-semibold rounded-full {{ $match->statusBadgeClasses() }}">
-  
+                                                                   {{$match->status}}
+                                                                 </span>
+
                                 </dd>
                             </div>
                         </dl>
@@ -136,7 +138,7 @@
                                 </svg>
                                 Edit Match
                             </a>
-                            
+
                             <form action="{{ route('admin.matches.destroy', $match->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this match? This action cannot be undone.')">
                                 @csrf
                                 @method('DELETE')

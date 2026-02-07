@@ -14,6 +14,7 @@ class SportController extends Controller
      */
     public function index()
     {
+        $this->checkPermission('manage_sports');
         $sports = Sport::orderBy('name')->paginate(10);
         return view('admin.sports.index', compact('sports'));
     }
@@ -23,6 +24,7 @@ class SportController extends Controller
      */
     public function create()
     {
+        $this->checkPermission('manage_sports');
         return view('admin.sports.create');
     }
 
@@ -31,6 +33,7 @@ class SportController extends Controller
      */
     public function store(Request $request)
     {
+        $this->checkPermission('manage_sports');
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -60,6 +63,7 @@ class SportController extends Controller
      */
     public function show(Sport $sport)
     {
+        $this->checkPermission('manage_sports');
         return view('admin.sports.show', compact('sport'));
     }
 
@@ -68,6 +72,7 @@ class SportController extends Controller
      */
     public function edit(Sport $sport)
     {
+        $this->checkPermission('manage_sports');
         return view('admin.sports.edit', compact('sport'));
     }
 
@@ -76,6 +81,7 @@ class SportController extends Controller
      */
     public function update(Request $request, Sport $sport)
     {
+        $this->checkPermission('manage_sports');
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -105,6 +111,7 @@ class SportController extends Controller
      */
     public function destroy(Sport $sport)
     {
+        $this->checkPermission('manage_sports');
         $sport->delete();
 
         return redirect()

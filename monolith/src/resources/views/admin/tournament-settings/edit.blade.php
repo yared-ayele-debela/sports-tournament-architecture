@@ -3,169 +3,138 @@
 @section('title', 'Edit Tournament Settings')
 
 @section('content')
-<div class="p-6">
-    <!-- Header -->
-    <div class="mb-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-2xl font-bold text-gray-900">Edit Tournament Settings</h1>
-                <p class="text-gray-600 mt-1">Update match duration and daily schedule</p>
-            </div>
-            <a href="{{ route('admin.tournament-settings.index') }}" class="inline-flex items-center px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back to Settings
-            </a>
-        </div>
-    </div>
+<div class="max-w-10xl mx-auto">
+    <!-- Page Header -->
+    <x-ui.page-header title="Edit Tournament Settings" subtitle="Update match duration and daily schedule">
+        <x-slot name="actions">
+            <x-ui.button href="{{ route('admin.tournament-settings.index') }}" variant="secondary" icon="fas fa-arrow-left">Back to Settings</x-ui.button>
+        </x-slot>
+    </x-ui.page-header>
 
     <!-- Form -->
-    <div class="bg-white shadow rounded-lg">
-        <form action="{{ route('admin.tournament-settings.update', $tournamentSetting->id) }}" method="POST" class="p-6">
+    <x-ui.card>
+        <form action="{{ route('admin.tournament-settings.update', $tournamentSetting->id) }}" method="POST">
             @csrf
             @method('PUT')
-            
+
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <!-- Tournament Field -->
-                <div>
-                    <label for="tournament_id" class="block text-sm font-medium text-gray-700 mb-2">
-                        Tournament <span class="text-red-500">*</span>
-                    </label>
-                    <select id="tournament_id" 
-                            name="tournament_id" 
-                            class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('tournament_id') ? 'border-red-500' : '' @enderror"
-                            required>
-                        <option value="">Select a tournament</option>
-                        @foreach($tournaments as $tournament)
-                            <option value="{{ $tournament->id }}" {{ old('tournament_id', $tournamentSetting->tournament_id) == $tournament->id ? 'selected' : '' }}>
-                                {{ $tournament->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    @error('tournament_id')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
+                <x-ui.form-group label="Tournament" :required="true" :error="$errors->first('tournament_id')">
+                    @php
+                        $tournamentOptions = collect($tournaments)->mapWithKeys(function($tournament) {
+                            return [$tournament->id => $tournament->name];
+                        })->toArray();
+                    @endphp
+                    <x-ui.select
+                        name="tournament_id"
+                        :options="$tournamentOptions"
+                        :value="old('tournament_id', $tournamentSetting->tournament_id)"
+                        placeholder="Select a tournament"
+                        :required="true"
+                        :error="$errors->first('tournament_id')"
+                        icon="fas fa-trophy"
+                    />
+                </x-ui.form-group>
 
                 <!-- Match Duration Field -->
-                <div>
-                    <label for="match_duration" class="block text-sm font-medium text-gray-700 mb-2">
-                        Match Duration (minutes) <span class="text-red-500">*</span>
-                    </label>
-                    <input type="number" 
-                           id="match_duration" 
-                           name="match_duration" 
-                           value="{{ old('match_duration', $tournamentSetting->match_duration) }}"
-                           min="1"
-                           max="480"
-                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('match_duration') ? 'border-red-500' : '' @enderror"
-                           placeholder="Enter match duration in minutes"
-                           required>
-                    @error('match_duration')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    <p class="mt-1 text-xs text-gray-500">Duration of each match in minutes (1-480)</p>
-                </div>
+                <x-ui.form-group label="Match Duration (minutes)" :required="true" :error="$errors->first('match_duration')" help="Duration of each match in minutes (1-480)">
+                    <x-ui.input
+                        type="number"
+                        name="match_duration"
+                        value="{{ old('match_duration', $tournamentSetting->match_duration) }}"
+                        placeholder="Enter match duration in minutes"
+                        min="1"
+                        max="480"
+                        :required="true"
+                        :error="$errors->first('match_duration')"
+                        icon="fas fa-clock"
+                    />
+                </x-ui.form-group>
 
                 <!-- Win Rest Time Field -->
-                <div>
-                    <label for="win_rest_time" class="block text-sm font-medium text-gray-700 mb-2">
-                        Rest Time After Win (minutes) <span class="text-red-500">*</span>
-                    </label>
-                    <input type="number" 
-                           id="win_rest_time" 
-                           name="win_rest_time" 
-                           value="{{ old('win_rest_time', $tournamentSetting->win_rest_time) }}"
-                           min="0"
-                           max="60"
-                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('win_rest_time') ? 'border-red-500' : '' @enderror"
-                           placeholder="Enter rest time in minutes"
-                           required>
-                    @error('win_rest_time')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    <p class="mt-1 text-xs text-gray-500">Rest time between matches after a win (0-60 minutes)</p>
-                </div>
+                <x-ui.form-group label="Rest Time After Win (minutes)" :required="true" :error="$errors->first('win_rest_time')" help="Rest time between matches after a win (0-60 minutes)">
+                    <x-ui.input
+                        type="number"
+                        name="win_rest_time"
+                        value="{{ old('win_rest_time', $tournamentSetting->win_rest_time) }}"
+                        placeholder="Enter rest time in minutes"
+                        min="0"
+                        max="60"
+                        :required="true"
+                        :error="$errors->first('win_rest_time')"
+                        icon="fas fa-pause-circle"
+                    />
+                </x-ui.form-group>
 
                 <!-- Daily Start Time Field -->
-                <div>
-                    <label for="daily_start_time" class="block text-sm font-medium text-gray-700 mb-2">
-                        Daily Start Time <span class="text-red-500">*</span>
-                    </label>
-                    <input type="time" 
-                           id="daily_start_time" 
-                           name="daily_start_time" 
-                           value="{{ old('daily_start_time', $tournamentSetting->daily_start_time->format('H:i')) }}"
-                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('daily_start_time') ? 'border-red-500' : '' @enderror"
-                           required>
-                    @error('daily_start_time')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    <p class="mt-1 text-xs text-gray-500">Daily match schedule start time</p>
-                </div>
+                <x-ui.form-group label="Daily Start Time" :required="true" :error="$errors->first('daily_start_time')" help="Daily match schedule start time">
+                    <x-ui.input
+                        type="time"
+                        name="daily_start_time"
+                        value="{{ old('daily_start_time', $tournamentSetting->daily_start_time->format('H:i')) }}"
+                        :required="true"
+                        :error="$errors->first('daily_start_time')"
+                        icon="fas fa-sun"
+                    />
+                </x-ui.form-group>
 
                 <!-- Daily End Time Field -->
-                <div>
-                    <label for="daily_end_time" class="block text-sm font-medium text-gray-700 mb-2">
-                        Daily End Time <span class="text-red-500">*</span>
-                    </label>
-                    <input type="time" 
-                           id="daily_end_time" 
-                           name="daily_end_time" 
-                           value="{{ old('daily_end_time', $tournamentSetting->daily_end_time->format('H:i')) }}"
-                           class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm @error('daily_end_time') ? 'border-red-500' : '' @enderror"
-                           required>
-                    @error('daily_end_time')
-                        <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                    <p class="mt-1 text-xs text-gray-500">Daily match schedule end time</p>
-                </div>
+                <x-ui.form-group label="Daily End Time" :required="true" :error="$errors->first('daily_end_time')" help="Daily match schedule end time">
+                    <x-ui.input
+                        type="time"
+                        name="daily_end_time"
+                        value="{{ old('daily_end_time', $tournamentSetting->daily_end_time->format('H:i')) }}"
+                        :required="true"
+                        :error="$errors->first('daily_end_time')"
+                        icon="fas fa-moon"
+                    />
+                </x-ui.form-group>
             </div>
 
             <!-- Form Actions -->
-            <div class="mt-8 flex items-center justify-end space-x-4">
-                <a href="{{ route('admin.tournament-settings.index') }}" class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Cancel
-                </a>
-                <button type="submit" class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Update Settings
-                </button>
+            <div class="mt-8 flex items-center justify-end space-x-4 pt-6 border-t border-gray-200">
+                <x-ui.button href="{{ route('admin.tournament-settings.index') }}" variant="secondary" icon="fas fa-times">Cancel</x-ui.button>
+                <x-ui.button type="submit" variant="primary" icon="fas fa-save">Update Settings</x-ui.button>
             </div>
         </form>
-    </div>
+    </x-ui.card>
 
     <!-- Settings Info -->
-    <div class="mt-6 bg-gray-50 rounded-lg p-4">
-        <h3 class="text-sm font-medium text-gray-900 mb-2">Settings Information</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div>
-                <span class="text-gray-500">Tournament:</span>
+    <x-ui.card title="Settings Information" icon="fas fa-info-circle" class="mt-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="flex items-center">
+                <i class="fas fa-trophy text-indigo-600 mr-2"></i>
+                <span class="text-gray-500 mr-2">Tournament:</span>
                 <span class="text-gray-900 font-medium">{{ $tournamentSetting->tournament->name ?? 'Not assigned' }}</span>
             </div>
-            <div>
-                <span class="text-gray-500">Created:</span>
+            <div class="flex items-center">
+                <i class="fas fa-calendar-plus text-green-600 mr-2"></i>
+                <span class="text-gray-500 mr-2">Created:</span>
                 <span class="text-gray-900 font-medium">{{ $tournamentSetting->created_at->format('M d, Y H:i') }}</span>
             </div>
-            <div>
-                <span class="text-gray-500">Last Updated:</span>
+            <div class="flex items-center">
+                <i class="fas fa-edit text-blue-600 mr-2"></i>
+                <span class="text-gray-500 mr-2">Last Updated:</span>
                 <span class="text-gray-900 font-medium">{{ $tournamentSetting->updated_at->format('M d, Y H:i') }}</span>
             </div>
-            <div>
-                <span class="text-gray-500">Match Duration:</span>
+            <div class="flex items-center">
+                <i class="fas fa-clock text-indigo-600 mr-2"></i>
+                <span class="text-gray-500 mr-2">Match Duration:</span>
                 <span class="text-gray-900 font-medium">{{ $tournamentSetting->match_duration }} minutes</span>
             </div>
-            <div>
-                <span class="text-gray-500">Rest Time:</span>
+            <div class="flex items-center">
+                <i class="fas fa-pause-circle text-indigo-600 mr-2"></i>
+                <span class="text-gray-500 mr-2">Rest Time:</span>
                 <span class="text-gray-900 font-medium">{{ $tournamentSetting->win_rest_time }} minutes</span>
             </div>
-            <div>
-                <span class="text-gray-500">Daily Schedule:</span>
+            <div class="flex items-center">
+                <i class="fas fa-calendar-alt text-indigo-600 mr-2"></i>
+                <span class="text-gray-500 mr-2">Daily Schedule:</span>
                 <span class="text-gray-900 font-medium">
                     {{ $tournamentSetting->daily_start_time->format('H:i') }} - {{ $tournamentSetting->daily_end_time->format('H:i') }}
                 </span>
             </div>
         </div>
-    </div>
+    </x-ui.card>
 </div>
 @endsection

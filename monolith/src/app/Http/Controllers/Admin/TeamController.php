@@ -6,17 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Models\Team;
 use App\Models\Tournament;
 use App\Models\User;
+use App\Services\TeamService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 class TeamController extends Controller
 {
+    protected TeamService $teamService;
+
+    public function __construct(TeamService $teamService)
+    {
+        $this->teamService = $teamService;
+    }
     /**
      * Display a listing of teams.
      */
     public function index()
     {
+        $this->checkPermission('manage_teams');
         $teams = Team::with(['tournament', 'coaches'])->orderBy('name')->paginate(10);
         return view('admin.teams.index', compact('teams'));
     }
@@ -26,11 +33,12 @@ class TeamController extends Controller
      */
     public function create()
     {
+        $this->checkPermission('manage_teams');
         $tournaments = Tournament::orderBy('name')->get();
         $coaches = User::whereHas('roles', function($query) {
             $query->where('name', 'coach');
         })->orderBy('name')->get();
-        
+
         return view('admin.teams.create', compact('tournaments', 'coaches'));
     }
 
@@ -39,11 +47,12 @@ class TeamController extends Controller
      */
     public function store(Request $request)
     {
+        $this->checkPermission('manage_teams');
         $validated = $request->validate([
             'tournament_id' => ['required', 'exists:tournaments,id', 'integer'],
             'name' => [
-                'required', 
-                'string', 
+                'required',
+                'string',
                 'max:255',
                 Rule::unique('teams')->where(function ($query) use ($request) {
                     return $query->where('tournament_id', $request->tournament_id);
@@ -53,22 +62,29 @@ class TeamController extends Controller
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048']
         ]);
 
-        // Handle logo upload
-        if ($request->hasFile('logo')) {
-            $logoPath = $request->file('logo')->store('team-logos', 'public');
-            $validated['logo'] = $logoPath;
+        try {
+            // Use service to create team
+            $this->teamService->createTeam(
+                $validated,
+                $request->file('logo'),
+                $request->input('coach_id')
+            );
+
+            return redirect()
+                ->route('admin.teams.index')
+                ->with('success', 'Team created successfully.');
+        } catch (\App\Exceptions\BusinessLogicException $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', $e->getUserMessage())
+                ->withErrors(['coach_id' => $e->getUserMessage()]);
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'An unexpected error occurred. Please try again.');
         }
-
-        $team = Team::create($validated);
-
-        // Attach coach if provided
-        if ($request->filled('coach_id')) {
-            $team->coaches()->attach($request->coach_id);
-        }
-
-        return redirect()
-            ->route('admin.teams.index')
-            ->with('success', 'Team created successfully.');
     }
 
     /**
@@ -76,7 +92,9 @@ class TeamController extends Controller
      */
     public function show(Team $team)
     {
-        $team->load('tournament');
+        $this->checkPermission('manage_teams');
+        // Eager load all relationships to avoid N+1 queries
+        $team->load(['tournament', 'players', 'coaches']);
         return view('admin.teams.show', compact('team'));
     }
 
@@ -85,13 +103,14 @@ class TeamController extends Controller
      */
     public function edit(Team $team)
     {
+        $this->checkPermission('manage_teams');
         $tournaments = Tournament::orderBy('name')->get();
         $coaches = User::whereHas('roles', function($query) {
             $query->where('name', 'coach');
         })->orderBy('name')->get();
-        
+
         $team->load('coaches');
-        
+
         return view('admin.teams.edit', compact('team', 'tournaments', 'coaches'));
     }
 
@@ -100,11 +119,12 @@ class TeamController extends Controller
      */
     public function update(Request $request, Team $team)
     {
+        $this->checkPermission('manage_teams');
         $validated = $request->validate([
             'tournament_id' => ['required', 'exists:tournaments,id', 'integer'],
             'name' => [
-                'required', 
-                'string', 
+                'required',
+                'string',
                 'max:255',
                 Rule::unique('teams')->where(function ($query) use ($request) {
                     return $query->where('tournament_id', $request->tournament_id);
@@ -114,29 +134,30 @@ class TeamController extends Controller
             'logo' => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048']
         ]);
 
-        // Handle logo upload
-        if ($request->hasFile('logo')) {
-            // Delete old logo if exists
-            if ($team->logo) {
-                Storage::disk('public')->delete($team->logo);
-            }
-            
-            $logoPath = $request->file('logo')->store('team-logos', 'public');
-            $validated['logo'] = $logoPath;
+        try {
+            // Use service to update team
+            $this->teamService->updateTeam(
+                $team,
+                $validated,
+                $request->file('logo'),
+                $request->input('coach_id')
+            );
+
+            return redirect()
+                ->route('admin.teams.index')
+                ->with('success', 'Team updated successfully.');
+        } catch (\App\Exceptions\BusinessLogicException $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', $e->getUserMessage())
+                ->withErrors(['coach_id' => $e->getUserMessage()]);
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'An unexpected error occurred. Please try again.');
         }
-
-        $team->update($validated);
-
-        // Sync coach relationship
-        if ($request->filled('coach_id')) {
-            $team->coaches()->sync([$request->coach_id]);
-        } else {
-            $team->coaches()->detach();
-        }
-
-        return redirect()
-            ->route('admin.teams.index')
-            ->with('success', 'Team updated successfully.');
     }
 
     /**
@@ -144,15 +165,23 @@ class TeamController extends Controller
      */
     public function destroy(Team $team)
     {
-        // Delete logo if exists
-        if ($team->logo) {
-            Storage::disk('public')->delete($team->logo);
-        }
-        
-        $team->delete();
+        $this->checkPermission('manage_teams');
 
-        return redirect()
-            ->route('admin.teams.index')
-            ->with('success', 'Team deleted successfully.');
+        try {
+            // Use service to delete team
+            $this->teamService->deleteTeam($team);
+
+            return redirect()
+                ->route('admin.teams.index')
+                ->with('success', 'Team deleted successfully.');
+        } catch (\App\Exceptions\BusinessLogicException $e) {
+            return redirect()
+                ->back()
+                ->with('error', $e->getUserMessage());
+        } catch (\Exception $e) {
+            return redirect()
+                ->back()
+                ->with('error', 'An unexpected error occurred. Please try again.');
+        }
     }
 }

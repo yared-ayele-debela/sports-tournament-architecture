@@ -20,6 +20,25 @@
         </div>
     </div>
 
+    <!-- Success/Error Messages -->
+    @if(session('success'))
+        <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-check-circle w-5 h-5 mr-2"></i>
+                {{ session('success') }}
+            </div>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-circle w-5 h-5 mr-2"></i>
+                {{ session('error') }}
+            </div>
+        </div>
+    @endif
+
     <!-- Form -->
     <div class="bg-white shadow rounded-lg">
         <form action="{{ route('admin.teams.update', $team->id) }}" method="POST" enctype="multipart/form-data" class="p-6">

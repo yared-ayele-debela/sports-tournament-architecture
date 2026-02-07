@@ -5,66 +5,66 @@
 @section('content')
 <div class="max-w-10xl mx-auto">
     <!-- Page Header -->
-    <x-ui.page-header 
-        title="Dashboard" 
+    <x-ui.page-header
+        title="Dashboard"
         subtitle="Overview of your tournament management system"
     />
 
     <!-- Summary Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <x-ui.stat-card 
-            title="Total Tournaments" 
-            :value="$stats['tournaments']" 
-            icon="fas fa-trophy" 
+    <div class="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
+        <x-ui.stat-card
+            title="Total Tournaments"
+            :value="$stats['tournaments']"
+            icon="fas fa-trophy"
             icon-color="indigo"
         />
-        
-        <x-ui.stat-card 
-            title="Active Tournaments" 
-            :value="$stats['active_tournaments']" 
-            icon="fas fa-check-circle" 
+
+        <x-ui.stat-card
+            title="Active Tournaments"
+            :value="$stats['active_tournaments']"
+            icon="fas fa-check-circle"
             icon-color="green"
         />
-        
-        <x-ui.stat-card 
-            title="Total Matches" 
-            :value="$stats['matches']" 
-            icon="fas fa-calendar-alt" 
+
+        <x-ui.stat-card
+            title="Total Matches"
+            :value="$stats['matches']"
+            icon="fas fa-calendar-alt"
             icon-color="blue"
         />
-        
-        <x-ui.stat-card 
-            title="Completed Matches" 
-            :value="$stats['completed_matches']" 
-            icon="fas fa-check-double" 
+
+        <x-ui.stat-card
+            title="Completed Matches"
+            :value="$stats['completed_matches']"
+            icon="fas fa-check-double"
             icon-color="purple"
         />
-        
-        <x-ui.stat-card 
-            title="Total Teams" 
-            :value="$stats['teams']" 
-            icon="fas fa-users" 
+
+        <x-ui.stat-card
+            title="Total Teams"
+            :value="$stats['teams']"
+            icon="fas fa-users"
             icon-color="orange"
         />
-        
-        <x-ui.stat-card 
-            title="Total Users" 
-            :value="$stats['users']" 
-            icon="fas fa-user-friends" 
+
+        <x-ui.stat-card
+            title="Total Users"
+            :value="$stats['users']"
+            icon="fas fa-user-friends"
             icon-color="teal"
         />
-        
-        <x-ui.stat-card 
-            title="Referees" 
-            :value="$stats['referees']" 
-            icon="fas fa-user-shield" 
+
+        <x-ui.stat-card
+            title="Referees"
+            :value="$stats['referees']"
+            icon="fas fa-user-shield"
             icon-color="red"
         />
-        
-        <x-ui.stat-card 
-            title="Venues" 
-            :value="$stats['venues']" 
-            icon="fas fa-map-marker-alt" 
+
+        <x-ui.stat-card
+            title="Venues"
+            :value="$stats['venues']"
+            icon="fas fa-map-marker-alt"
             icon-color="yellow"
         />
     </div>
@@ -85,11 +85,11 @@
     </div>
 
     <!-- Recent Activity Panels -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols- lg:grid-cols-2 gap-6">
         <x-ui.card title="Recent Matches" icon="fas fa-clock">
             <div class="space-y-3">
                 @forelse ($recentMatches as $match)
-                    <div class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
+                    <a href="{{ route('admin.matches.show', $match['id']) }}" class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-900">{{ $match['teams'] }}</p>
                             <div class="flex items-center mt-1">
@@ -99,7 +99,7 @@
                             </div>
                         </div>
                         <span class="text-xs text-gray-500 ml-4">{{ $match['created_at'] }}</span>
-                    </div>
+                    </a>
                 @empty
                     <div class="text-center py-8">
                         <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>
@@ -109,35 +109,18 @@
             </div>
         </x-ui.card>
 
-        <x-ui.card title="Recent Users" icon="fas fa-user-plus">
-            <div class="space-y-3">
-                @forelse ($recentUsers as $user)
-                    <div class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
-                        <div class="flex-1">
-                            <p class="text-sm font-medium text-gray-900">{{ $user['name'] }}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">{{ $user['email'] }}</p>
-                        </div>
-                        <span class="text-xs text-gray-500 ml-4">{{ $user['created_at'] }}</span>
-                    </div>
-                @empty
-                    <div class="text-center py-8">
-                        <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>
-                        <p class="text-sm text-gray-500">No recent users</p>
-                    </div>
-                @endforelse
-            </div>
-        </x-ui.card>
+
 
         <x-ui.card title="Recent Completed Matches" icon="fas fa-check-double">
             <div class="space-y-3">
                 @forelse ($recentCompletedMatches as $match)
-                    <div class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
+                    <a href="{{ route('admin.matches.show', $match['id']) }}" class="flex items-start justify-between py-2 border-b border-gray-100 last:border-0">
                         <div class="flex-1">
                             <p class="text-sm font-medium text-gray-900">{{ $match['teams'] }}</p>
                             <p class="text-sm font-semibold text-indigo-600 mt-1">{{ $match['score'] }}</p>
                         </div>
                         <span class="text-xs text-gray-500 ml-4">{{ $match['completed_at'] }}</span>
-                    </div>
+                    </a>
                 @empty
                     <div class="text-center py-8">
                         <i class="fas fa-inbox text-3xl text-gray-300 mb-2"></i>

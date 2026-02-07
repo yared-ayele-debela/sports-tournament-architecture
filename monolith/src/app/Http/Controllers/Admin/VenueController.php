@@ -13,6 +13,7 @@ class VenueController extends Controller
      */
     public function index()
     {
+        $this->checkPermission('manage_venues');
         $venues = Venue::orderBy('name')->paginate(10);
         return view('admin.venues.index', compact('venues'));
     }
@@ -22,6 +23,7 @@ class VenueController extends Controller
      */
     public function create()
     {
+        $this->checkPermission('manage_venues');
         return view('admin.venues.create');
     }
 
@@ -30,6 +32,7 @@ class VenueController extends Controller
      */
     public function store(Request $request)
     {
+        $this->checkPermission('manage_venues');
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
@@ -48,6 +51,7 @@ class VenueController extends Controller
      */
     public function show(Venue $venue)
     {
+        $this->checkPermission('manage_venues');
         return view('admin.venues.show', compact('venue'));
     }
 
@@ -56,6 +60,7 @@ class VenueController extends Controller
      */
     public function edit(Venue $venue)
     {
+        $this->checkPermission('manage_venues');
         return view('admin.venues.edit', compact('venue'));
     }
 
@@ -64,6 +69,7 @@ class VenueController extends Controller
      */
     public function update(Request $request, Venue $venue)
     {
+        $this->checkPermission('manage_venues');
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
@@ -82,6 +88,7 @@ class VenueController extends Controller
      */
     public function destroy(Venue $venue)
     {
+        $this->checkPermission('manage_venues');
         $venue->delete();
 
         return redirect()

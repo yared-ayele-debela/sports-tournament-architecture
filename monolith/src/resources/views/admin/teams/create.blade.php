@@ -11,6 +11,19 @@
         </x-slot>
     </x-ui.page-header>
 
+    <!-- Success/Error Messages -->
+    @if(session('success'))
+        <x-ui.alert type="success" class="mb-6">
+            {{ session('success') }}
+        </x-ui.alert>
+    @endif
+
+    @if(session('error'))
+        <x-ui.alert type="error" class="mb-6">
+            {{ session('error') }}
+        </x-ui.alert>
+    @endif
+
     <!-- Form -->
     <x-ui.card>
         <form action="{{ route('admin.teams.store') }}" method="POST" enctype="multipart/form-data">

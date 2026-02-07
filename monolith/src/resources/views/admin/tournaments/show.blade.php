@@ -83,10 +83,6 @@
                                     </span>
                                 </dd>
                             </div>
-                            <div class="flex justify-between py-2 border-b border-gray-200">
-                                <dt class="text-sm font-medium text-gray-500">Description</dt>
-                                <dd class="text-sm text-gray-900">{{ $tournament->description ?? 'No description provided' }}</dd>
-                            </div>
                         </dl>
                     </div>
 
@@ -101,12 +97,6 @@
                                 <dt class="text-sm font-medium text-gray-500">End Date</dt>
                                 <dd class="text-sm text-gray-900 font-medium">{{ $tournament->end_date->format('F j, Y') }}</dd>
                             </div>
-                            @if($tournament->registration_deadline)
-                                <div class="flex justify-between py-2 border-b border-gray-200">
-                                    <dt class="text-sm font-medium text-gray-500">Registration Deadline</dt>
-                                    <dd class="text-sm text-gray-900 font-medium">{{ $tournament->registration_deadline->format('F j, Y') }}</dd>
-                                </div>
-                            @endif
                             <div class="flex justify-between py-2">
                                 <dt class="text-sm font-medium text-gray-500">Duration</dt>
                                 <dd class="text-sm text-gray-900 font-medium">
@@ -123,13 +113,34 @@
                         <h3 class="text-lg font-medium text-gray-900 mb-4">Tournament Statistics</h3>
                         <dl class="space-y-3">
                             <div class="flex justify-between py-2 border-b border-gray-200">
-                                <dt class="text-sm font-medium text-gray-500">Maximum Teams</dt>
-                                <dd class="text-sm text-gray-900 font-medium">{{ $tournament->max_teams ?? 'Unlimited' }}</dd>
+                                <dt class="text-sm font-medium text-gray-500">Registered Teams</dt>
+                                <dd class="text-sm text-gray-900 font-medium">{{ $tournament->teams->count() }}</dd>
+                            </div>
+                            @if($tournament->settings)
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <dt class="text-sm font-medium text-gray-500">Match Duration</dt>
+                                <dd class="text-sm text-gray-900 font-medium">{{ $tournament->settings->match_duration }} minutes</dd>
                             </div>
                             <div class="flex justify-between py-2 border-b border-gray-200">
-                                <dt class="text-sm font-medium text-gray-500">Registered Teams</dt>
-                                <dd class="text-sm text-gray-900 font-medium">{{ $tournament->teams_count ?? 0 }}</dd>
+                                <dt class="text-sm font-medium text-gray-500">Daily Start Time</dt>
+                                <dd class="text-sm text-gray-900 font-medium">{{ $tournament->settings->daily_start_time->format('g:i A') }}</dd>
                             </div>
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <dt class="text-sm font-medium text-gray-500">Daily End Time</dt>
+                                <dd class="text-sm text-gray-900 font-medium">{{ $tournament->settings->daily_end_time->format('g:i A') }}</dd>
+                            </div>
+                            @if($tournament->settings->win_rest_time)
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <dt class="text-sm font-medium text-gray-500">Rest Time After Win</dt>
+                                <dd class="text-sm text-gray-900 font-medium">{{ $tournament->settings->win_rest_time }} minutes</dd>
+                            </div>
+                            @endif
+                            @else
+                            <div class="flex justify-between py-2 border-b border-gray-200">
+                                <dt class="text-sm font-medium text-gray-500">Settings</dt>
+                                <dd class="text-sm text-gray-500 italic">No tournament settings configured</dd>
+                            </div>
+                            @endif
                             <div class="flex justify-between py-2 border-b border-gray-200">
                                 <dt class="text-sm font-medium text-gray-500">Created</dt>
                                 <dd class="text-sm text-gray-900 font-medium">{{ $tournament->created_at->format('F j, Y H:i') }}</dd>
@@ -164,7 +175,7 @@
 
                             <form action="{{ route('admin.tournaments.recalculate-standings', $tournament->id) }}" method="POST" onsubmit="return confirm('This will recalculate standings for all teams in this tournament. Continue?')">
                                 @csrf
-                                <button type="submit" class="block w-full text-center px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors">
+                                <button type="submit" class="block w-full text-center px-4 py-3 bg-yellow-600 hover:bg-yellow-700 text-dark font-medium rounded-lg transition-colors">
                                     <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                                     </svg>
@@ -204,10 +215,7 @@
                                 Team Name
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Captain
-                            </th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Players
+                                Players Count
                             </th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Registered
@@ -221,13 +229,11 @@
                                     <div class="text-sm font-medium text-gray-900">{{ $team->name }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-500">{{ $team->captain?->name ?? 'No captain' }}</div>
+                                    <div class="text-sm text-gray-500">{{ $team->players ? $team->players->count() : 0 }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-500">{{ $team->players_count ?? 0 }}</div>
+                                    <div class="text-sm text-gray-500">{{ $team->created_at->format('M j, Y') }}</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-500">{{ $team->created_at}}
                             </tr>
                         @endforeach
                     </tbody>

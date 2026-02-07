@@ -7,6 +7,7 @@ use App\Models\MatchModel;
 use App\Models\MatchEvent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 
 class MatchController extends Controller
 {
@@ -15,6 +16,9 @@ class MatchController extends Controller
      */
     public function dashboard()
     {
+        // Gate::authorize('manage_my_matches');
+        $this->checkPermission('manage_my_matches');
+
         $user = Auth::user();
         $matches = MatchModel::where('referee_id', $user->id)
             ->where('status', 'in_progress')
@@ -26,7 +30,7 @@ class MatchController extends Controller
             ])
             ->orderBy('match_date', 'asc')
             ->get();
-            
+
         return view('admin.referee.dashboard', compact('matches'));
     }
 
@@ -35,12 +39,14 @@ class MatchController extends Controller
      */
     public function index()
     {
+        $this->checkPermission('manage_my_matches');
+
         $user = Auth::user();
         $matches = MatchModel::where('referee_id', $user->id)
             ->with(['tournament', 'homeTeam', 'awayTeam', 'venue', 'referee'])
             ->orderBy('match_date', 'desc')
             ->paginate(15);
-            
+
         return view('admin.referee.matches.index', compact('matches'));
     }
 
@@ -49,6 +55,8 @@ class MatchController extends Controller
      */
     public function show(MatchModel $match)
     {
+        $this->checkPermission('manage_my_matches');
+
         // Authorization: Check if the match belongs to the authenticated referee
         if ($match->referee_id !== Auth::id()) {
             abort(403, 'You are not authorized to access this match.');
@@ -59,12 +67,13 @@ class MatchController extends Controller
             'homeTeam.players',
             'awayTeam.players',
             'venue',
+            'matchReport',
             'referee',
             'matchEvents.player',
             'matchEvents.team'
         ]);
         // dd($match);
-        
+
         return view('admin.referee.matches.show', compact('match'));
     }
 

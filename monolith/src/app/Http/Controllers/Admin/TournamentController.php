@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\Sport;
 use App\Services\MatchScheduler;
+use App\Services\StandingsCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -16,10 +17,11 @@ class TournamentController extends Controller
      */
     public function index()
     {
+        $this->checkPermission('manage_tournaments');
         $tournaments = Tournament::with('sport')
             ->orderBy('start_date', 'desc')
             ->paginate(10);
-            
+
         return view('admin.tournaments.index', compact('tournaments'));
     }
 
@@ -28,6 +30,7 @@ class TournamentController extends Controller
      */
     public function create()
     {
+        $this->checkPermission('manage_tournaments');
         $sports = Sport::orderBy('name')->get();
         return view('admin.tournaments.create', compact('sports'));
     }
@@ -37,6 +40,7 @@ class TournamentController extends Controller
      */
     public function store(Request $request)
     {
+        $this->checkPermission('manage_tournaments');
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -93,7 +97,8 @@ class TournamentController extends Controller
      */
     public function show(Tournament $tournament)
     {
-        $tournament->load(['sport', 'teams']);
+        $this->checkPermission('manage_tournaments');
+        $tournament->load(['sport', 'teams.players', 'settings']);
         return view('admin.tournaments.show', compact('tournament'));
     }
 
@@ -102,6 +107,7 @@ class TournamentController extends Controller
      */
     public function edit(Tournament $tournament)
     {
+        $this->checkPermission('manage_tournaments');
         $sports = Sport::orderBy('name')->get();
         return view('admin.tournaments.edit', compact('tournament', 'sports'));
     }
@@ -111,6 +117,7 @@ class TournamentController extends Controller
      */
     public function update(Request $request, Tournament $tournament)
     {
+        $this->checkPermission('manage_tournaments');
         $validated = $request->validate([
             'name' => [
                 'required',
@@ -167,6 +174,7 @@ class TournamentController extends Controller
      */
     public function destroy(Tournament $tournament)
     {
+        $this->checkPermission('manage_tournaments');
         $tournament->delete();
 
         return redirect()
@@ -179,7 +187,11 @@ class TournamentController extends Controller
      */
     public function scheduleMatches(Tournament $tournament, MatchScheduler $matchScheduler)
     {
+        $this->checkPermission('manage_tournaments');
         try {
+            // Eager load relationships to avoid N+1 queries
+            $tournament->load(['teams', 'settings', 'matches']);
+
             // Check if tournament has teams
             if ($tournament->teams->count() < 2) {
                 return redirect()
@@ -195,7 +207,7 @@ class TournamentController extends Controller
             }
 
             // Check if matches already exist
-            if ($tournament->matches()->count() > 0) {
+            if ($tournament->matches->count() > 0) {
                 return redirect()
                     ->route('admin.tournaments.show', $tournament->id)
                     ->with('error', 'Matches already exist for this tournament. Delete existing matches first.');
@@ -212,6 +224,36 @@ class TournamentController extends Controller
             return redirect()
                 ->route('admin.tournaments.show', $tournament->id)
                 ->with('error', 'Failed to generate schedule: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Manually recalculate standings for a tournament (for testing/debugging).
+     */
+    public function recalculateStandings(Tournament $tournament, StandingsCalculator $standingsCalculator)
+    {
+        $this->checkPermission('manage_tournaments');
+        try {
+            // Eager load teams to avoid N+1 queries
+            $tournament->load('teams');
+
+            // Check if tournament has teams
+            if ($tournament->teams->count() < 1) {
+                return redirect()
+                    ->route('admin.tournaments.show', $tournament->id)
+                    ->with('error', 'Tournament must have at least one team to calculate standings.');
+            }
+
+            // Recalculate standings
+            $standingsCalculator->calculateTournamentStandings($tournament);
+
+            return redirect()
+                ->route('admin.tournaments.show', $tournament->id)
+                ->with('success', 'Standings recalculated successfully for ' . $tournament->name . '.');
+        } catch (\Exception $e) {
+            return redirect()
+                ->route('admin.tournaments.show', $tournament->id)
+                ->with('error', 'Failed to recalculate standings: ' . $e->getMessage());
         }
     }
 }

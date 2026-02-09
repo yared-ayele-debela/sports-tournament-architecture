@@ -36,20 +36,20 @@ return [
     ],
 
     'auth' => [
-        'url' => env('AUTH_SERVICE_URL', 'http://localhost:8001'),
+        'url' => env('AUTH_SERVICE_URL', 'http://auth-service:8001'),
         'token_cache_ttl' => env('AUTH_TOKEN_CACHE_TTL', 300), // 5 minutes default
     ],
 
     'team_service' => [
-        'url' => env('TEAM_SERVICE_URL', 'http://localhost:8003'),
+        'url' => env('TEAM_SERVICE_URL', 'http://team-service:8003'),
     ],
 
     'match_service' => [
-        'url' => env('MATCH_SERVICE_URL', 'http://localhost:8004'),
+        'url' => env('MATCH_SERVICE_URL', 'http://match-service:8004'),
     ],
 
     'tournament_service' => [
-        'url' => env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002'),
+        'url' => env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'),
     ],
 
 ];

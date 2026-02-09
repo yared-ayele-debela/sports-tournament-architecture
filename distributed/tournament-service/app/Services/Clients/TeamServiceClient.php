@@ -13,7 +13,7 @@ class TeamServiceClient
 
     public function __construct()
     {
-        $this->baseUrl = env('TEAM_SERVICE_URL', 'http://localhost:8003');
+        $this->baseUrl = env('TEAM_SERVICE_URL', 'http://team-service:8003');
         $this->httpClient = new Client([
             'base_uri' => $this->baseUrl,
             'timeout' => 5, // Reduced timeout to fail faster

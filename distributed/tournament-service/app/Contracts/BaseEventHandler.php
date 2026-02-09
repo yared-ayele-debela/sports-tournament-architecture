@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Log;
 
 /**
  * Abstract Base Event Handler
- * 
+ *
  * Provides common functionality for all event handlers
  */
 abstract class BaseEventHandler implements EventHandler
@@ -110,7 +110,7 @@ abstract class BaseEventHandler implements EventHandler
     protected function validateEvent(array $event): bool
     {
         $requiredFields = ['event_id', 'event_type', 'service', 'payload', 'timestamp', 'version'];
-        
+
         foreach ($requiredFields as $field) {
             if (!isset($event[$field])) {
                 return false;

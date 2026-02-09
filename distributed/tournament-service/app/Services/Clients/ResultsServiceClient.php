@@ -13,7 +13,7 @@ class ResultsServiceClient
 
     public function __construct()
     {
-        $this->baseUrl = env('RESULTS_SERVICE_URL', 'http://localhost:8005');
+        $this->baseUrl = env('RESULTS_SERVICE_URL', 'http://results-service:8005');
         $this->httpClient = new Client([
             'base_uri' => $this->baseUrl,
             'timeout' => 10,

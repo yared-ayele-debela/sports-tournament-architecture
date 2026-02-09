@@ -71,11 +71,6 @@ class Handler extends ExceptionHandler
             );
         }
 
-        // HTTP exceptions
-        if ($e instanceof HttpException) {
-            return $this->handleHttpException($e);
-        }
-
         // Not found exceptions
         if ($e instanceof NotFoundHttpException) {
             return ApiResponse::notFound('The requested resource was not found');
@@ -83,17 +78,17 @@ class Handler extends ExceptionHandler
 
         // Method not allowed
         if ($e instanceof MethodNotAllowedHttpException) {
-            return ApiResponse::error(
-                'Method not allowed',
-                405,
-                null,
-                'METHOD_NOT_ALLOWED'
-            );
+            return ApiResponse::methodNotAllowed('Method not allowed');
         }
 
         // Unauthorized
         if ($e instanceof UnauthorizedHttpException) {
             return ApiResponse::unauthorized($e->getMessage() ?: 'Unauthorized');
+        }
+
+        // HTTP exceptions
+        if ($e instanceof HttpException) {
+            return $this->handleHttpException($e);
         }
 
         // Model not found (Laravel)
@@ -120,7 +115,7 @@ class Handler extends ExceptionHandler
         }
 
         if ($e instanceof AuthenticationException) {
-            return ApiResponse::unauthorized($e->getMessage());
+            return ApiResponse::unauthorized($e->getMessage() ?: 'Unauthorized');
         }
 
         if ($e instanceof ServiceException) {

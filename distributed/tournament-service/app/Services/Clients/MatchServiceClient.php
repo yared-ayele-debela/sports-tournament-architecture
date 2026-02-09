@@ -13,7 +13,7 @@ class MatchServiceClient
 
     public function __construct()
     {
-        $this->baseUrl = env('MATCH_SERVICE_URL', 'http://localhost:8004');
+        $this->baseUrl = env('MATCH_SERVICE_URL', 'http://match-service:8004');
         $this->httpClient = new Client([
             'base_uri' => $this->baseUrl,
             'timeout' => 5, // Reduced timeout to fail faster

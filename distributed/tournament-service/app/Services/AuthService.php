@@ -21,9 +21,10 @@ class AuthService
     public function validateToken(string $token): array
     {
         try {
+            $authServiceUrl = config('services.auth.url', env('AUTH_SERVICE_URL', 'http://auth-service:8001'));
             $response = Http::timeout(5)
                 ->withToken($token)
-                ->get('http://localhost:8001'.'/api/auth/me');
+                ->get($authServiceUrl . '/api/auth/me');
 
             $statusCode = $response->status();
 
@@ -80,9 +81,10 @@ class AuthService
     public function getUserById(int $userId, string $token): array
     {
         try {
+            $authServiceUrl = config('services.auth.url', env('AUTH_SERVICE_URL', 'http://auth-service:8001'));
             $response = Http::timeout(5)
                 ->withToken($token)
-                ->get('http://localhost:8001' . "/api/users/{$userId}");
+                ->get($authServiceUrl . "/api/users/{$userId}");
 
             $statusCode = $response->status();
 

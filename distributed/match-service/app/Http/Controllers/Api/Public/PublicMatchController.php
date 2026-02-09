@@ -487,7 +487,7 @@ class PublicMatchController extends PublicApiController
     protected function fetchUpcomingMatches(): array
     {
         $startDate = Carbon::now();
-        $endDate = Carbon::now()->addDays(7);
+        $endDate = Carbon::now()->addDays(30);
 
         $matches = MatchGame::where('status', 'scheduled')
             ->whereBetween('match_date', [$startDate, $endDate])
@@ -496,6 +496,7 @@ class PublicMatchController extends PublicApiController
             ->get();
 
         $formattedMatches = [];
+        Log::info('Upcoming matches', ['matches' => $matches]);
         foreach ($matches as $match) {
             $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
             $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);

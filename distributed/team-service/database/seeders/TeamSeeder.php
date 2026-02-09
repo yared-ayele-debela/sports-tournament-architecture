@@ -16,19 +16,27 @@ class TeamSeeder extends Seeder
         DB::table('team_coach')->delete();
         Team::query()->delete();
 
-        // Fetch tournaments from Tournament Service
+        // Fetch tournaments from Tournament Service (using public endpoint)
         try {
-            $response = Http::get(config('http://localhost:8002') . '/api/tournaments');
+            $tournamentServiceUrl = config('services.tournament.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
+            $response = Http::timeout(10)->get($tournamentServiceUrl . '/api/public/tournaments');
 
             if ($response->status() !== 200) {
                 $this->command->error('Failed to fetch tournaments from Tournament Service');
+                $this->command->error('Status: ' . $response->status());
+                $this->command->error('Response: ' . $response->body());
                 return;
             }
 
-            $tournaments = $response->json()['data'] ?? [];
+            $responseData = $response->json();
+
+            // The API returns: {success: true, data: {data: [...tournaments...], pagination: {...}}}
+            // So we need to access data.data to get the actual tournaments array
+            $tournaments = $responseData['data']['data'] ?? [];
 
             if (empty($tournaments)) {
                 $this->command->error('No tournaments found');
+                $this->command->error('Response structure: ' . json_encode(array_keys($responseData)));
                 return;
             }
 

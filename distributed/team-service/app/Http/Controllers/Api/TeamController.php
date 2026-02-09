@@ -140,7 +140,7 @@ class TeamController extends Controller
 
             // Fire legacy event
             event(new TeamCreated($team, $request->coach_id));
-            
+
             // Dispatch team created event to queue (default priority)
             $this->dispatchTeamCreatedQueueEvent($team, ['id' => $request->coach_id, 'name' => 'Coach']);
 
@@ -148,7 +148,7 @@ class TeamController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return ApiResponse::serverError('Failed to create team: ' . $e->getMessage(), $e);
         }
     }
@@ -197,7 +197,7 @@ class TeamController extends Controller
 
             // Fire legacy event
             event(new TeamUpdated($team, AuthHelper::getCurrentUserId()));
-            
+
             // Dispatch team updated event to queue (default priority)
             $this->dispatchTeamUpdatedQueueEvent($team, $oldData);
 
@@ -242,7 +242,7 @@ class TeamController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
+
             return ApiResponse::serverError('Failed to delete team: ' . $e->getMessage(), $e);
         }
     }
@@ -259,7 +259,7 @@ class TeamController extends Controller
             // Calculate team statistics
             $totalPlayers = $team->players->count();
             $activePlayers = $team->players()->count(); // Remove status filter for now
-            
+
             return ApiResponse::success([
                 'team' => $team,
                 'statistics' => [
@@ -300,32 +300,32 @@ class TeamController extends Controller
     {
         try {
             $team = Team::findOrFail($id);
-            
+
             // Call match service to get team matches
-            $matchServiceUrl = config('services.match_service.url', 'http://localhost:8004');
+            $matchServiceUrl = config('services.match_service.url', env('MATCH_SERVICE_URL', 'http://match-service:8004'));
             $response = Http::get("{$matchServiceUrl}/api/public/matches", [
                 'team_id' => $id,
                 'per_page' => 50
             ]);
-            
+
             if (!$response->successful()) {
                 return ApiResponse::error('Failed to retrieve matches from match service', 503, 'Match service unavailable');
             }
-            
+
             $matchData = $response->json();
-            
+
             // Enrich match data with team information
             $matches = collect($matchData['data'] ?? [])->map(function ($match) use ($team) {
                 $match['is_home'] = $match['home_team_id'] == $team->id;
-                $match['opponent'] = $match['is_home'] ? 
-                    ($match['away_team'] ?? ['name' => 'Unknown Team']) : 
+                $match['opponent'] = $match['is_home'] ?
+                    ($match['away_team'] ?? ['name' => 'Unknown Team']) :
                     ($match['home_team'] ?? ['name' => 'Unknown Team']);
                 $match['team_score'] = $match['is_home'] ? $match['home_score'] : $match['away_score'];
                 $match['opponent_score'] = $match['is_home'] ? $match['away_score'] : $match['home_score'];
                 $match['result'] = $this->determineMatchResult($match['team_score'], $match['opponent_score'], $match['status']);
                 return $match;
             });
-            
+
             return ApiResponse::success([
                 'matches' => $matches,
                 'meta' => $matchData['meta'] ?? [],
@@ -339,7 +339,7 @@ class TeamController extends Controller
             return ApiResponse::serverError('Failed to retrieve team matches', $e);
         }
     }
-    
+
     /**
      * Determine match result for the team
      */
@@ -348,7 +348,7 @@ class TeamController extends Controller
         if ($status !== 'completed' || is_null($teamScore) || is_null($opponentScore)) {
             return 'pending';
         }
-        
+
         if ($teamScore > $opponentScore) {
             return 'win';
         } elseif ($teamScore < $opponentScore) {
@@ -365,10 +365,10 @@ class TeamController extends Controller
     {
         try {
             $team = Team::findOrFail($id);
-            
+
             // Simple statistics based on players count
             $totalPlayers = $team->players()->count();
-            
+
             return ApiResponse::success([
                 'team_id' => (int)$id,
                 'total_players' => $totalPlayers,

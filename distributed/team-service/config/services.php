@@ -36,16 +36,16 @@ return [
     ],
 
     'auth' => [
-        'url' => env('AUTH_SERVICE_URL', 'http://localhost:8001'),
+        'url' => env('AUTH_SERVICE_URL', 'http://auth-service:8001'),
         'token_cache_ttl' => env('AUTH_TOKEN_CACHE_TTL', 300), // 5 minutes default
     ],
 
     'tournament' => [
-        'url' => env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002'),
+        'url' => env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'),
     ],
 
     'match' => [
-        'url' => env('MATCH_SERVICE_URL', 'http://localhost:8004'),
+        'url' => env('MATCH_SERVICE_URL', 'http://match-service:8004'),
     ],
 
 ];

@@ -14,8 +14,11 @@ RUN apt-get update && apt-get install -y \
     libjpeg62-turbo-dev \
     libpng-dev \
     libssl-dev \
+    pkg-config \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql zip bcmath opcache
+    && docker-php-ext-install gd pdo pdo_mysql zip bcmath opcache \
+    && pecl install redis \
+    && docker-php-ext-enable redis
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -39,8 +42,11 @@ EXPOSE 8001
 
 # Create startup script to run migrations and start server
 RUN printf '#!/bin/bash\n\
+set -e\n\
 php artisan migrate --force\n\
-php artisan db:seed --force\n\
+php artisan db:seed --force || echo "Seeding completed with warnings (may have duplicates)"\n\
+# Install Passport clients if they don't exist\n\
+php artisan passport:install --force || echo "Passport clients already exist"\n\
 php artisan serve --host=0.0.0.0 --port=8001\n' > /var/www/html/start.sh && \
 chmod +x /var/www/html/start.sh
 

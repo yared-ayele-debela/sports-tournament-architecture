@@ -31,8 +31,8 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            // Assign Administrator role
-            $admin->roles()->attach(1); // Administrator role ID
+            // Assign Administrator role (sync without detaching to avoid duplicates)
+            $admin->roles()->syncWithoutDetaching([1]); // Administrator role ID
         }
 
         // Create Coaches
@@ -49,8 +49,8 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            // Assign Coach role
-            $coach->roles()->attach(2); // Coach role ID
+            // Assign Coach role (sync without detaching to avoid duplicates)
+            $coach->roles()->syncWithoutDetaching([2]); // Coach role ID
         }
 
         // Create Referees
@@ -67,8 +67,8 @@ class UserSeeder extends Seeder
                 ]
             );
 
-            // Assign Referee role
-            $referee->roles()->attach(3); // Referee role ID
+            // Assign Referee role (sync without detaching to avoid duplicates)
+            $referee->roles()->syncWithoutDetaching([3]); // Referee role ID
         }
 
         $this->command->info('Users seeded successfully!');

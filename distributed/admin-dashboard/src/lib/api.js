@@ -1,11 +1,11 @@
 import axios from 'axios';
 
 // Get base URLs from environment variables
-const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || 'http://localhost:8001/api';
-const TOURNAMENT_SERVICE_URL = import.meta.env.VITE_TOURNAMENT_SERVICE_URL || 'http://localhost:8002/api';
-const TEAM_SERVICE_URL = import.meta.env.VITE_TEAM_SERVICE_URL || 'http://localhost:8003/api';
-const MATCH_SERVICE_URL = import.meta.env.VITE_MATCH_SERVICE_URL || 'http://localhost:8004/api';
-const RESULTS_SERVICE_URL = import.meta.env.VITE_RESULTS_SERVICE_URL || 'http://localhost:8005/api';
+const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || 'http://127.0.0.1:8001/api';
+const TOURNAMENT_SERVICE_URL = import.meta.env.VITE_TOURNAMENT_SERVICE_URL || 'http://127.0.0.1:8002/api';
+const TEAM_SERVICE_URL = import.meta.env.VITE_TEAM_SERVICE_URL || 'http://127.0.0.1:8003/api';
+const MATCH_SERVICE_URL = import.meta.env.VITE_MATCH_SERVICE_URL || 'http://127.0.0.1:8004/api';
+const RESULTS_SERVICE_URL = import.meta.env.VITE_RESULTS_SERVICE_URL || 'http://127.0.0.1:8005/api';
 
 // Create axios instances for each service
 const createApiInstance = (baseURL) => {
@@ -39,16 +39,33 @@ const createApiInstance = (baseURL) => {
         // Token expired or invalid
         const token = localStorage.getItem('access_token');
         const currentPath = window.location.pathname;
+        const requestUrl = error.config?.url || '';
+        
+        // List of public endpoint patterns that don't require authentication
+        // These are public tournament read-only endpoints that should not trigger redirect
+        const publicEndpointPatterns = [
+          '/auth/me',
+          '/standings',
+          '/statistics',
+          '/matches',
+          '/teams',
+          '/overview',
+        ];
+        
+        // Check if this is a public endpoint (read-only tournament data)
+        // Match patterns like /tournaments/{id}/standings, /tournaments/{id}/statistics, etc.
+        const isPublicEndpoint = publicEndpointPatterns.some(pattern => 
+          requestUrl.includes(pattern) && !requestUrl.includes('/auth/login')
+        );
         
         // Only clear and redirect if we actually had a token (means it expired/invalid)
         // If no token, let the component handle it (might be permission issue)
         if (token) {
-          // Don't redirect if we're on login page or if it's the /auth/me endpoint
-          // (that's handled by AuthContext during initialization)
-          const isAuthMeEndpoint = error.config?.url?.includes('/auth/me');
+          // Don't redirect for public endpoints, login page, or /auth/me endpoint
+          const isAuthMeEndpoint = requestUrl.includes('/auth/me');
           const isLoginPage = currentPath === '/login';
           
-          if (!isLoginPage && !isAuthMeEndpoint) {
+          if (!isLoginPage && !isAuthMeEndpoint && !isPublicEndpoint) {
             localStorage.removeItem('access_token');
             localStorage.removeItem('user');
             // Use a small delay to let React Query handle the error first
@@ -63,6 +80,7 @@ const createApiInstance = (baseURL) => {
             localStorage.removeItem('access_token');
             localStorage.removeItem('user');
           }
+          // For public endpoints, don't redirect - let the component handle the error
         }
       }
       return Promise.reject(error);

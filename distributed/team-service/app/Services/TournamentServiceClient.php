@@ -9,7 +9,7 @@ class TournamentServiceClient extends ServiceClient
 {
     protected function getBaseUrl()
     {
-        return env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002');
+        return config('services.tournament.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
     }
 
     public function getTournament($tournamentId)

@@ -6,7 +6,7 @@ class AuthServiceClient extends ServiceClient
 {
     protected function getBaseUrl()
     {
-        return env('AUTH_SERVICE_URL', 'http://localhost:8001');
+        return env('AUTH_SERVICE_URL', 'http://auth-service:8001');
     }
 
     public function validateUser($userId)

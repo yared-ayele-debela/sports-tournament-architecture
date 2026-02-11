@@ -8,7 +8,7 @@ class MatchServiceClient extends ServiceClient
 {
     protected function getBaseUrl()
     {
-        return env('MATCH_SERVICE_URL', 'http://localhost:8004');
+        return config('services.match.url', env('MATCH_SERVICE_URL', 'http://match-service:8004'));
     }
 
     /**
@@ -23,9 +23,9 @@ class MatchServiceClient extends ServiceClient
         try {
             $queryParams = array_merge(['team_id' => $teamId], $filters);
             $queryString = http_build_query($queryParams);
-            
+
             $response = $this->request('GET', "/api/public/matches?{$queryString}");
-            
+
             if (isset($response['success']) && $response['success'] && isset($response['data'])) {
                 return $response['data'];
             }

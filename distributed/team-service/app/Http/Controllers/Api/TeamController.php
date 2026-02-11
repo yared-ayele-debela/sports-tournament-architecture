@@ -302,7 +302,7 @@ class TeamController extends Controller
             $team = Team::findOrFail($id);
 
             // Call match service to get team matches
-            $matchServiceUrl = config('services.match_service.url', env('MATCH_SERVICE_URL', 'http://match-service:8004'));
+            $matchServiceUrl = config('services.match_service.url', 'http://match-service:8004');
             $response = Http::get("{$matchServiceUrl}/api/public/matches", [
                 'team_id' => $id,
                 'per_page' => 50

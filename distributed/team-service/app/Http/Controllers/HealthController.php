@@ -145,7 +145,7 @@ class HealthController extends Controller
         
         // Check Auth Service dependency
         try {
-            $authUrl = config('services.auth.url', 'http://localhost:8001');
+            $authUrl = config('services.auth.url', 'http://auth-service:8001');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($authUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -160,13 +160,13 @@ class HealthController extends Controller
             $services['auth_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.auth.url', 'http://localhost:8001'),
+                'url' => config('services.auth.url', 'http://auth-service:8001'),
             ];
         }
         
         // Check Tournament Service dependency
         try {
-            $tournamentUrl = config('services.tournament.url', 'http://localhost:8002');
+            $tournamentUrl = config('services.tournament.url', 'http://tournament-service:8002');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($tournamentUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -181,7 +181,7 @@ class HealthController extends Controller
             $services['tournament_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.tournament.url', 'http://localhost:8002'),
+                'url' => config('services.tournament.url', 'http://tournament-service:8002'),
             ];
         }
         

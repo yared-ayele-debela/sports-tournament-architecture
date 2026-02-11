@@ -169,13 +169,7 @@ export default function MatchesList() {
     }
   }
 
-  // Sync page state
-  useEffect(() => {
-    if (pagination.current_page && pagination.current_page !== page) {
-      setPage(pagination.current_page);
-    }
-  }, [pagination.current_page, page]);
-
+  
   if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center min-h-screen">

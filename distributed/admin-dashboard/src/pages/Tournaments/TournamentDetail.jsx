@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { tournamentsService } from '../../api/tournaments';
+import { resultsService } from '../../api/results';
 import { useToast } from '../../context/ToastContext';
 import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Trophy, BarChart3, Users, Activity } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
@@ -47,10 +48,11 @@ export default function TournamentDetail() {
     enabled: activeTab === 'teams',
   });
 
-  const { data: standingsData, isLoading: loadingStandings } = useQuery({
+  const { data: standingsData, isLoading: loadingStandings, error: standingsError } = useQuery({
     queryKey: ['tournament', id, 'standings'],
-    queryFn: () => tournamentsService.getStandings(id),
+    queryFn: () => resultsService.getStandings(id, { per_page: 100 }),
     enabled: activeTab === 'standings',
+    retry: false,
   });
 
   const { data: statisticsData, isLoading: loadingStatistics } = useQuery({
@@ -101,8 +103,40 @@ export default function TournamentDetail() {
 
   // Handle matches data structure - API returns { data: { matches: [...] } } or { matches: [...] }
   const matches = matchesData?.data?.matches || matchesData?.matches || matchesData?.data || matchesData || [];
-  const teams = teamsData?.data || teamsData || [];
-  const standings = standingsData || [];
+  
+  // Handle teams data structure - API returns { data: { teams: [...], pagination: {...} } }
+  let teams = [];
+  if (Array.isArray(teamsData)) {
+    teams = teamsData;
+  } else if (teamsData && typeof teamsData === 'object') {
+    // Check for { data: { teams: [...], pagination: {...} } } structure
+    if (teamsData.data && Array.isArray(teamsData.data.teams)) {
+      teams = teamsData.data.teams;
+    } else if (teamsData.data && Array.isArray(teamsData.data)) {
+      // Handle { data: [...] } structure
+      teams = teamsData.data;
+    } else if (teamsData.data && typeof teamsData.data === 'object' && Array.isArray(teamsData.data.data)) {
+      // Double nested: { data: { data: [...], pagination: {...} } }
+      teams = teamsData.data.data || [];
+    } else if (Array.isArray(teamsData.teams)) {
+      // Handle { teams: [...] } structure
+      teams = teamsData.teams;
+    } else {
+      teams = [];
+    }
+  }
+  
+  // Handle standings data structure - match Standings.jsx extraction logic
+  let standings = [];
+  if (standingsData) {
+    if (Array.isArray(standingsData)) {
+      standings = standingsData;
+    } else if (standingsData.data && Array.isArray(standingsData.data)) {
+      standings = standingsData.data;
+    } else if (standingsData.standings && Array.isArray(standingsData.standings)) {
+      standings = standingsData.standings;
+    }
+  }
   // Handle statistics data structure - API returns { data: { statistics: {...} } }
   const statistics = statisticsData?.data?.statistics || statisticsData?.statistics || statisticsData?.data || statisticsData || {};
 
@@ -347,7 +381,7 @@ export default function TournamentDetail() {
                     <tr>
                       <th>ID</th>
                       <th>Name</th>
-                      <th>Sport</th>
+                      <th>Players</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -355,7 +389,7 @@ export default function TournamentDetail() {
                       <tr key={team.id}>
                         <td>{team.id}</td>
                         <td className="font-medium">{team.name}</td>
-                        <td>{team.sport?.name || 'N/A'}</td>
+                        <td>{team.player_count || 0}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -371,6 +405,11 @@ export default function TournamentDetail() {
             {loadingStandings ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+              </div>
+            ) : standingsError ? (
+              <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700">
+                <p className="font-medium mb-1">Unable to load standings</p>
+                <p className="text-sm">{standingsError?.response?.data?.message || standingsError?.message || 'Failed to load tournament standings'}</p>
               </div>
             ) : standings.length === 0 ? (
               <p className="text-gray-500 text-center py-8">No standings available</p>
@@ -389,17 +428,46 @@ export default function TournamentDetail() {
                     </tr>
                   </thead>
                   <tbody>
-                    {standings.map((standing, index) => (
-                      <tr key={standing.team_id || index}>
-                        <td className="font-bold">{standing.position || index + 1}</td>
-                        <td className="font-medium">{standing.team_name || 'N/A'}</td>
-                        <td>{standing.played || 0}</td>
-                        <td>{standing.won || 0}</td>
-                        <td>{standing.drawn || 0}</td>
-                        <td>{standing.lost || 0}</td>
-                        <td className="font-bold">{standing.points || 0}</td>
-                      </tr>
-                    ))}
+                    {standings.map((standing, index) => {
+
+
+
+const team = standing.team?.data || standing.team || {};
+                      const teamName = team.name || standing.team_name || `Team ${standing.team_id || 'N/A'}`;
+                      const teamLogo = team.logo;
+                      const position = standing.position || index + 1;
+                      const points = standing.points || 0;
+                      const wins = standing.won || 0;
+                      const draws = standing.drawn || 0;
+                      const losses = standing.lost || 0;
+                      const played = standing.played || 0;
+
+                      return (
+                        <tr key={standing.team_id || standing.id || index}>
+                          <td className="font-bold">{position}</td>
+                          <td className="font-medium">
+                            <div className="flex items-center space-x-2">
+                              {teamLogo && (
+                                <img
+                                  src={teamLogo}
+                                  alt={teamName}
+                                  className="w-8 h-8 rounded-full object-cover"
+                                  onError={(e) => {
+                                    e.target.style.display = 'none';
+                                  }}
+                                />
+                              )}
+                              <span>{teamName}</span>
+                            </div>
+                          </td>
+                          <td>{played}</td>
+                          <td>{wins}</td>
+                          <td>{draws}</td>
+                          <td>{losses}</td>
+                          <td className="font-bold text-primary-600">{points}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

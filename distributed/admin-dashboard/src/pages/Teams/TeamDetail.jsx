@@ -3,13 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { teamsService } from '../../api/teams';
 import { useToast } from '../../context/ToastContext';
-import { ArrowLeft, Edit, Trash2, Users, Trophy, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Users, Trophy } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Trophy },
   { id: 'players', label: 'Players', icon: Users },
-  { id: 'statistics', label: 'Statistics', icon: BarChart3 },
 ];
 
 export default function TeamDetail() {
@@ -29,20 +28,6 @@ export default function TeamDetail() {
     queryKey: ['team', id, 'players'],
     queryFn: () => teamsService.getPlayers(id, { per_page: 50 }),
     enabled: activeTab === 'players',
-  });
-
-  const { data: statisticsData, isLoading: loadingStatistics } = useQuery({
-    queryKey: ['team', id, 'statistics'],
-    queryFn: async () => {
-      try {
-        // Try overview endpoint first (includes more data)
-        return await teamsService.getOverview(id);
-      } catch (error) {
-        // Fallback to statistics endpoint if overview fails
-        return await teamsService.getStatistics(id);
-      }
-    },
-    enabled: activeTab === 'statistics',
   });
 
   const deleteMutation = useMutation({
@@ -74,18 +59,6 @@ export default function TeamDetail() {
   }
 
   const players = playersData?.data || playersData || [];
-  
-  // Extract statistics from overview or statistics response
-  let statistics = {};
-  if (statisticsData) {
-    if (statisticsData.statistics) {
-      // From overview endpoint: { team: {...}, statistics: {...} }
-      statistics = statisticsData.statistics;
-    } else {
-      // From statistics endpoint: direct statistics object
-      statistics = statisticsData;
-    }
-  }
 
   return (
     <div>
@@ -257,35 +230,6 @@ export default function TeamDetail() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'statistics' && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Team Statistics</h2>
-            {loadingStatistics ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              </div>
-            ) : Object.keys(statistics).length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No statistics available</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(statistics).map(([key, value]) => {
-                  if (typeof value === 'object' && value !== null) {
-                    return null;
-                  }
-                  return (
-                    <div key={key} className="p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-500 capitalize mb-1">
-                        {key.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900">{value}</p>
-                    </div>
-                  );
-                })}
               </div>
             )}
           </div>

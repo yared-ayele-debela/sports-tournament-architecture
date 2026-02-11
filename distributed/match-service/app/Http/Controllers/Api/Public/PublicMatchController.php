@@ -288,6 +288,7 @@ class PublicMatchController extends PublicApiController
         $formattedMatches = [];
         foreach ($matches->items() as $match) {
             $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+            
             $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
             $venue = $this->tournamentServiceClient->getPublicVenue($match->venue_id);
 

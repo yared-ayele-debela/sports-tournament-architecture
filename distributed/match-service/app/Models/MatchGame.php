@@ -44,25 +44,29 @@ class MatchGame extends Model
 
     public function getHomeTeam()
     {
-        $response = Http::get("http://localhost:8002/api/teams/{$this->home_team_id}");
+        $teamServiceUrl = config('services.team_service.url', env('TEAM_SERVICE_URL', 'http://team-service:8003'));
+        $response = Http::get("{$teamServiceUrl}/api/teams/{$this->home_team_id}");
         return $response->successful() ? $response->json() : null;
     }
 
     public function getAwayTeam()
     {
-        $response = Http::get("http://localhost:8002/api/teams/{$this->away_team_id}");
+        $teamServiceUrl = config('services.team_service.url', env('TEAM_SERVICE_URL', 'http://team-service:8003'));
+        $response = Http::get("{$teamServiceUrl}/api/teams/{$this->away_team_id}");
         return $response->successful() ? $response->json() : null;
     }
 
     public function getTournament()
     {
-        $response = Http::get("http://localhost:8003/api/tournaments/{$this->tournament_id}");
+        $tournamentServiceUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
+        $response = Http::get("{$tournamentServiceUrl}/api/tournaments/{$this->tournament_id}");
         return $response->successful() ? $response->json() : null;
     }
 
     public function getVenue()
     {
-        $response = Http::get("http://localhost:8003/api/venues/{$this->venue_id}");
+        $tournamentServiceUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
+        $response = Http::get("{$tournamentServiceUrl}/api/venues/{$this->venue_id}");
         return $response->successful() ? $response->json() : null;
     }
 }

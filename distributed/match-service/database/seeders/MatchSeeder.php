@@ -27,21 +27,21 @@ class MatchSeeder extends Seeder
     {
         $teams = [1, 2, 3, 4, 5, 6, 7, 8]; // 8 teams
         $venues = [1, 2, 3, 4]; // 4 venues
-        $referees = [1, 2, 3, 4, 5]; // 5 referees
+        $referees = [24, 25, 26, 27]; // 4 referees
 
         $matches = [];
-        $matchDate = Carbon::create(2025, 1, 15, 14, 0); // Start Jan 15, 2025
+        $matchDate = Carbon::create(2026, 1, 20, 14, 0); // Start Feb 20, 2026
 
         // Round-robin tournament: each team plays every other team once
         for ($i = 0; $i < count($teams); $i++) {
             for ($j = $i + 1; $j < count($teams); $j++) {
                 $homeTeam = $teams[$i];
                 $awayTeam = $teams[$j];
-                
+
                 // Generate realistic scores
                 $homeScore = rand(0, 4);
                 $awayScore = rand(0, 4);
-                
+
                 $matches[] = [
                     'tournament_id' => 1, // Winter Cup 2025
                     'venue_id' => $venues[array_rand($venues)],
@@ -68,7 +68,7 @@ class MatchSeeder extends Seeder
     {
         $teams = [9, 10, 11, 12, 13, 14, 15, 16]; // 8 different teams
         $venues = [5, 6, 7, 8]; // 4 different venues
-        $referees = [6, 7, 8, 9, 10]; // 5 different referees
+        $referees = [32, 33, 34, 35]; // 4 different referees
 
         $matches = [];
         $matchDate = Carbon::create(2026, 3, 1, 15, 0); // Start March 1, 2026
@@ -78,7 +78,7 @@ class MatchSeeder extends Seeder
             for ($j = $i + 1; $j < count($teams); $j++) {
                 $homeTeam = $teams[$i];
                 $awayTeam = $teams[$j];
-                
+
                 $matches[] = [
                     'tournament_id' => 2, // Spring Championship 2026
                     'venue_id' => $venues[array_rand($venues)],

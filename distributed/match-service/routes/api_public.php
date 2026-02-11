@@ -22,7 +22,7 @@ Route::prefix('public')->group(function () {
 
         // Tournament matches
         Route::prefix('tournaments/{tournamentId}')->group(function () {
-            Route::get('matches', [PublicMatchController::class, 'tournameentMatches'])->name('public.tournaments.matches.index')->where('tournamentId', '[0-9]+');
+            Route::get('matches', [PublicMatchController::class, 'tournamentMatches'])->name('public.tournaments.matches.index')->where('tournamentId', '[0-9]+');
         });
 
         // Match details

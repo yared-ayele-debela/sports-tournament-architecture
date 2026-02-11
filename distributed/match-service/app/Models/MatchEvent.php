@@ -31,13 +31,15 @@ class MatchEvent extends Model
 
     public function getTeam()
     {
-        $response = Http::get("http://localhost:8002/api/teams/{$this->team_id}");
+        $teamServiceUrl = config('services.team_service.url', env('TEAM_SERVICE_URL', 'http://team-service:8003'));
+        $response = Http::get("{$teamServiceUrl}/api/teams/{$this->team_id}");
         return $response->successful() ? $response->json() : null;
     }
 
     public function getPlayer()
     {
-        $response = Http::get("http://localhost:8002/api/players/{$this->player_id}");
+        $teamServiceUrl = config('services.team_service.url', env('TEAM_SERVICE_URL', 'http://team-service:8003'));
+        $response = Http::get("{$teamServiceUrl}/api/players/{$this->player_id}");
         return $response->successful() ? $response->json() : null;
     }
 }

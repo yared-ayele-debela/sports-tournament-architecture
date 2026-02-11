@@ -145,7 +145,7 @@ class HealthController extends Controller
 
         // Check Auth Service dependency
         try {
-            $authUrl = config('services.auth.url', 'http://localhost:8001');
+            $authUrl = config('services.auth.url', 'http://auth-service:8001');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($authUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -160,13 +160,13 @@ class HealthController extends Controller
             $services['auth_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.auth.url', 'http://localhost:8001'),
+                'url' => config('services.auth.url', 'http://auth-service:8001'),
             ];
         }
 
         // Check Tournament Service dependency
         try {
-            $tournamentUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002'));
+            $tournamentUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($tournamentUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -181,13 +181,13 @@ class HealthController extends Controller
             $services['tournament_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002')),
+                'url' => config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002')),
             ];
         }
 
         // Check Team Service dependency
         try {
-            $teamUrl = config('services.team.url', 'http://localhost:8003');
+            $teamUrl = config('services.team_service.url', 'http://team-service:8003');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($teamUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -202,7 +202,7 @@ class HealthController extends Controller
             $services['team_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.team.url', 'http://localhost:8003'),
+                'url' => config('services.team_service.url', 'http://team-service:8003'),
             ];
         }
 

@@ -6,7 +6,7 @@ class AuthServiceClient extends ServiceClient
 {
     public function __construct()
     {
-        parent::__construct('http://localhost:8001');
+        parent::__construct(config('services.auth.url', env('AUTH_SERVICE_URL', 'http://auth-service:8001')));
     }
 
     public function validateUser($userId)

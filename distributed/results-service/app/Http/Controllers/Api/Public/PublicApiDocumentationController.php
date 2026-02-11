@@ -25,7 +25,7 @@ class PublicApiDocumentationController extends PublicApiController
     {
         parent::__construct();
         $this->cacheService = $cacheService;
-        $this->baseUrl = config('app.url', 'http://localhost:8005');
+        $this->baseUrl = config('app.url', env('APP_URL', 'http://results-service:8005'));
     }
 
     /**

@@ -9,7 +9,7 @@ class TournamentServiceClient extends ServiceClient
 {
     public function __construct()
     {
-        parent::__construct(env('TOURNAMENT_SERVICE_URL', 'http://localhost:8002'));
+        parent::__construct(config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002')));
     }
 
     public function getTournament($tournamentId)

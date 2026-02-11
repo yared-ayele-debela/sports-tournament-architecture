@@ -9,7 +9,7 @@ class TeamServiceClient extends ServiceClient
 {
     public function __construct()
     {
-        parent::__construct(env('TEAM_SERVICE_URL', 'http://localhost:8003'));
+        parent::__construct(config('services.team_service.url', env('TEAM_SERVICE_URL', 'http://team-service:8003')));
     }
 
     public function getTeam($teamId)

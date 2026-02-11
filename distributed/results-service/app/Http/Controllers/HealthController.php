@@ -187,7 +187,7 @@ class HealthController extends Controller
         
         // Check Auth Service dependency
         try {
-            $authUrl = config('services.auth.url', 'http://localhost:8001');
+            $authUrl = config('services.auth.url', 'http://auth-service:8001');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($authUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -202,13 +202,13 @@ class HealthController extends Controller
             $services['auth_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.auth.url', 'http://localhost:8001'),
+                'url' => config('services.auth.url', 'http://auth-service:8001'),
             ];
         }
         
         // Check Match Service dependency
         try {
-            $matchUrl = config('services.match.url', 'http://localhost:8004');
+            $matchUrl = config('services.match_service.url', 'http://match-service:8004');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($matchUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -223,13 +223,13 @@ class HealthController extends Controller
             $services['match_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.match.url', 'http://localhost:8004'),
+                'url' => config('services.match_service.url', 'http://match-service:8004'),
             ];
         }
         
         // Check Team Service dependency
         try {
-            $teamUrl = config('services.team.url', 'http://localhost:8003');
+            $teamUrl = config('services.team_service.url', 'http://team-service:8003');
             $startTime = microtime(true);
             $response = Http::timeout(5)->get($teamUrl . '/api/health');
             $responseTime = (microtime(true) - $startTime) * 1000;
@@ -244,7 +244,7 @@ class HealthController extends Controller
             $services['team_service'] = [
                 'status' => 'unhealthy',
                 'error' => $e->getMessage(),
-                'url' => config('services.team.url', 'http://localhost:8003'),
+                'url' => config('services.team_service.url', 'http://team-service:8003'),
             ];
         }
         

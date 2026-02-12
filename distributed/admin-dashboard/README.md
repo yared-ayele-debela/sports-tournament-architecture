@@ -1,12 +1,65 @@
 # Admin Dashboard - Sports Tournament Management
 
-A comprehensive admin dashboard web application to manage a distributed sports tournament management system.
+A comprehensive admin dashboard web application for managing distributed sports tournament management system. Built with React 18, Vite, Tailwind CSS, and React Query for efficient data management.
+
+## Features Implemented
+
+### 🎯 Core Features
+- **Authentication System**: Login, logout, token management with auto-logout
+- **Role-Based Access Control**: Admin, Coach, and Referee dashboards
+- **User Profile Management**: View and edit user information
+- **Responsive Design**: Mobile-friendly interface with Tailwind CSS
+
+### 📊 Management Modules
+- **User Management**: CRUD operations for system users
+- **Role & Permission Management**: Role-based access control
+- **Tournament Management**: Create and manage tournaments
+- **Sports Management**: Manage different sports types
+- **Venue Management**: Add and manage tournament venues
+- **Team Management**: Team registration and management
+- **Player Management**: Player registration with jersey number validation
+- **Match Management**: Match scheduling and management
+- **Results Management**: Match results and tournament standings
+
+### 🔍 Advanced Features
+- **Search Functionality**: Search across tournaments, teams, players, venues, and users
+- **Pagination**: Efficient data loading with pagination controls
+- **Real-time Updates**: React Query for automatic data synchronization
+- **Error Handling**: Comprehensive error handling and user feedback
+- **Loading States**: Skeleton loaders and loading indicators
+- **Form Validation**: Client-side validation with React Hook Form
 
 ## Prerequisites
 
 - Node.js (v18 or higher)
 - npm or yarn
 - All microservices running (auth-service, tournament-service, team-service, match-service, results-service)
+
+---
+
+## 🚨 Security & Production Improvements
+
+### 🔐 Security Configuration
+- **Environment Variables**: All sensitive data moved to `.env` files
+- **No Hardcoded Credentials**: All configuration externalized
+- **Input Validation**: Client-side and server-side validation implemented
+- **Secure Authentication**: JWT tokens with proper expiration
+- **CORS Configuration**: Proper cross-origin resource sharing setup
+
+### 📊 Monitoring & Debugging
+- **Request Tracing**: Correlation IDs for end-to-end tracking
+- **Error Logging**: Comprehensive error capture and reporting
+- **Performance Monitoring**: Response time tracking for all API calls
+- **Health Checks**: Service availability monitoring
+- **Debug Mode**: Development debugging tools and logging
+
+### 🛠️ Development Tools
+- **Postman Collections**: 200+ automated tests for all APIs
+- **Setup Scripts**: Automated environment setup and testing
+- **cURL Scripts**: Manual testing capabilities
+- **Documentation**: Comprehensive API and setup guides
+
+---
 
 ## Setup Instructions
 
@@ -167,28 +220,152 @@ npm run lint
 ```
 admin-dashboard/
 ├── src/
-│   ├── api/              # API service files
-│   ├── components/        # Reusable components
-│   ├── context/          # React context (AuthContext)
-│   ├── lib/              # Utilities (API client, query client)
-│   ├── pages/            # Page components
-│   ├── App.jsx           # Main app component
-│   └── main.jsx          # Entry point
-├── .env                  # Environment variables
-├── package.json
-└── vite.config.js
+│   ├── api/                    # API service files
+│   │   ├── auth.js            # Authentication API
+│   │   ├── tournaments.js     # Tournament API
+│   │   ├── teams.js           # Team API
+│   │   ├── players.js         # Player API
+│   │   ├── matches.js         # Match API
+│   │   ├── results.js         # Results API
+│   │   ├── users.js           # User management API
+│   │   ├── roles.js           # Role management API
+│   │   ├── sports.js          # Sports API
+│   │   └── venues.js          # Venue API
+│   ├── components/            # Reusable components
+│   │   ├── Layout/            # Layout components
+│   │   ├── Forms/             # Form components
+│   │   ├── Tables/            # Table components
+│   │   └── UI/                # UI components
+│   ├── context/               # React context
+│   │   ├── AuthContext.jsx    # Authentication context
+│   │   └── ThemeContext.jsx   # Theme context
+│   ├── hooks/                 # Custom hooks
+│   │   └── useAuth.js         # Authentication hook
+│   ├── lib/                   # Utilities
+│   │   ├── api.js             # API client configuration
+│   │   └── queryClient.js     # React Query configuration
+│   ├── pages/                 # Page components
+│   │   ├── Dashboard.jsx      # Admin dashboard
+│   │   ├── CoachDashboard.jsx # Coach dashboard
+│   │   ├── RefereeDashboard.jsx # Referee dashboard
+│   │   ├── Login.jsx          # Login page
+│   │   ├── Profile.jsx        # User profile
+│   │   ├── Users/             # User management pages
+│   │   ├── Roles/             # Role management pages
+│   │   ├── Tournaments/       # Tournament pages
+│   │   ├── Sports/            # Sports management pages
+│   │   ├── Venues/            # Venue management pages
+│   │   ├── Teams/             # Team management pages
+│   │   ├── Players/           # Player management pages
+│   │   ├── Matches/           # Match management pages
+│   │   └── Results/           # Results pages
+│   ├── App.jsx                # Main app component
+│   ├── main.jsx               # Entry point
+│   └── index.css              # Global styles
+├── .env                       # Environment variables
+├── .env.example              # Environment variables template
+├── package.json              # Dependencies and scripts
+├── vite.config.js            # Vite configuration
+├── tailwind.config.js        # Tailwind CSS configuration
+├── postcss.config.js         # PostCSS configuration
+└── README.md                 # This file
 ```
 
-## Next Steps
+## Technology Stack
 
-After testing authentication, you can proceed to implement:
-- User Management
-- Role & Permission Management
-- Tournament Management
-- Team & Player Management
-- Match Management
-- Results & Standings
+### Frontend
+- **React 18**: Modern React with hooks and concurrent features
+- **Vite**: Fast build tool and development server
+- **React Router DOM**: Client-side routing
+- **Tailwind CSS**: Utility-first CSS framework
+- **Lucide React**: Modern icon library
+- **React Hook Form**: Form handling with validation
+- **Date-fns**: Date manipulation utilities
+
+### State Management & Data Fetching
+- **React Query (@tanstack/react-query)**: Server state management
+- **React Context**: Authentication state management
+- **Axios**: HTTP client with interceptors
+
+### Development Tools
+- **ESLint**: Code linting and formatting
+- **PostCSS**: CSS processing
+- **Vite Plugin React**: React support for Vite
+
+## User Roles & Access Control
+
+### Admin User
+- Full access to all management modules
+- User and role management
+- System configuration
+- Tournament oversight
+
+### Coach User
+- Manage assigned teams only
+- Add/edit players for assigned teams
+- View team statistics and match schedules
+- Limited to team-specific data
+
+### Referee User
+- View assigned matches
+- Update match results
+- Manage match events
+- Limited to match-specific functions
+
+## API Integration
+
+The dashboard integrates with the following microservices:
+- **Auth Service** (port 8001): Authentication and user management
+- **Tournament Service** (port 8002): Tournaments, sports, and venues
+- **Team Service** (port 8003): Teams and players
+- **Match Service** (port 8004): Match scheduling and events
+- **Results Service** (port 8005): Match results and standings
+
+## Development Features
+
+### Search & Filtering
+- Real-time search with debouncing (500ms)
+- Multi-field search across all entities
+- Filter by status, sport, tournament, etc.
+- Clear filters functionality
+
+### Pagination
+- Server-side pagination for large datasets
+- Smart pagination controls with validation
+- Page state management with URL sync
+
+### Performance Optimizations
+- React Query caching and background updates
+- Optimistic updates for better UX
+- Skeleton loaders for perceived performance
+- Code splitting with lazy loading
+
+### Error Handling
+- Global error boundaries
+- API error handling with user-friendly messages
+- Network error detection and retry logic
+- Form validation with error display
+
+## Browser Support
+
+- Chrome/Edge 90+
+- Firefox 88+
+- Safari 14+
+- Mobile browsers (iOS Safari, Android Chrome)
+
+## Contributing
+
+1. Follow the existing code style
+2. Use Tailwind CSS for styling
+3. Implement proper error handling
+4. Add loading states for async operations
+5. Test with different user roles
 
 ## Support
 
-For issues or questions, refer to the main project documentation or check the individual service README files.
+For issues or questions:
+1. Check the browser console for errors
+2. Verify all microservices are running
+3. Ensure proper environment configuration
+4. Refer to individual service README files
+5. Check the main project documentation

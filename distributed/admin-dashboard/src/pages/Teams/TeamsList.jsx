@@ -6,7 +6,7 @@ import { tournamentsService } from '../../api/tournaments';
 import { useToast } from '../../context/ToastContext';
 import { usePermissions } from '../../hooks/usePermissions';
 import Unauthorized from '../../components/common/Unauthorized';
-import { Search, Plus, Edit, Trash2, Eye, Filter, X } from 'lucide-react';
+import { Search, Plus, Edit, Trash2, Eye, Filter, X, Users } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 export default function TeamsList() {
@@ -315,7 +315,15 @@ export default function TeamsList() {
                           {team.tournament?.name || team.tournament_id || 'N/A'}
                         </td>
                         <td>{team.players?.length || team.players_count || 0}</td>
-                        <td>{team.coaches?.length || 0}</td>
+                        <td>
+                          {team.coaches_list && team.coaches_list.length > 0 ? (
+                            <span className="text-sm">
+                              {team.coaches_list.join(', ')}
+                            </span>
+                          ) : (
+                            <span className="text-gray-400">No coaches</span>
+                          )}
+                        </td>
                         <td>
                           <div className="flex items-center space-x-2">
                             <button
@@ -331,6 +339,13 @@ export default function TeamsList() {
                               title="Edit"
                             >
                               <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => navigate(`/teams/${team.id}/players`)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded"
+                              title="See Players"
+                            >
+                              <Users className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => setDeleteTeamId(team.id)}

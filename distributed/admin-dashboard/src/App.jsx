@@ -19,14 +19,18 @@ import SportsList from './pages/Sports/SportsList';
 import SportForm from './pages/Sports/SportForm';
 import SportDetail from './pages/Sports/SportDetail';
 import TeamsList from './pages/Teams/TeamsList';
+import MyTeams from './pages/Teams/MyTeams';
 import TeamForm from './pages/Teams/TeamForm';
 import TeamDetail from './pages/Teams/TeamDetail';
+import TeamPlayers from './pages/Teams/TeamPlayers';
 import PlayersList from './pages/Players/PlayersList';
 import PlayerForm from './pages/Players/PlayerForm';
 import PlayerDetail from './pages/Players/PlayerDetail';
 import MatchesList from './pages/Matches/MatchesList';
+import MyMatches from './pages/Matches/MyMatches';
 import MatchForm from './pages/Matches/MatchForm';
 import MatchDetail from './pages/Matches/MatchDetail';
+import MyMatchDetail from './pages/Matches/MyMatchDetail';
 import Standings from './pages/Results/Standings';
 import ResultsList from './pages/Results/ResultsList';
 import MatchFinalizeForm from './pages/Results/MatchFinalizeForm';
@@ -251,6 +255,16 @@ function App() {
         }
       />
       <Route
+        path="/teams/my-teams"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MyTeams />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/teams/new"
         element={
           <ProtectedRoute>
@@ -276,6 +290,16 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <TeamForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/teams/:id/players"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <TeamPlayers />
             </Layout>
           </ProtectedRoute>
         }
@@ -326,6 +350,26 @@ function App() {
           <ProtectedRoute>
             <Layout>
               <MatchesList />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/matches/my-matches"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MyMatches />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/matches/my-matches/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MyMatchDetail />
             </Layout>
           </ProtectedRoute>
         }

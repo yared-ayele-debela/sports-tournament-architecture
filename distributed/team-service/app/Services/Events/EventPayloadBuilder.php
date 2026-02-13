@@ -5,6 +5,7 @@ namespace App\Services\Events;
 use App\Models\Team;
 use App\Models\Player;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Event Payload Builder for Team Service
@@ -22,12 +23,17 @@ class EventPayloadBuilder
      */
     public static function teamCreated(Team $team, array $user): array
     {
+        // Get first coach ID from pivot table (users are in auth-service, not team-service)
+        $coachId = DB::table('team_coach')
+            ->where('team_id', $team->id)
+            ->value('user_id');
+
         return [
             'team_id' => $team->id,
             'name' => $team->name,
             'logo' => $team->logo,
             'tournament_id' => $team->tournament_id,
-            'coach_id' => $team->coaches->first()?->id,
+            'coach_id' => $coachId,
             'created_by' => $user['id'],
             'created_by_name' => $user['name'] ?? null,
             'created_at' => $team->created_at->toISOString(),
@@ -49,6 +55,11 @@ class EventPayloadBuilder
     {
         $newData = $team->toArray();
 
+        // Get first coach ID from pivot table (users are in auth-service, not team-service)
+        $coachId = DB::table('team_coach')
+            ->where('team_id', $team->id)
+            ->value('user_id');
+
         return [
             'team_id' => $team->id,
             'name' => $team->name,
@@ -59,7 +70,7 @@ class EventPayloadBuilder
             ],
             'updated_at' => now()->toISOString(),
             'tournament_id' => $team->tournament_id,
-            'coach_id' => $team->coaches->first()?->id,
+            'coach_id' => $coachId,
         ];
     }
 
@@ -72,6 +83,11 @@ class EventPayloadBuilder
      */
     public static function teamDeleted(Team $team, array $user): array
     {
+        // Get first coach ID from pivot table (users are in auth-service, not team-service)
+        $coachId = DB::table('team_coach')
+            ->where('team_id', $team->id)
+            ->value('user_id');
+
         return [
             'team_id' => $team->id,
             'name' => $team->name,
@@ -81,7 +97,7 @@ class EventPayloadBuilder
             'deleted_at' => now()->toISOString(),
             'original_data' => [
                 'logo' => $team->logo,
-                'coach_id' => $team->coaches->first()?->id,
+                'coach_id' => $coachId,
                 'players_count' => $team->players->count(),
             ],
         ];

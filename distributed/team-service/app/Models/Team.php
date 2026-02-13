@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 
 class Team extends Model
 {
@@ -17,13 +18,27 @@ class Team extends Model
         return $this->hasMany(Player::class);
     }
 
-    public function coaches()
+    /**
+     * Get coach user IDs from pivot table
+     * Note: User data is stored in auth-service, not in team-service
+     */
+    public function getCoachIds(): array
     {
-        return $this->belongsToMany(User::class, 'team_coach');
+        return DB::table('team_coach')
+            ->where('team_id', $this->id)
+            ->pluck('user_id')
+            ->toArray();
     }
 
+    /**
+     * Check if a user is a coach for this team
+     * Note: User data is stored in auth-service, not in team-service
+     */
     public function isCoach($userId): bool
     {
-        return $this->coaches()->where('user_id', $userId)->exists();
+        return DB::table('team_coach')
+            ->where('team_id', $this->id)
+            ->where('user_id', $userId)
+            ->exists();
     }
 }

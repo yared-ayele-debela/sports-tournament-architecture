@@ -51,21 +51,22 @@ Route::get('/public/tournaments/{tournamentId}/teams', [TeamController::class, '
 
 
 Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
-    
+
     // Teams Routes
-    Route::get('/tournaments/{tournamentId}/teams', [TeamController::class, 'index']);
+    Route::get('/teams', [TeamController::class, 'index']); // List all teams (filtered by coach if coach is logged in)
+    Route::get('/tournaments/{tournamentId}/teams', [TeamController::class, 'index'])->where('tournamentId', '[0-9]+');
     Route::post('/teams', [TeamController::class, 'store']);
     Route::get('/teams/{id}', [TeamController::class, 'show']);
     Route::put('/teams/{id}', [TeamController::class, 'update']);
     Route::delete('/teams/{id}', [TeamController::class, 'destroy']);
     Route::get('/teams/{id}/players', [PlayerController::class, 'index']);
     Route::get('/teams/{teamId}/players/{playerId}/validate', [PlayerController::class, 'validatePlayer']);
-    
+
     // Players Routes
     Route::get('/players', [PlayerController::class, 'index']);
     Route::post('/players', [PlayerController::class, 'store']);
     Route::get('/players/{id}', [PlayerController::class, 'show']);
     Route::put('/players/{id}', [PlayerController::class, 'update']);
     Route::delete('/players/{id}', [PlayerController::class, 'destroy']);
-    
+
 });

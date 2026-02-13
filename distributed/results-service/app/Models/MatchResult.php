@@ -35,7 +35,8 @@ class MatchResult extends Model
     public function getHomeTeam()
     {
         $teamService = new TeamServiceClient();
-        return $teamService->getTeam($this->home_team_id);
+        // Use getPublicTeam which returns null instead of throwing exceptions for missing teams
+        return $teamService->getPublicTeam($this->home_team_id);
     }
 
     public function getHomeTeamAttribute()
@@ -46,7 +47,8 @@ class MatchResult extends Model
     public function getAwayTeam()
     {
         $teamService = new TeamServiceClient();
-        return $teamService->getTeam($this->away_team_id);
+        // Use getPublicTeam which returns null instead of throwing exceptions for missing teams
+        return $teamService->getPublicTeam($this->away_team_id);
     }
 
     public function getAwayTeamAttribute()

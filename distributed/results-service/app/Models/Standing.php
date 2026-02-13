@@ -41,6 +41,7 @@ class Standing extends Model
     public function getTeam()
     {
         $teamService = new TeamServiceClient();
-        return $teamService->getTeam($this->team_id);
+        // Use getPublicTeam which returns null instead of throwing exceptions for missing teams
+        return $teamService->getPublicTeam($this->team_id);
     }
 }

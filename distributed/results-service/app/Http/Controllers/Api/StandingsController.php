@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\StandingsCalculator;
 use App\Models\Standing;
+use App\Exceptions\ServiceRequestException;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 
 class StandingsController extends Controller
 {
@@ -37,7 +39,34 @@ class StandingsController extends Controller
         $items = collect($paginator->items())
             ->map(function ($standing, $index) {
                 $standing->goal_difference = $standing->goals_for - $standing->goals_against;
-                $standing->team = $standing->getTeam();
+                
+                // Try to get team, but handle gracefully if team doesn't exist
+                try {
+                    $standing->team = $standing->getTeam();
+                } catch (ServiceRequestException $e) {
+                    // If team not found (404), set team to null and log warning
+                    if ($e->getHttpStatusCode() === 404) {
+                        Log::warning('Team not found for standing', [
+                            'team_id' => $standing->team_id,
+                            'tournament_id' => $standing->tournament_id,
+                            'standing_id' => $standing->id,
+                        ]);
+                        $standing->team = null;
+                    } else {
+                        // For other errors, re-throw
+                        throw $e;
+                    }
+                } catch (\Exception $e) {
+                    // For any other exceptions, log and set team to null
+                    Log::error('Failed to fetch team for standing', [
+                        'team_id' => $standing->team_id,
+                        'tournament_id' => $standing->tournament_id,
+                        'standing_id' => $standing->id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $standing->team = null;
+                }
+                
                 $standing->position = $index + 1;
                 return $standing;
             })

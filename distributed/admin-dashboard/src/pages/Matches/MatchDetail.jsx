@@ -343,12 +343,55 @@ export default function MatchDetail() {
         <div className="card">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Match Report</h2>
           {match.match_report ? (
-            <div className="prose max-w-none">
-              <pre className="whitespace-pre-wrap text-gray-700">
-                {typeof match.match_report === 'string'
-                  ? match.match_report
-                  : JSON.stringify(match.match_report, null, 2)}
-              </pre>
+            <div className="space-y-6">
+              {typeof match.match_report === 'string' ? (
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 whitespace-pre-wrap">{match.match_report}</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {match.match_report.summary && (
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-gray-500 mb-2">Summary</p>
+                      <p className="text-gray-900 whitespace-pre-wrap">{match.match_report.summary}</p>
+                    </div>
+                  )}
+                  {match.match_report.referee && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Referee</p>
+                      <p className="font-medium text-gray-900">{match.match_report.referee}</p>
+                    </div>
+                  )}
+                  {match.match_report.attendance && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Attendance</p>
+                      <p className="font-medium text-gray-900">{match.match_report.attendance}</p>
+                    </div>
+                  )}
+                  {match.match_report.weather && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Weather</p>
+                      <p className="font-medium text-gray-900">{match.match_report.weather}</p>
+                    </div>
+                  )}
+                  {match.match_report.created_at && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Created At</p>
+                      <p className="text-gray-900">
+                        {new Date(match.match_report.created_at).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                  {match.match_report.updated_at && (
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Updated At</p>
+                      <p className="text-gray-900">
+                        {new Date(match.match_report.updated_at).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <p className="text-gray-500 text-center py-8">No match report available</p>

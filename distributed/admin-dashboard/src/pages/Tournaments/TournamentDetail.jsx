@@ -4,7 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { tournamentsService } from '../../api/tournaments';
 import { resultsService } from '../../api/results';
 import { useToast } from '../../context/ToastContext';
-import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Trophy, BarChart3, Users, Activity } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
+import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Trophy, BarChart3, Users, RefreshCw } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
 const TABS = [
@@ -12,7 +13,6 @@ const TABS = [
   { id: 'matches', label: 'Matches', icon: Calendar },
   { id: 'teams', label: 'Teams', icon: Users },
   { id: 'standings', label: 'Standings', icon: BarChart3 },
-  { id: 'statistics', label: 'Statistics', icon: Activity },
 ];
 
 const STATUS_OPTIONS = [
@@ -27,9 +27,13 @@ export default function TournamentDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { hasPermission, isAdmin } = usePermissions();
   const [activeTab, setActiveTab] = useState('overview');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [statusUpdate, setStatusUpdate] = useState(null);
+
+  // Check if user can recalculate standings
+  const canRecalculateStandings = hasPermission('manage_tournaments') || isAdmin();
 
   const { data: tournament, isLoading, error } = useQuery({
     queryKey: ['tournament', id],
@@ -55,12 +59,6 @@ export default function TournamentDetail() {
     retry: false,
   });
 
-  const { data: statisticsData, isLoading: loadingStatistics } = useQuery({
-    queryKey: ['tournament', id, 'statistics'],
-    queryFn: () => tournamentsService.getStatistics(id),
-    enabled: activeTab === 'statistics',
-  });
-
   const deleteMutation = useMutation({
     mutationFn: () => tournamentsService.delete(id),
     onSuccess: () => {
@@ -84,6 +82,23 @@ export default function TournamentDetail() {
       toast.error(error?.response?.data?.message || 'Failed to update status');
     },
   });
+
+  const recalculateStandingsMutation = useMutation({
+    mutationFn: () => resultsService.recalculateStandings(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['tournament', id, 'standings']);
+      toast.success('Standings recalculated successfully');
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to recalculate standings');
+    },
+  });
+
+  const handleRecalculateStandings = () => {
+    if (window.confirm('Are you sure you want to recalculate standings? This may take a moment.')) {
+      recalculateStandingsMutation.mutate();
+    }
+  };
 
   if (isLoading) {
     return (
@@ -137,8 +152,6 @@ export default function TournamentDetail() {
       standings = standingsData.standings;
     }
   }
-  // Handle statistics data structure - API returns { data: { statistics: {...} } }
-  const statistics = statisticsData?.data?.statistics || statisticsData?.statistics || statisticsData?.data || statisticsData || {};
 
   return (
     <div>
@@ -401,7 +414,21 @@ export default function TournamentDetail() {
 
         {activeTab === 'standings' && (
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Tournament Standings</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Tournament Standings</h2>
+              {canRecalculateStandings && (
+                <button
+                  onClick={handleRecalculateStandings}
+                  disabled={recalculateStandingsMutation.isLoading}
+                  className="btn btn-secondary flex items-center"
+                >
+                  <RefreshCw
+                    className={`w-5 h-5 mr-2 ${recalculateStandingsMutation.isLoading ? 'animate-spin' : ''}`}
+                  />
+                  Recalculate Standings
+                </button>
+              )}
+            </div>
             {loadingStandings ? (
               <div className="flex justify-center py-8">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
@@ -470,78 +497,6 @@ const team = standing.team?.data || standing.team || {};
                     })}
                   </tbody>
                 </table>
-              </div>
-            )}
-          </div>
-        )}
-
-        {activeTab === 'statistics' && (
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Tournament Statistics</h2>
-            {loadingStatistics ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-              </div>
-            ) : Object.keys(statistics).length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No statistics available</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {Object.entries(statistics).map(([key, value]) => {
-                  // Skip nested objects - they'll be displayed separately
-                  if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                    return null;
-                  }
-                  
-                  return (
-                    <div key={key} className="p-4 bg-gray-50 rounded-lg">
-                      <p className="text-sm text-gray-500 capitalize mb-1">
-                        {key.replace(/_/g, ' ')}
-                      </p>
-                      <p className="text-2xl font-bold text-gray-900">
-                        {typeof value === 'number' && value % 1 !== 0 
-                          ? value.toFixed(2) 
-                          : value}
-                      </p>
-                    </div>
-                  );
-                })}
-                
-                {/* Display nested statistics objects */}
-                {statistics.top_scorer && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">Top Scorer</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      {statistics.top_scorer.player_name || 'N/A'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {statistics.top_scorer.goals || 0} goals
-                    </p>
-                  </div>
-                )}
-                
-                {statistics.best_attack && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">Best Attack</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      Team ID: {statistics.best_attack.team_id || 'N/A'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {statistics.best_attack.goals_scored || 0} goals scored
-                    </p>
-                  </div>
-                )}
-                
-                {statistics.best_defense && (
-                  <div className="p-4 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-500 mb-1">Best Defense</p>
-                    <p className="text-lg font-semibold text-gray-900">
-                      Team ID: {statistics.best_defense.team_id || 'N/A'}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {statistics.best_defense.goals_conceded || 0} goals conceded
-                    </p>
-                  </div>
-                )}
               </div>
             )}
           </div>

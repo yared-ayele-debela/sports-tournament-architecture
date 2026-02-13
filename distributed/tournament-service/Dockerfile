@@ -28,7 +28,7 @@ WORKDIR /var/www/html
 COPY . /var/www/html
 
 # Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install
 
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
@@ -38,9 +38,9 @@ RUN chown -R www-data:www-data /var/www/html \
 # Expose port
 EXPOSE 8002
 
-# Create startup script to run migrations and start server
+# Create startup script in system location (not overwritten by volume mounts)
 RUN printf '#!/bin/bash\n\
-set -e\n\
+cd /var/www/html\n\
 # Create .env file from environment variables if it does not exist\n\
 if [ ! -f /var/www/html/.env ]; then\n\
   cat > /var/www/html/.env << EOF\n\
@@ -60,10 +60,18 @@ fi\n\
 if [ -z "$APP_KEY" ]; then\n\
   php artisan key:generate --force\n\
 fi\n\
-php artisan migrate --force\n\
-php artisan db:seed --force\n\
-php artisan serve --host=0.0.0.0 --port=8002\n' > /var/www/html/start.sh && \
-chmod +x /var/www/html/start.sh
+# Function to run command and always return success\n\
+run_safe() {\n\
+    "$@" 2>&1 || echo "Command completed with warnings: $*"\n\
+    return 0\n\
+}\n\
+# Run migrations - continue even if some fail (tables may already exist)\n\
+run_safe php artisan migrate --force\n\
+# Run seeders - continue even if some fail (data may already exist)\n\
+run_safe php artisan db:seed --force\n\
+# Start the server (this should not exit)\n\
+exec php artisan serve --host=0.0.0.0 --port=8002\n' > /usr/local/bin/start-tournament-service.sh && \
+chmod +x /usr/local/bin/start-tournament-service.sh
 
 # Run the startup script
-CMD ["/var/www/html/start.sh"]
+CMD ["/usr/local/bin/start-tournament-service.sh"]

@@ -1,12 +1,8 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { resultsService } from '../../api/results';
 import { tournamentsService } from '../../api/tournaments';
-import { useToast } from '../../context/ToastContext';
-import { usePermissions } from '../../hooks/usePermissions';
-import Unauthorized from '../../components/common/Unauthorized';
-import { RefreshCw, ArrowUp, ArrowDown, ArrowUpDown, Trophy } from 'lucide-react';
+import { ArrowUp, ArrowDown, ArrowUpDown, Trophy } from 'lucide-react';
 
 const SORTABLE_COLUMNS = {
   position: 'position',
@@ -23,15 +19,6 @@ export default function Standings() {
   const [tournamentFilter, setTournamentFilter] = useState('');
   const [sortColumn, setSortColumn] = useState('position');
   const [sortDirection, setSortDirection] = useState('asc');
-  const navigate = useNavigate();
-  const queryClient = useQueryClient();
-  const toast = useToast();
-  const { hasPermission, isAdmin } = usePermissions();
-
-  // Check permissions - standings are viewable by all authenticated users
-  // But recalculate requires admin or manage_tournaments permission
-  const canViewStandings = true; // All authenticated users can view
-  const canRecalculateStandings = hasPermission('manage_tournaments') || isAdmin();
 
   // Fetch tournaments
   const { data: tournamentsData } = useQuery({
@@ -50,27 +37,6 @@ export default function Standings() {
     },
     enabled: !!tournamentFilter,
   });
-
-  const recalculateMutation = useMutation({
-    mutationFn: (tournamentId) => resultsService.recalculateStandings(tournamentId),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['standings', tournamentFilter]);
-      toast.success('Standings recalculated successfully');
-    },
-    onError: (error) => {
-      toast.error(error?.response?.data?.message || 'Failed to recalculate standings');
-    },
-  });
-
-  const handleRecalculate = () => {
-    if (!tournamentFilter) {
-      toast.error('Please select a tournament first');
-      return;
-    }
-    if (window.confirm('Are you sure you want to recalculate standings? This may take a moment.')) {
-      recalculateMutation.mutate(tournamentFilter);
-    }
-  };
 
   const handleSort = (column) => {
     if (sortColumn === column) {
@@ -132,18 +98,6 @@ export default function Standings() {
           <Trophy className="w-8 h-8 mr-2 text-primary-600" />
           Tournament Standings
         </h1>
-        {tournamentFilter && (
-          <button
-            onClick={handleRecalculate}
-            disabled={recalculateMutation.isLoading}
-            className="btn btn-secondary flex items-center"
-          >
-            <RefreshCw
-              className={`w-5 h-5 mr-2 ${recalculateMutation.isLoading ? 'animate-spin' : ''}`}
-            />
-            Recalculate Standings
-          </button>
-        )}
       </div>
 
       {/* Tournament Filter */}

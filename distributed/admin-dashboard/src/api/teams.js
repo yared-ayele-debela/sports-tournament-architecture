@@ -3,8 +3,9 @@ import { teamApi, extractData, handleApiError } from '../lib/api';
 export const teamsService = {
   list: async (params = {}) => {
     try {
-      // The API requires tournament_id. If provided, use the tournament-specific endpoint
-      // Otherwise, we need to handle it differently
+      // The API can work with or without tournament_id
+      // If tournament_id is provided, use the tournament-specific endpoint
+      // Otherwise, use the general teams endpoint (useful for coaches to see their teams)
       const { tournament_id, ...otherParams } = params;
       
       if (tournament_id) {
@@ -19,9 +20,16 @@ export const teamsService = {
         }
         return extracted;
       } else {
-        // If no tournament_id, we can't list teams - return empty or throw error
-        // Teams must belong to a tournament
-        throw new Error('tournament_id is required to list teams');
+        // Use general teams endpoint (for coaches, this will filter by coach automatically)
+        const response = await teamApi.get('/teams', { params: otherParams });
+        const extracted = extractData(response);
+        if (response.data && response.data.pagination) {
+          return {
+            data: extracted,
+            pagination: response.data.pagination,
+          };
+        }
+        return extracted;
       }
     } catch (error) {
       throw handleApiError(error);

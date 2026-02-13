@@ -36,7 +36,7 @@ class TeamController extends Controller
 
     public function public_index(Request $request): JsonResponse
     {
-        $query = Team::with(['players', 'coaches']);
+        $query = Team::with(['players']);
 
         if ($request->has('tournament_id')) {
             $query->where('tournament_id', $request->tournament_id);
@@ -63,12 +63,15 @@ class TeamController extends Controller
      *
      * This endpoint returns a gateway-compatible paginated response.
      */
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, $tournamentId = null): JsonResponse
     {
-        $query = Team::with(['players', 'coaches']);
+        $query = Team::with(['players']);
 
-        if ($request->has('tournament_id')) {
-            $query->where('tournament_id', $request->tournament_id);
+        // Get tournament_id from route parameter or query parameter
+        $tournamentId = $tournamentId ?? $request->route('tournamentId') ?? $request->input('tournament_id');
+
+        if ($tournamentId) {
+            $query->where('tournament_id', $tournamentId);
         }
 
         // Apply search filter
@@ -80,19 +83,124 @@ class TeamController extends Controller
             });
         }
 
-        // If user is coach, only show their teams
+        // If user is coach, only show their teams (check pivot table directly since users are in auth-service)
         if (AuthHelper::isCoach()) {
-            $query->whereHas('coaches', function ($q) {
-                $q->where('user_id', AuthHelper::getCurrentUserId());
-            });
+            $coachUserId = AuthHelper::getCurrentUserId();
+            $teamIds = DB::table('team_coach')
+                ->where('user_id', $coachUserId)
+                ->pluck('team_id')
+                ->toArray();
+            if (!empty($teamIds)) {
+                $query->whereIn('id', $teamIds);
+            } else {
+                // If coach has no teams, return empty result
+                $query->whereRaw('1 = 0');
+            }
         }
 
         $perPage = (int) $request->query('per_page', 20);
         $perPage = max(1, min(100, $perPage));
 
-        $teams = $query->orderByDesc('id')->paginate($perPage);
+        $paginator = $query->orderByDesc('id')->paginate($perPage);
 
-        return ApiResponse::paginated($teams, 'Teams retrieved successfully');
+        // Enrich teams with tournament name and coach names
+        $items = collect($paginator->items())
+            ->map(function ($team) {
+                // Get tournament name
+                $tournament = null;
+                try {
+                    $tournament = $this->tournamentService->getPublicTournament($team->tournament_id);
+                    if (!$tournament) {
+                        Log::warning('Tournament not found', [
+                            'team_id' => $team->id,
+                            'tournament_id' => $team->tournament_id
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to fetch tournament for team', [
+                        'team_id' => $team->id,
+                        'tournament_id' => $team->tournament_id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+
+                // Get coach names - fetch coach IDs directly from pivot table since users don't exist in team-service DB
+                $coachNames = [];
+                $coachIds = DB::table('team_coach')
+                    ->where('team_id', $team->id)
+                    ->pluck('user_id')
+                    ->toArray();
+
+                Log::info('Processing team coaches', [
+                    'team_id' => $team->id,
+                    'coaches_count' => count($coachIds),
+                    'coach_ids' => $coachIds
+                ]);
+
+                if (!empty($coachIds)) {
+                    foreach ($coachIds as $coachId) {
+                        try {
+                            // Fetch from auth-service to get the name
+                            $coachData = $this->authService->getUser($coachId);
+
+                            Log::info('Fetched coach data', [
+                                'coach_id' => $coachId,
+                                'team_id' => $team->id,
+                                'has_data' => !is_null($coachData),
+                                'has_name' => isset($coachData['name'])
+                            ]);
+
+                            if ($coachData && isset($coachData['name']) && !empty($coachData['name'])) {
+                                $coachNames[] = $coachData['name'];
+                            } else {
+                                Log::warning('Coach user not found or has no name', [
+                                    'coach_id' => $coachId,
+                                    'team_id' => $team->id,
+                                    'coach_data' => $coachData
+                                ]);
+                                $coachNames[] = 'Unknown';
+                            }
+                        } catch (\Exception $e) {
+                            Log::error('Failed to fetch coach from auth-service', [
+                                'coach_id' => $coachId,
+                                'team_id' => $team->id,
+                                'error' => $e->getMessage()
+                            ]);
+                            $coachNames[] = 'Unknown';
+                        }
+                    }
+                } else {
+                    Log::info('No coaches found for team', [
+                        'team_id' => $team->id
+                    ]);
+                }
+
+                // Set tournament data on model
+                $tournamentData = $tournament ? [
+                    'id' => $tournament['id'] ?? null,
+                    'name' => $tournament['name'] ?? null,
+                ] : null;
+
+                $team->setAttribute('tournament', $tournamentData);
+                $team->setAttribute('coaches_list', $coachNames);
+                $team->setAttribute('coaches_count', count($coachNames));
+
+                // Make sure these attributes are visible in JSON serialization
+                $team->makeVisible(['tournament', 'coaches_list', 'coaches_count']);
+
+                Log::info('Team enriched', [
+                    'team_id' => $team->id,
+                    'tournament_name' => $tournamentData['name'] ?? null,
+                    'coaches_list' => $coachNames
+                ]);
+
+                return $team;
+            })
+            ->all();
+
+        $paginator->setCollection(collect($items));
+
+        return ApiResponse::paginated($paginator, 'Teams retrieved successfully');
     }
 
     public function store(Request $request): JsonResponse
@@ -130,11 +238,14 @@ class TeamController extends Controller
                 'logo' => $request->logo,
             ]);
 
-            // Attach coach to team
-            $team->coaches()->attach($request->coach_id);
-
-            // Load relationships
-            $team->load('coaches');
+            // Attach coach to team (direct DB insert since users are in auth-service)
+            // Use insertOrIgnore to avoid duplicate key errors
+            DB::table('team_coach')->insertOrIgnore([
+                'team_id' => $team->id,
+                'user_id' => $request->coach_id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
             DB::commit();
 
@@ -155,7 +266,7 @@ class TeamController extends Controller
 
     public function show(string $id): JsonResponse
     {
-        $team = Team::with(['players', 'coaches'])->find($id);
+        $team = Team::with(['players'])->find($id);
 
         if (!$team) {
             return ApiResponse::notFound('Team not found');
@@ -201,7 +312,7 @@ class TeamController extends Controller
             // Dispatch team updated event to queue (default priority)
             $this->dispatchTeamUpdatedQueueEvent($team, $oldData);
 
-            return ApiResponse::success($team->load('coaches'), 'Team updated successfully');
+            return ApiResponse::success($team, 'Team updated successfully');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('Failed to update team: ' . $e->getMessage(), $e);
@@ -224,8 +335,8 @@ class TeamController extends Controller
         try {
             DB::beginTransaction();
 
-            // Detach coaches
-            $team->coaches()->detach();
+            // Detach coaches (direct DB delete since users are in auth-service)
+            DB::table('team_coach')->where('team_id', $team->id)->delete();
 
             // Delete players
             $team->players()->delete();
@@ -253,7 +364,7 @@ class TeamController extends Controller
     public function overview(string $id): JsonResponse
     {
         try {
-            $team = Team::with(['players', 'coaches'])
+            $team = Team::with(['players'])
                 ->findOrFail($id);
 
             // Calculate team statistics

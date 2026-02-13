@@ -50,11 +50,27 @@ class PlayerController extends Controller
 
         // If user is coach, only show players from their teams
         if (AuthHelper::isCoach()) {
-            $query->whereHas('team', function ($q) {
-                $q->whereHas('coaches', function ($subQ) {
-                    $subQ->where('user_id', AuthHelper::getCurrentUserId());
-                });
-            });
+            $coachUserId = AuthHelper::getCurrentUserId();
+            // Get team IDs where this coach is assigned (using pivot table directly)
+            $teamIds = DB::table('team_coach')
+                ->where('user_id', $coachUserId)
+                ->pluck('team_id')
+                ->toArray();
+
+            if (!empty($teamIds)) {
+                $query->whereIn('team_id', $teamIds);
+            } else {
+                // If coach has no teams, return empty result
+                $query->whereRaw('1 = 0');
+            }
+
+            // If team_id is provided, verify coach has access to that team
+            if ($request->has('team_id')) {
+                $requestedTeamId = (int) $request->team_id;
+                if (!in_array($requestedTeamId, $teamIds)) {
+                    return ApiResponse::forbidden('Unauthorized to view players for this team');
+                }
+            }
         }
 
         $perPage = (int) $request->query('per_page', 20);
@@ -105,7 +121,7 @@ class PlayerController extends Controller
 
             // Fire legacy event
             event(new PlayerCreated($player, AuthHelper::getCurrentUserId()));
-            
+
             // Dispatch player created event to queue (default priority)
             $this->dispatchPlayerCreatedQueueEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
 
@@ -173,7 +189,7 @@ class PlayerController extends Controller
 
             // Fire legacy event
             event(new PlayerUpdated($player, AuthHelper::getCurrentUserId()));
-            
+
             // Dispatch player updated event to queue (default priority)
             $this->dispatchPlayerUpdatedQueueEvent($player, $oldData);
 

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { usePermissions } from '../../hooks/usePermissions';
+import { useAuth } from '../../context/AuthContext';
 import { 
   LayoutDashboard, 
   Users, 
@@ -21,7 +22,7 @@ import {
 export default function Sidebar({ onCollapseChange }) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { hasPermission, isAdmin } = usePermissions();
+  const { hasPermission, isAdmin, isCoach } = usePermissions();
 
   const handleToggle = () => {
     const newState = !collapsed;
@@ -82,6 +83,22 @@ export default function Sidebar({ onCollapseChange }) {
       adminOnly: false
     },
     { 
+      path: '/teams/my-teams', 
+      icon: TeamIcon, 
+      label: 'My Teams',
+      permission: null,
+      adminOnly: false,
+      coachOnly: true
+    },
+    { 
+      path: '/matches/my-matches', 
+      icon: Calendar, 
+      label: 'My Matches',
+      permission: null,
+      adminOnly: false,
+      coachOnly: true
+    },
+    { 
       path: '/players', 
       icon: UserCircle, 
       label: 'Players',
@@ -116,6 +133,11 @@ export default function Sidebar({ onCollapseChange }) {
     // Dashboard is always accessible
     if (item.path === '/dashboard') {
       return true;
+    }
+    
+    // Coach-only items
+    if (item.coachOnly) {
+      return isCoach();
     }
     
     // Admin-only items (like Roles)

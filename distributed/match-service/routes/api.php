@@ -25,7 +25,7 @@ use App\Http\Controllers\Api\MatchReportController;
 Route::get('health', function () {
     return response()->json([
         'success' => true,
-        'message' => 'Match Service is running',
+        'message' => 'Match Service is runnings',
         'service' => 'match-service',
         'version' => '1.0.0',
         'timestamp' => now()->toISOString()
@@ -44,7 +44,7 @@ Route::get('/public/matches/{id}/events/public', [MatchEventController::class, '
 
 
 Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
-    
+
     // Matches Routes (Protected)
     Route::get('/matches', [MatchController::class, 'index']);
     Route::post('/matches', [MatchController::class, 'store']);
@@ -53,12 +53,12 @@ Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group
     Route::delete('/matches/{id}', [MatchController::class, 'destroy']);
     Route::patch('/matches/{id}/status', [MatchController::class, 'updateStatus']);
     Route::post('/tournaments/{tournamentId}/generate-schedule', [MatchController::class, 'generateSchedule']);
-    
+
     // Match Events Routes (Protected)
     Route::get('/matches/{matchId}/events', [MatchEventController::class, 'index']);
     Route::post('/matches/{matchId}/events', [MatchEventController::class, 'store']);
     Route::delete('/events/{id}', [MatchEventController::class, 'destroy']);
-    
+
     // Match Reports Routes (Protected)
     Route::get('/matches/{matchId}/report', [MatchReportController::class, 'show']);
     Route::post('/matches/{matchId}/report', [MatchReportController::class, 'store']);

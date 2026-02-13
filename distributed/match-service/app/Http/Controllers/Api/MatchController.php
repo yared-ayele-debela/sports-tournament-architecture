@@ -7,7 +7,10 @@ use App\Models\MatchGame;
 use App\Services\MatchScheduler;
 use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
+use App\Services\Clients\TeamServiceClient;
+use App\Services\Clients\TournamentServiceClient;
 use App\Support\ApiResponse;
+use App\Helpers\AuthHelper;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -17,11 +20,19 @@ class MatchController extends Controller
 {
     protected MatchScheduler $matchScheduler;
     protected QueuePublisher $queuePublisher;
+    protected TeamServiceClient $teamServiceClient;
+    protected TournamentServiceClient $tournamentServiceClient;
 
-    public function __construct(MatchScheduler $matchScheduler, QueuePublisher $queuePublisher)
-    {
+    public function __construct(
+        MatchScheduler $matchScheduler,
+        QueuePublisher $queuePublisher,
+        TeamServiceClient $teamServiceClient,
+        TournamentServiceClient $tournamentServiceClient
+    ) {
         $this->matchScheduler = $matchScheduler;
         $this->queuePublisher = $queuePublisher;
+        $this->teamServiceClient = $teamServiceClient;
+        $this->tournamentServiceClient = $tournamentServiceClient;
     }
 
     /**
@@ -49,12 +60,52 @@ class MatchController extends Controller
             });
         }
 
+        // If user is coach, only show matches for their teams
+        if (AuthHelper::isCoach()) {
+            $teamIds = AuthHelper::getCoachTeamIds();
+            if (!empty($teamIds)) {
+                $query->where(function ($q) use ($teamIds) {
+                    $q->whereIn('home_team_id', $teamIds)
+                      ->orWhereIn('away_team_id', $teamIds);
+                });
+            } else {
+                // If coach has no teams, return empty result
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         $perPage = (int) $request->query('per_page', 20);
         $perPage = max(1, min(100, $perPage));
 
-        $matches = $query->orderBy('match_date')->paginate($perPage);
+        $paginator = $query->orderBy('match_date')->paginate($perPage);
 
-        return ApiResponse::paginated($matches, 'Matches retrieved successfully');
+        // Enrich matches with team and tournament data
+        $items = collect($paginator->items())
+            ->map(function ($match) {
+                $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+                $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
+                $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+
+                $match->home_team = $homeTeam ? [
+                    'id' => $homeTeam['id'] ?? null,
+                    'name' => $homeTeam['name'] ?? null,
+                ] : null;
+                $match->away_team = $awayTeam ? [
+                    'id' => $awayTeam['id'] ?? null,
+                    'name' => $awayTeam['name'] ?? null,
+                ] : null;
+                $match->tournament = $tournament ? [
+                    'id' => $tournament['id'] ?? null,
+                    'name' => $tournament['name'] ?? null,
+                ] : null;
+
+                return $match;
+            })
+            ->all();
+
+        $paginator->setCollection(collect($items));
+
+        return ApiResponse::paginated($paginator, 'Matches retrieved successfully');
     }
 
     public function store(Request $request): JsonResponse
@@ -86,11 +137,38 @@ class MatchController extends Controller
         $match = MatchGame::with(['matchEvents', 'matchReport'])
             ->findOrFail($id);
 
-        // Load external data
-        $match->home_team = $match->getHomeTeam();
-        $match->away_team = $match->getAwayTeam();
-        $match->tournament = $match->getTournament();
-        $match->venue = $match->getVenue();
+        // Check authorization for coaches - only allow access to their team's matches
+        if (AuthHelper::isCoach() && !AuthHelper::isAdmin()) {
+            $teamIds = AuthHelper::getCoachTeamIds();
+            $hasAccess = in_array($match->home_team_id, $teamIds) || in_array($match->away_team_id, $teamIds);
+            
+            if (!$hasAccess) {
+                return ApiResponse::forbidden('Unauthorized to view this match');
+            }
+        }
+
+        // Load external data using service clients for better error handling
+        $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+        $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
+        $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+        $venue = $this->tournamentServiceClient->getPublicVenue($match->venue_id);
+
+        $match->home_team = $homeTeam ? [
+            'id' => $homeTeam['id'] ?? null,
+            'name' => $homeTeam['name'] ?? null,
+        ] : null;
+        $match->away_team = $awayTeam ? [
+            'id' => $awayTeam['id'] ?? null,
+            'name' => $awayTeam['name'] ?? null,
+        ] : null;
+        $match->tournament = $tournament ? [
+            'id' => $tournament['id'] ?? null,
+            'name' => $tournament['name'] ?? null,
+        ] : null;
+        $match->venue = $venue ? [
+            'id' => $venue['id'] ?? null,
+            'name' => $venue['name'] ?? null,
+        ] : null;
 
         return ApiResponse::success($match);
     }
@@ -100,11 +178,28 @@ class MatchController extends Controller
         $match = MatchGame::with(['matchEvents', 'matchReport'])
             ->findOrFail($id);
 
-        // Load external data
-        $match->home_team = $match->getHomeTeam();
-        $match->away_team = $match->getAwayTeam();
-        $match->tournament = $match->getTournament();
-        $match->venue = $match->getVenue();
+        // Load external data using service clients for better error handling
+        $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+        $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
+        $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+        $venue = $this->tournamentServiceClient->getPublicVenue($match->venue_id);
+
+        $match->home_team = $homeTeam ? [
+            'id' => $homeTeam['id'] ?? null,
+            'name' => $homeTeam['name'] ?? null,
+        ] : null;
+        $match->away_team = $awayTeam ? [
+            'id' => $awayTeam['id'] ?? null,
+            'name' => $awayTeam['name'] ?? null,
+        ] : null;
+        $match->tournament = $tournament ? [
+            'id' => $tournament['id'] ?? null,
+            'name' => $tournament['name'] ?? null,
+        ] : null;
+        $match->venue = $venue ? [
+            'id' => $venue['id'] ?? null,
+            'name' => $venue['name'] ?? null,
+        ] : null;
 
         return ApiResponse::success($match);
     }
@@ -214,12 +309,51 @@ class MatchController extends Controller
             ->where('match_date', '>=', now()->subHours(2))
             ->orderBy('match_date');
 
+        // If user is coach, only show matches for their teams
+        if (AuthHelper::isCoach()) {
+            $teamIds = AuthHelper::getCoachTeamIds();
+            if (!empty($teamIds)) {
+                $query->where(function ($q) use ($teamIds) {
+                    $q->whereIn('home_team_id', $teamIds)
+                      ->orWhereIn('away_team_id', $teamIds);
+                });
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         $perPage = (int) $request->query('per_page', 10);
         $perPage = max(1, min(100, $perPage));
 
-        $matches = $query->paginate($perPage);
+        $paginator = $query->paginate($perPage);
 
-        return ApiResponse::paginated($matches, 'Live matches retrieved successfully');
+        // Enrich matches with team and tournament data
+        $items = collect($paginator->items())
+            ->map(function ($match) {
+                $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+                $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
+                $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+
+                $match->home_team = $homeTeam ? [
+                    'id' => $homeTeam['id'] ?? null,
+                    'name' => $homeTeam['name'] ?? null,
+                ] : null;
+                $match->away_team = $awayTeam ? [
+                    'id' => $awayTeam['id'] ?? null,
+                    'name' => $awayTeam['name'] ?? null,
+                ] : null;
+                $match->tournament = $tournament ? [
+                    'id' => $tournament['id'] ?? null,
+                    'name' => $tournament['name'] ?? null,
+                ] : null;
+
+                return $match;
+            })
+            ->all();
+
+        $paginator->setCollection(collect($items));
+
+        return ApiResponse::paginated($paginator, 'Live matches retrieved successfully');
     }
 
     /**
@@ -245,12 +379,51 @@ class MatchController extends Controller
             });
         }
 
+        // If user is coach, only show matches for their teams
+        if (AuthHelper::isCoach()) {
+            $teamIds = AuthHelper::getCoachTeamIds();
+            if (!empty($teamIds)) {
+                $query->where(function ($q) use ($teamIds) {
+                    $q->whereIn('home_team_id', $teamIds)
+                      ->orWhereIn('away_team_id', $teamIds);
+                });
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         $perPage = (int) $request->query('per_page', 15);
         $perPage = max(1, min(100, $perPage));
 
-        $matches = $query->orderBy('match_date')->paginate($perPage);
+        $paginator = $query->orderBy('match_date')->paginate($perPage);
 
-        return ApiResponse::paginated($matches, 'Upcoming matches retrieved successfully');
+        // Enrich matches with team and tournament data
+        $items = collect($paginator->items())
+            ->map(function ($match) {
+                $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+                $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
+                $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+
+                $match->home_team = $homeTeam ? [
+                    'id' => $homeTeam['id'] ?? null,
+                    'name' => $homeTeam['name'] ?? null,
+                ] : null;
+                $match->away_team = $awayTeam ? [
+                    'id' => $awayTeam['id'] ?? null,
+                    'name' => $awayTeam['name'] ?? null,
+                ] : null;
+                $match->tournament = $tournament ? [
+                    'id' => $tournament['id'] ?? null,
+                    'name' => $tournament['name'] ?? null,
+                ] : null;
+
+                return $match;
+            })
+            ->all();
+
+        $paginator->setCollection(collect($items));
+
+        return ApiResponse::paginated($paginator, 'Upcoming matches retrieved successfully');
     }
 
     /**
@@ -275,12 +448,51 @@ class MatchController extends Controller
             });
         }
 
+        // If user is coach, only show matches for their teams
+        if (AuthHelper::isCoach()) {
+            $teamIds = AuthHelper::getCoachTeamIds();
+            if (!empty($teamIds)) {
+                $query->where(function ($q) use ($teamIds) {
+                    $q->whereIn('home_team_id', $teamIds)
+                      ->orWhereIn('away_team_id', $teamIds);
+                });
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         $perPage = (int) $request->query('per_page', 15);
         $perPage = max(1, min(100, $perPage));
 
-        $matches = $query->orderBy('match_date', 'desc')->paginate($perPage);
+        $paginator = $query->orderBy('match_date', 'desc')->paginate($perPage);
 
-        return ApiResponse::paginated($matches, 'Completed matches retrieved successfully');
+        // Enrich matches with team and tournament data
+        $items = collect($paginator->items())
+            ->map(function ($match) {
+                $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+                $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
+                $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+
+                $match->home_team = $homeTeam ? [
+                    'id' => $homeTeam['id'] ?? null,
+                    'name' => $homeTeam['name'] ?? null,
+                ] : null;
+                $match->away_team = $awayTeam ? [
+                    'id' => $awayTeam['id'] ?? null,
+                    'name' => $awayTeam['name'] ?? null,
+                ] : null;
+                $match->tournament = $tournament ? [
+                    'id' => $tournament['id'] ?? null,
+                    'name' => $tournament['name'] ?? null,
+                ] : null;
+
+                return $match;
+            })
+            ->all();
+
+        $paginator->setCollection(collect($items));
+
+        return ApiResponse::paginated($paginator, 'Completed matches retrieved successfully');
     }
 
     /**
@@ -315,9 +527,35 @@ class MatchController extends Controller
             $perPage = (int) $request->query('per_page', 20);
             $perPage = max(1, min(100, $perPage));
 
-            $matches = $query->orderBy('match_date')->paginate($perPage);
+            $paginator = $query->orderBy('match_date')->paginate($perPage);
 
-            return ApiResponse::paginated($matches, "Matches for {$date} retrieved successfully");
+            // Enrich matches with team and tournament data
+            $items = collect($paginator->items())
+                ->map(function ($match) {
+                    $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
+                    $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
+                    $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+
+                    $match->home_team = $homeTeam ? [
+                        'id' => $homeTeam['id'] ?? null,
+                        'name' => $homeTeam['name'] ?? null,
+                    ] : null;
+                    $match->away_team = $awayTeam ? [
+                        'id' => $awayTeam['id'] ?? null,
+                        'name' => $awayTeam['name'] ?? null,
+                    ] : null;
+                    $match->tournament = $tournament ? [
+                        'id' => $tournament['id'] ?? null,
+                        'name' => $tournament['name'] ?? null,
+                    ] : null;
+
+                    return $match;
+                })
+                ->all();
+
+            $paginator->setCollection(collect($items));
+
+            return ApiResponse::paginated($paginator, "Matches for {$date} retrieved successfully");
         } catch (\Exception $e) {
             Log::error('Failed to retrieve matches by date', [
                 'date' => $date,

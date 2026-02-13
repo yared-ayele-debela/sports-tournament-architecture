@@ -96,7 +96,7 @@ use Illuminate\Support\Facades\Route;
     Route::get('health', function () {
         return response()->json([
             'success' => true,
-            'message' => 'Authentication Service is running',
+            'message' => 'Authentications Service is running',
             'service' => 'auth-service',
             'version' => '1.0.0',
             'timestamp' => now()->toISOString()
@@ -108,5 +108,5 @@ use Illuminate\Support\Facades\Route;
     | Service Info (Public)
     |--------------------------------------------------------------------------
     */
- 
+
 

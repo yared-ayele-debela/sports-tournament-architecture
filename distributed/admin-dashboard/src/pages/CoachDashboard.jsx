@@ -23,10 +23,22 @@ export default function CoachDashboard() {
     enabled: hasPermission('manage_players') || isAdmin(),
   });
 
-  // Fetch upcoming matches
+  // Fetch coach's teams to get count
+  const { data: teamsData } = useQuery({
+    queryKey: ['teams', 'my-teams', 'count'],
+    queryFn: () => teamsService.list({ per_page: 1 }),
+  });
+
+  // Fetch upcoming matches (coach's teams only)
   const { data: upcomingMatchesData } = useQuery({
-    queryKey: ['matches', 'upcoming'],
+    queryKey: ['matches', 'upcoming', 'coach'],
     queryFn: () => matchesService.list({ status: 'scheduled', per_page: 5 }),
+  });
+
+  // Fetch recent completed matches (coach's teams only)
+  const { data: recentMatchesData } = useQuery({
+    queryKey: ['matches', 'recent', 'coach'],
+    queryFn: () => matchesService.list({ status: 'completed', per_page: 5 }),
   });
 
   // Fetch active tournaments
@@ -35,34 +47,54 @@ export default function CoachDashboard() {
     queryFn: () => tournamentsService.list({ status: 'ongoing', per_page: 5 }),
   });
 
+  // Extract data
   const totalPlayers = playersData?.pagination?.total || playersData?.total || 0;
-  const upcomingMatches = upcomingMatchesData?.data || upcomingMatchesData || [];
+  const myTeamsCount = teamsData?.pagination?.total || (Array.isArray(teamsData?.data) ? teamsData.data.length : 0) || 0;
+  
+  // Extract matches - handle different response structures
+  let upcomingMatches = [];
+  if (Array.isArray(upcomingMatchesData)) {
+    upcomingMatches = upcomingMatchesData;
+  } else if (upcomingMatchesData?.data && Array.isArray(upcomingMatchesData.data)) {
+    upcomingMatches = upcomingMatchesData.data;
+  } else if (upcomingMatchesData?.data?.data && Array.isArray(upcomingMatchesData.data.data)) {
+    upcomingMatches = upcomingMatchesData.data.data;
+  }
+
+  let recentMatches = [];
+  if (Array.isArray(recentMatchesData)) {
+    recentMatches = recentMatchesData;
+  } else if (recentMatchesData?.data && Array.isArray(recentMatchesData.data)) {
+    recentMatches = recentMatchesData.data;
+  } else if (recentMatchesData?.data?.data && Array.isArray(recentMatchesData.data.data)) {
+    recentMatches = recentMatchesData.data.data;
+  }
+
   const activeTournaments = activeTournamentsData?.data || activeTournamentsData || [];
 
   const stats = [
+    {
+      title: 'My Teams',
+      value: myTeamsCount,
+      icon: Users,
+      color: 'bg-purple-500',
+      link: '/teams/my-teams',
+    },
     {
       title: 'My Players',
       value: totalPlayers,
       icon: UserCircle,
       color: 'bg-blue-500',
-      link: '/players',
-      permission: 'manage_players',
-    },
-    {
-      title: 'Active Tournaments',
-      value: activeTournaments.length,
-      icon: Trophy,
-      color: 'bg-yellow-500',
-      link: '/tournaments?status=ongoing',
+      link: '/teams/my-teams',
     },
     {
       title: 'Upcoming Matches',
       value: upcomingMatches.length,
       icon: Calendar,
       color: 'bg-green-500',
-      link: '/matches?status=scheduled',
+      link: '/matches/my-matches?status=scheduled',
     },
-  ].filter((stat) => !stat.permission || hasPermission(stat.permission) || isAdmin());
+  ];
 
   return (
     <div>
@@ -95,25 +127,36 @@ export default function CoachDashboard() {
         })}
       </div>
 
+      {/* My Teams Section */}
+      <div className="card mb-8">
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">My Teams</h2>
+        <p className="text-gray-600 mb-4">View and manage your teams</p>
+        <Link
+          to="/teams/my-teams"
+          className="btn btn-primary inline-flex items-center"
+        >
+          <Users className="w-5 h-5 mr-2" />
+          View My Teams
+        </Link>
+      </div>
+
       {/* Quick Actions */}
       <div className="card mb-8">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {hasPermission('manage_players') || isAdmin() ? (
-            <Link
-              to="/players/new"
-              className="btn btn-primary flex items-center justify-center"
-            >
-              <UserCircle className="w-5 h-5 mr-2" />
-              Add Player
-            </Link>
-          ) : null}
           <Link
-            to="/matches?status=scheduled"
+            to="/teams/my-teams"
+            className="btn btn-primary flex items-center justify-center"
+          >
+            <Users className="w-5 h-5 mr-2" />
+            My Teams
+          </Link>
+          <Link
+            to="/matches/my-matches"
             className="btn btn-primary flex items-center justify-center"
           >
             <Calendar className="w-5 h-5 mr-2" />
-            View Matches
+            My Matches
           </Link>
           <Link
             to="/standings"
@@ -133,7 +176,7 @@ export default function CoachDashboard() {
             {upcomingMatches.slice(0, 5).map((match) => (
               <Link
                 key={match.id}
-                to={`/matches/${match.id}`}
+                to={`/matches/my-matches/${match.id}`}
                 className="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">
@@ -150,10 +193,10 @@ export default function CoachDashboard() {
                           {match.tournament.name}
                         </span>
                       )}
-                      {match.scheduled_at && (
+                      {match.match_date && (
                         <span className="flex items-center">
                           <Clock className="w-4 h-4 mr-1" />
-                          {new Date(match.scheduled_at).toLocaleDateString()}
+                          {new Date(match.match_date).toLocaleDateString()}
                         </span>
                       )}
                     </div>
@@ -165,10 +208,65 @@ export default function CoachDashboard() {
           {upcomingMatches.length > 5 && (
             <div className="mt-4 text-center">
               <Link
-                to="/matches?status=scheduled"
+                to="/matches/my-matches?status=scheduled"
                 className="text-primary-600 hover:text-primary-700 text-sm font-medium"
               >
                 View all upcoming matches →
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Recent Matches */}
+      {recentMatches.length > 0 && (
+        <div className="card mb-8">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Matches</h2>
+          <div className="space-y-3">
+            {recentMatches.slice(0, 5).map((match) => (
+              <Link
+                key={match.id}
+                to={`/matches/my-matches/${match.id}`}
+                className="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-1">
+                      <span className="font-medium text-gray-900">
+                        {match.home_team?.name || 'TBD'} vs {match.away_team?.name || 'TBD'}
+                      </span>
+                      {(match.home_score !== null && match.away_score !== null) && (
+                        <span className="text-sm font-semibold text-primary-600">
+                          {match.home_score} - {match.away_score}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      {match.tournament && (
+                        <span className="flex items-center">
+                          <Trophy className="w-4 h-4 mr-1" />
+                          {match.tournament.name}
+                        </span>
+                      )}
+                      {match.match_date && (
+                        <span className="flex items-center">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {new Date(match.match_date).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+          {recentMatches.length > 5 && (
+            <div className="mt-4 text-center">
+              <Link
+                to="/matches/my-matches?status=completed"
+                className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+              >
+                View all recent matches →
               </Link>
             </div>
           )}

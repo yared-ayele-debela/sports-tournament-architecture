@@ -52,7 +52,13 @@ class TeamSeeder extends Seeder
 
                     // Assign random coach (user_id 4-21)
                     $coachId = rand(4, 21);
-                    $team->coaches()->attach($coachId);
+                    // Insert directly into pivot table since users are in auth-service
+                    DB::table('team_coach')->insert([
+                        'team_id' => $team->id,
+                        'user_id' => $coachId,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
 
                     $this->command->info("Created {$teamName} with coach ID: {$coachId}");
                 }

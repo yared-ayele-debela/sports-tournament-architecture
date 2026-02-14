@@ -49,6 +49,11 @@ Route::prefix('tournaments')->group(function () {
     Route::get('{tournamentId}/statistics', [StatisticsController::class, 'tournamentStatistics']);
 });
 
+// Public statistics endpoints
+Route::get('/statistics', [StatisticsController::class, 'index']); // GET /api/statistics
+Route::get('/statistics/goals-per-tournament', [StatisticsController::class, 'goalsPerTournament']); // GET /api/statistics/goals-per-tournament
+Route::get('/statistics/top-scoring-teams', [StatisticsController::class, 'topScoringTeams']); // GET /api/statistics/top-scoring-teams
+
 
 Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
     

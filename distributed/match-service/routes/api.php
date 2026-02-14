@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchEventController;
 use App\Http\Controllers\Api\MatchReportController;
+use App\Http\Controllers\Api\StatisticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -41,6 +42,15 @@ Route::get('/public/matches/date/{date}', [MatchController::class, 'matchesByDat
 Route::get('/public/matches/{id}', [MatchController::class, 'show']);
 Route::get('/public/matches/{id}/public', [MatchController::class, 'publicShow']);
 Route::get('/public/matches/{id}/events/public', [MatchEventController::class, 'match_event_index']);
+
+// Public statistics endpoints
+Route::get('/statistics', [StatisticsController::class, 'index']); // GET /api/statistics
+Route::get('/statistics/matches-by-status', [StatisticsController::class, 'matchesByStatus']); // GET /api/statistics/matches-by-status
+
+// Coach statistics endpoint (requires authentication)
+Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
+    Route::get('/statistics/coach/matches-by-status', [StatisticsController::class, 'coachMatchesByStatus']); // GET /api/statistics/coach/matches-by-status
+});
 
 
 Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {

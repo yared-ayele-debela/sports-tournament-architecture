@@ -27,10 +27,49 @@ class MatchResultSeeder extends Seeder
             // Clear existing data
             MatchResult::query()->delete();
 
-            // Call Match Service to get completed matches
-            $tournaments = [1, 2]; // Example tournament IDs
+            // Fetch tournaments from Tournament Service
+            $this->command->info('Fetching tournaments from Tournament Service...');
 
-            foreach ($tournaments as $tournamentId) {
+            try {
+                $tournamentServiceUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
+                $response = \Illuminate\Support\Facades\Http::get($tournamentServiceUrl . '/api/tournaments');
+
+                if ($response->status() !== 200) {
+                    $this->command->error('Failed to fetch tournaments from Tournament Service. Status: ' . $response->status());
+                    $this->command->warn('Skipping match results seeding - no tournaments available');
+                    return;
+                }
+
+                $responseData = $response->json();
+                $tournaments = $responseData['data'] ?? [];
+
+                if (empty($tournaments)) {
+                    $this->command->warn('No tournaments found in Tournament Service');
+                    $this->command->warn('Skipping match results seeding - no tournaments available');
+                    return;
+                }
+
+                $this->command->info('Found ' . count($tournaments) . ' tournament(s) to process');
+
+            } catch (\Exception $e) {
+                $this->command->error('Error fetching tournaments: ' . $e->getMessage());
+                $this->command->warn('Skipping match results seeding - could not fetch tournaments');
+                Log::error('Failed to fetch tournaments for seeding', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                return;
+            }
+
+            // Process each tournament
+            foreach ($tournaments as $tournament) {
+                $tournamentId = is_array($tournament) ? ($tournament['id'] ?? null) : $tournament;
+
+                if (!$tournamentId) {
+                    $this->command->warn('Skipping tournament - invalid ID');
+                    continue;
+                }
+
                 $this->processTournamentMatches($tournamentId);
             }
 
@@ -39,6 +78,7 @@ class MatchResultSeeder extends Seeder
         } catch (\Exception $e) {
             Log::error('Failed to seed match results', [
                 'error' => $e->getMessage(),
+
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
@@ -54,6 +94,15 @@ class MatchResultSeeder extends Seeder
         $this->command->info("Processing tournament {$tournamentId}...");
 
         try {
+            // First verify tournament exists in tournament-service
+            $tournamentServiceUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
+            $tournamentCheck = \Illuminate\Support\Facades\Http::get("{$tournamentServiceUrl}/api/tournaments/{$tournamentId}");
+
+            if ($tournamentCheck->status() !== 200) {
+                $this->command->warn("Tournament {$tournamentId} not found in tournament-service, skipping...");
+                return;
+            }
+
             // Clear cache first to avoid stale data
             \Illuminate\Support\Facades\Cache::forget("public_tournament:{$tournamentId}:matches:" . md5(serialize(['status' => 'completed'])));
 
@@ -202,6 +251,30 @@ class MatchResultSeeder extends Seeder
             $this->command->info("Tournament {$tournamentId} processed successfully!");
 
         } catch (\Exception $e) {
+            // Check if it's a "tournament not found" error - this might be a validation issue
+            if (str_contains($e->getMessage(), 'Tournament not found') ||
+                str_contains($e->getMessage(), '404') ||
+                str_contains($e->getMessage(), 'TOURNAMENT_NOT')) {
+
+                // Try to verify tournament exists in tournament-service
+                $tournamentServiceUrl = config('services.tournament_service.url', env('TOURNAMENT_SERVICE_URL', 'http://tournament-service:8002'));
+                $verifyCheck = \Illuminate\Support\Facades\Http::get("{$tournamentServiceUrl}/api/tournaments/{$tournamentId}");
+
+                if ($verifyCheck->status() === 200) {
+                    $this->command->warn("Tournament {$tournamentId} exists in tournament-service but match-service cannot validate it. This might mean the tournament has no matches yet.");
+                    Log::info("Tournament {$tournamentId} exists but match-service validation failed", [
+                        'tournament_id' => $tournamentId,
+                        'tournament_service_status' => $verifyCheck->status()
+                    ]);
+                } else {
+                    $this->command->warn("Tournament {$tournamentId} not found in tournament-service, skipping...");
+                    Log::info("Tournament {$tournamentId} not found in tournament-service", [
+                        'tournament_id' => $tournamentId
+                    ]);
+                }
+                return;
+            }
+
             Log::error("Failed to fetch matches for tournament {$tournamentId}", [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

@@ -5,6 +5,7 @@ import { teamsService } from '../api/teams';
 import { playersService } from '../api/teams';
 import { matchesService } from '../api/matches';
 import { tournamentsService } from '../api/tournaments';
+import { statisticsService } from '../api/statistics';
 import { Users, Trophy, Calendar, Clock, UserCircle, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -27,6 +28,13 @@ export default function CoachDashboard() {
   const { data: teamsData } = useQuery({
     queryKey: ['teams', 'my-teams', 'count'],
     queryFn: () => teamsService.list({ per_page: 1 }),
+  });
+
+  // Fetch coach match statistics by status
+  const { data: coachMatchStats, isLoading: loadingCoachStats } = useQuery({
+    queryKey: ['coach-match-stats'],
+    queryFn: () => statisticsService.getCoachMatchesByStatus(),
+    refetchInterval: 300000, // Refetch every 5 minutes
   });
 
   // Fetch upcoming matches (coach's teams only)
@@ -72,6 +80,13 @@ export default function CoachDashboard() {
 
   const activeTournaments = activeTournamentsData?.data || activeTournamentsData || [];
 
+  // Get match counts from statistics
+  const scheduledMatches = coachMatchStats?.scheduled || 0;
+  const inProgressMatches = coachMatchStats?.in_progress || 0;
+  const completedMatches = coachMatchStats?.completed || 0;
+  const cancelledMatches = coachMatchStats?.cancelled || 0;
+  const totalMatches = coachMatchStats?.total || 0;
+
   const stats = [
     {
       title: 'My Teams',
@@ -88,11 +103,32 @@ export default function CoachDashboard() {
       link: '/teams/my-teams',
     },
     {
-      title: 'Upcoming Matches',
-      value: upcomingMatches.length,
+      title: 'Scheduled Matches',
+      value: scheduledMatches,
       icon: Calendar,
-      color: 'bg-green-500',
+      color: 'bg-yellow-500',
       link: '/matches/my-matches?status=scheduled',
+    },
+    {
+      title: 'Ongoing Matches',
+      value: inProgressMatches,
+      icon: Clock,
+      color: 'bg-blue-600',
+      link: '/matches/my-matches?status=in_progress',
+    },
+    {
+      title: 'Completed Matches',
+      value: completedMatches,
+      icon: Trophy,
+      color: 'bg-green-500',
+      link: '/matches/my-matches?status=completed',
+    },
+    {
+      title: 'Cancelled Matches',
+      value: cancelledMatches,
+      icon: Calendar,
+      color: 'bg-red-500',
+      link: '/matches/my-matches?status=cancelled',
     },
   ];
 
@@ -104,7 +140,7 @@ export default function CoachDashboard() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
@@ -127,18 +163,6 @@ export default function CoachDashboard() {
         })}
       </div>
 
-      {/* My Teams Section */}
-      <div className="card mb-8">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">My Teams</h2>
-        <p className="text-gray-600 mb-4">View and manage your teams</p>
-        <Link
-          to="/teams/my-teams"
-          className="btn btn-primary inline-flex items-center"
-        >
-          <Users className="w-5 h-5 mr-2" />
-          View My Teams
-        </Link>
-      </div>
 
       {/* Quick Actions */}
       <div className="card mb-8">
@@ -168,142 +192,169 @@ export default function CoachDashboard() {
         </div>
       </div>
 
-      {/* Upcoming Matches */}
-      {upcomingMatches.length > 0 && (
-        <div className="card mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Upcoming Matches</h2>
-          <div className="space-y-3">
-            {upcomingMatches.slice(0, 5).map((match) => (
-              <Link
-                key={match.id}
-                to={`/matches/my-matches/${match.id}`}
-                className="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-medium text-gray-900">
-                        {match.home_team?.name || 'TBD'} vs {match.away_team?.name || 'TBD'}
-                      </span>
-                    </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      {match.tournament && (
-                        <span className="flex items-center">
-                          <Trophy className="w-4 h-4 mr-1" />
-                          {match.tournament.name}
-                        </span>
-                      )}
-                      {match.match_date && (
-                        <span className="flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          {new Date(match.match_date).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+      {/* Upcoming Matches Table */}
+      <div className="card mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Upcoming Matches</h2>
           {upcomingMatches.length > 5 && (
-            <div className="mt-4 text-center">
-              <Link
-                to="/matches/my-matches?status=scheduled"
-                className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-              >
-                View all upcoming matches →
-              </Link>
-            </div>
+            <Link
+              to="/matches/my-matches?status=scheduled"
+              className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+            >
+              View all →
+            </Link>
           )}
         </div>
-      )}
-
-      {/* Recent Matches */}
-      {recentMatches.length > 0 && (
-        <div className="card mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Recent Matches</h2>
-          <div className="space-y-3">
-            {recentMatches.slice(0, 5).map((match) => (
-              <Link
-                key={match.id}
-                to={`/matches/my-matches/${match.id}`}
-                className="block p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-2 mb-1">
-                      <span className="font-medium text-gray-900">
-                        {match.home_team?.name || 'TBD'} vs {match.away_team?.name || 'TBD'}
+        {upcomingMatches.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">No upcoming matches</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Tournament</th>
+                  <th>Home Team</th>
+                  <th>Away Team</th>
+                  <th>Date & Time</th>
+                  <th>Round</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upcomingMatches.slice(0, 5).map((match) => (
+                  <tr key={match.id} className="hover:bg-gray-50">
+                    <td>{match.id}</td>
+                    <td>{match.tournament?.name || 'N/A'}</td>
+                    <td className="font-medium">
+                      {match.home_team?.name || 'TBD'}
+                    </td>
+                    <td className="font-medium">
+                      {match.away_team?.name || 'TBD'}
+                    </td>
+                    <td>
+                      {match.match_date
+                        ? new Date(match.match_date).toLocaleString()
+                        : 'N/A'}
+                    </td>
+                    <td>{match.round_number || 'N/A'}</td>
+                    <td>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          match.status === 'in_progress'
+                            ? 'bg-green-100 text-green-800'
+                            : match.status === 'cancelled'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {match.status || 'scheduled'}
                       </span>
-                      {(match.home_score !== null && match.away_score !== null) && (
-                        <span className="text-sm font-semibold text-primary-600">
+                    </td>
+                    <td>
+                      <Link
+                        to={`/matches/my-matches/${match.id}`}
+                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Recent Matches Table */}
+      <div className="card mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Recent Matches</h2>
+          {recentMatches.length > 5 && (
+            <Link
+              to="/matches/my-matches?status=completed"
+              className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+            >
+              View all →
+            </Link>
+          )}
+        </div>
+        {recentMatches.length === 0 ? (
+          <div className="text-center py-8 text-gray-500">No recent matches</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Tournament</th>
+                  <th>Home Team</th>
+                  <th>Away Team</th>
+                  <th>Score</th>
+                  <th>Date & Time</th>
+                  <th>Round</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentMatches.slice(0, 5).map((match) => (
+                  <tr key={match.id} className="hover:bg-gray-50">
+                    <td>{match.id}</td>
+                    <td>{match.tournament?.name || 'N/A'}</td>
+                    <td className="font-medium">
+                      {match.home_team?.name || 'TBD'}
+                    </td>
+                    <td className="font-medium">
+                      {match.away_team?.name || 'TBD'}
+                    </td>
+                    <td>
+                      {match.home_score !== null && match.away_score !== null ? (
+                        <span className="font-bold text-primary-600">
                           {match.home_score} - {match.away_score}
                         </span>
+                      ) : (
+                        <span className="text-gray-400">-</span>
                       )}
-                    </div>
-                    <div className="flex items-center space-x-4 text-sm text-gray-600">
-                      {match.tournament && (
-                        <span className="flex items-center">
-                          <Trophy className="w-4 h-4 mr-1" />
-                          {match.tournament.name}
-                        </span>
-                      )}
-                      {match.match_date && (
-                        <span className="flex items-center">
-                          <Clock className="w-4 h-4 mr-1" />
-                          {new Date(match.match_date).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
+                    </td>
+                    <td>
+                      {match.match_date
+                        ? new Date(match.match_date).toLocaleString()
+                        : 'N/A'}
+                    </td>
+                    <td>{match.round_number || 'N/A'}</td>
+                    <td>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          match.status === 'completed'
+                            ? 'bg-gray-100 text-gray-800'
+                            : match.status === 'cancelled'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-blue-100 text-blue-800'
+                        }`}
+                      >
+                        {match.status || 'scheduled'}
+                      </span>
+                    </td>
+                    <td>
+                      <Link
+                        to={`/matches/my-matches/${match.id}`}
+                        className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+                      >
+                        View
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {recentMatches.length > 5 && (
-            <div className="mt-4 text-center">
-              <Link
-                to="/matches/my-matches?status=completed"
-                className="text-primary-600 hover:text-primary-700 text-sm font-medium"
-              >
-                View all recent matches →
-              </Link>
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* User Profile Card */}
-      {user && (
-        <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Your Profile</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-gray-500">Name</p>
-              <p className="font-medium text-gray-900">{user.name || 'N/A'}</p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500">Email</p>
-              <p className="font-medium text-gray-900">{user.email || 'N/A'}</p>
-            </div>
-            {user.roles && user.roles.length > 0 && (
-              <div className="md:col-span-2">
-                <p className="text-sm text-gray-500 mb-2">Roles</p>
-                <div className="flex flex-wrap gap-2">
-                  {user.roles.map((role, index) => (
-                    <span
-                      key={index}
-                      className="px-3 py-1 bg-primary-100 text-primary-800 rounded-full text-sm font-medium"
-                    >
-                      {role.name || role}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      
     </div>
   );
 }

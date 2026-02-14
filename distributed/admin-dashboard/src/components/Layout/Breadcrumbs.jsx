@@ -1,9 +1,11 @@
 import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight, Home } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
 
 export default function Breadcrumbs() {
   const location = useLocation();
   const paths = location.pathname.split('/').filter(Boolean);
+  const { hasPermission, isAdmin, isCoach } = usePermissions();
 
   const getBreadcrumbName = (path) => {
     const names = {
@@ -48,17 +50,24 @@ export default function Breadcrumbs() {
 
         return (
           <div key={index} className="flex items-center space-x-2">
-            <ChevronRight className="w-4 h-4 text-gray-400" />
-            {isLast ? (
-              <span className="text-gray-900 font-medium">{displayName}</span>
-            ) : (
-              <Link
-                to={pathUrl}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                {displayName}
-              </Link>
-            )}
+            {isAdmin() && (
+  <>
+    <ChevronRight className="w-4 h-4 text-gray-400" />
+    {isLast ? (
+      <span className="text-gray-900 font-medium">
+        {displayName}
+      </span>
+    ) : (
+      <Link
+        to={pathUrl}
+        className="text-gray-500 hover:text-gray-700"
+      >
+        {displayName}
+      </Link>
+    )}
+  </>
+)}
+
           </div>
         );
       })}

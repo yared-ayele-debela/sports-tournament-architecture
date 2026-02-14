@@ -168,7 +168,9 @@ export default function Sidebar({ onCollapseChange }) {
         {/* Logo/Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
           {!collapsed && (
-            <h1 className="text-xl font-bold text-white">Admin Panel</h1>
+            <h1 className="text-xl font-bold text-white">
+              {isAdmin() ? 'Admin Panel' : isCoach() ? 'Coach Panel' : 'Referee Panel'}
+            </h1>
           )}
           <button
             onClick={handleToggle}

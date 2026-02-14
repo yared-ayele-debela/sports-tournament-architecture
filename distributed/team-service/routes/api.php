@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\PlayerController;
+use App\Http\Controllers\Api\StatisticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -48,6 +49,9 @@ Route::get('public/teams/{id}/squad', [TeamController::class, 'squad']);
 Route::get('public/teams/{id}/matches', [TeamController::class, 'matches']);
 Route::get('public/teams/{id}/statistics', [TeamController::class, 'statistics']);
 Route::get('/public/tournaments/{tournamentId}/teams', [TeamController::class, 'public_index']);
+
+// Public statistics endpoint
+Route::get('/statistics', [StatisticsController::class, 'index']); // GET /api/statistics
 
 
 Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {

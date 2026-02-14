@@ -33,10 +33,6 @@ export default function MyTeams() {
     retry: false,
   });
 
-  // Extract teams - handle different response structures
-  // The API returns: { success: true, data: [...], pagination: {...} }
-  // extractData() returns: response.data?.data || response.data
-  // teamsService.list() returns: { data: [...], pagination: {...} } or just [...]
   let teams = [];
   
   if (!data) {

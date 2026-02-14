@@ -5,6 +5,7 @@ import { teamsService } from '../../api/teams';
 import { tournamentsService } from '../../api/tournaments';
 import { usersService } from '../../api/users';
 import { useToast } from '../../context/ToastContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { ArrowLeft } from 'lucide-react';
 
 export default function TeamForm() {
@@ -13,6 +14,12 @@ export default function TeamForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { isCoach } = usePermissions();
+
+  // Determine the back navigation path based on user role
+  const getBackPath = () => {
+    return isCoach() ? '/teams/my-teams' : '/teams';
+  };
 
   const [formData, setFormData] = useState({
     tournament_id: '',
@@ -74,7 +81,7 @@ export default function TeamForm() {
     onSuccess: () => {
       queryClient.invalidateQueries(['teams']);
       toast.success(isEdit ? 'Team updated successfully' : 'Team created successfully');
-      navigate('/teams');
+      navigate(getBackPath());
     },
     onError: (error) => {
       if (error.errors) {
@@ -122,11 +129,11 @@ export default function TeamForm() {
     <div>
       <div className="mb-6">
         <button
-          onClick={() => navigate('/teams')}
+          onClick={() => navigate(getBackPath())}
           className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Teams
+          Back to {isCoach() ? 'My Teams' : 'Teams'}
         </button>
         <h1 className="text-3xl font-bold text-gray-900">
           {isEdit ? 'Edit Team' : 'Create New Team'}
@@ -259,7 +266,7 @@ export default function TeamForm() {
           <div className="flex justify-end space-x-4 pt-4">
             <button
               type="button"
-              onClick={() => navigate('/teams')}
+              onClick={() => navigate(getBackPath())}
               className="btn btn-secondary"
             >
               Cancel

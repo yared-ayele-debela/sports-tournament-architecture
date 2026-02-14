@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { teamsService } from '../../api/teams';
 import { useToast } from '../../context/ToastContext';
+import { usePermissions } from '../../hooks/usePermissions';
 import { ArrowLeft, Edit, Trash2, Users, Trophy } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
 
@@ -16,8 +17,14 @@ export default function TeamDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { isCoach } = usePermissions();
   const [activeTab, setActiveTab] = useState('overview');
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+
+  // Determine the back navigation path based on user role
+  const getBackPath = () => {
+    return isCoach() ? '/teams/my-teams' : '/teams';
+  };
 
   const { data: team, isLoading, error } = useQuery({
     queryKey: ['team', id],
@@ -35,7 +42,7 @@ export default function TeamDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries(['teams']);
       toast.success('Team deleted successfully');
-      navigate('/teams');
+      navigate(getBackPath());
     },
     onError: (error) => {
       toast.error(error?.response?.data?.message || 'Failed to delete team');
@@ -64,11 +71,11 @@ export default function TeamDetail() {
     <div>
       <div className="mb-6">
         <button
-          onClick={() => navigate('/teams')}
+          onClick={() => navigate(getBackPath())}
           className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Teams
+          Back to {isCoach() ? 'My Teams' : 'Teams'}
         </button>
         <div className="flex justify-between items-start">
           <div className="flex items-center space-x-4">

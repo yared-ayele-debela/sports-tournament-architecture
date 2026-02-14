@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\SportController;
 use App\Http\Controllers\Api\TournamentController;
 use App\Http\Controllers\Api\TournamentSettingsController;
 use App\Http\Controllers\Api\VenueController;
+use App\Http\Controllers\Api\StatisticsController;
 
 /*
 |--------------------------------------------------------------------------
@@ -28,6 +29,9 @@ Route::prefix('tournaments')->group(function () {
     Route::get('{id}/standings', [TournamentController::class, 'getTournamentStandings']); // GET /api/tournaments/{id}/standings
     Route::get('{id}/validate', [TournamentController::class, 'validateTournament']); // GET /api/tournaments/{id}/validate (service-to-service)
 });
+
+// Public statistics endpoint
+Route::get('/statistics', [StatisticsController::class, 'index']); // GET /api/statistics
 
 
 // Protected routes requiring authentication

@@ -91,9 +91,13 @@ use Illuminate\Support\Facades\Route;
 
     /*
     |--------------------------------------------------------------------------
-    | Statistics Routes (Passport required)
+    | Statistics Routes
     |--------------------------------------------------------------------------
     */
+    // Public statistics endpoint (for service-to-service and dashboard calls)
+    Route::get('/statistics', [StatisticsController::class, 'index']);
+
+    // Admin statistics endpoint (legacy, kept for backward compatibility)
     Route::middleware('auth:api')->prefix('admin/statistics')->group(function () {
         Route::get('/', [StatisticsController::class, 'index']);
     });

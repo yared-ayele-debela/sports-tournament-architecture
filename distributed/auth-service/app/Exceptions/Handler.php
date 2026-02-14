@@ -11,6 +11,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\UnauthorizedHttpException;
+use Symfony\Component\Routing\Exception\RouteNotFoundException;
+use Illuminate\Auth\AuthenticationException;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -63,6 +65,20 @@ class Handler extends ExceptionHandler
      */
     protected function handleApiException(Request $request, Throwable $e): JsonResponse
     {
+        // Authentication exceptions - return 401 JSON response
+        if ($e instanceof AuthenticationException) {
+            return ApiResponse::unauthorized('Authentication required');
+        }
+
+        // Route not found (often happens when auth middleware tries to redirect)
+        if ($e instanceof RouteNotFoundException) {
+            // If it's an API request, return 401 unauthorized instead of route not found
+            if ($request->is('api/*')) {
+                return ApiResponse::unauthorized('Authentication required');
+            }
+            return ApiResponse::notFound('Route not found');
+        }
+
         // Validation exceptions
         if ($e instanceof ValidationException) {
             return ApiResponse::validationError(

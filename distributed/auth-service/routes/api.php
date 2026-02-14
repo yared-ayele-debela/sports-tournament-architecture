@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\UserServiceController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
+use App\Http\Controllers\Api\StatisticsController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -90,13 +91,22 @@ use Illuminate\Support\Facades\Route;
 
     /*
     |--------------------------------------------------------------------------
+    | Statistics Routes (Passport required)
+    |--------------------------------------------------------------------------
+    */
+    Route::middleware('auth:api')->prefix('admin/statistics')->group(function () {
+        Route::get('/', [StatisticsController::class, 'index']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
     | Health Check (Public)
     |--------------------------------------------------------------------------
     */
     Route::get('health', function () {
         return response()->json([
             'success' => true,
-            'message' => 'Authentications Service is running',
+            'message' => 'Authentication Service is running',
             'service' => 'auth-service',
             'version' => '1.0.0',
             'timestamp' => now()->toISOString()

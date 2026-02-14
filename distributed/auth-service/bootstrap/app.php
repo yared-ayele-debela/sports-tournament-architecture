@@ -16,6 +16,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->api(prepend: [
             \App\Http\Middleware\CorrelationIdMiddleware::class,
         ]);
+
+        // Configure authentication to return JSON for API routes instead of redirecting
+        $middleware->redirectGuestsTo(function ($request) {
+            // For API routes, don't redirect - let exception handler return JSON
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return null;
+            }
+            // For web routes, return null to prevent redirect errors
+            return null;
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Use custom exception handler for standardized error responses

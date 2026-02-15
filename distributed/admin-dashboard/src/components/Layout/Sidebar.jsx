@@ -22,7 +22,7 @@ import {
 export default function Sidebar({ onCollapseChange }) {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const { hasPermission, isAdmin, isCoach } = usePermissions();
+  const { hasPermission, isAdmin, isCoach, isReferee } = usePermissions();
 
   const handleToggle = () => {
     const newState = !collapsed;
@@ -99,6 +99,14 @@ export default function Sidebar({ onCollapseChange }) {
       coachOnly: true
     },
     { 
+      path: '/matches/my-matches', 
+      icon: Calendar, 
+      label: 'My Matches',
+      permission: null,
+      adminOnly: false,
+      refereeOnly: true
+    },
+    { 
       path: '/players', 
       icon: UserCircle, 
       label: 'Players',
@@ -140,6 +148,11 @@ export default function Sidebar({ onCollapseChange }) {
       return isCoach();
     }
     
+    // Referee-only items
+    if (item.refereeOnly) {
+      return isReferee();
+    }
+    
     // Admin-only items (like Roles)
     if (item.adminOnly) {
       return isAdmin();
@@ -169,7 +182,7 @@ export default function Sidebar({ onCollapseChange }) {
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
           {!collapsed && (
             <h1 className="text-xl font-bold text-white">
-              {isAdmin() ? 'Admin Panel' : isCoach() ? 'Coach Panel' : 'Referee Panel'}
+              {isAdmin() ? 'Admin Panel' : isCoach() ? 'Coach Panel' : isReferee() ? 'Referee Panel' : 'Panel'}
             </h1>
           )}
           <button

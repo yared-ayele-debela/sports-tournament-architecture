@@ -91,4 +91,40 @@ export const matchesService = {
       throw handleApiError(error);
     }
   },
+
+  updateEvent: async (eventId, data) => {
+    try {
+      const response = await matchApi.put(`/events/${eventId}`, data);
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  deleteEvent: async (eventId) => {
+    try {
+      const response = await matchApi.delete(`/events/${eventId}`);
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  getReport: async (matchId) => {
+    try {
+      const response = await matchApi.get(`/matches/${matchId}/report`);
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  saveReport: async (matchId, data) => {
+    try {
+      const response = await matchApi.post(`/matches/${matchId}/report`, data);
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
 };

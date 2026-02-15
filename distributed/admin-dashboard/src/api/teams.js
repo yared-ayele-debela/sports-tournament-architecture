@@ -73,8 +73,17 @@ export const teamsService = {
 
   update: async (id, data) => {
     try {
-      const response = await teamApi.put(`/teams/${id}`, data);
-      return extractData(response);
+      // For FormData (file uploads), use POST with method spoofing
+      // Laravel method spoofing: add _method=PUT to FormData
+      if (data instanceof FormData) {
+        data.append('_method', 'PUT');
+        const response = await teamApi.post(`/teams/${id}`, data);
+        return extractData(response);
+      } else {
+        // For regular JSON data, use PUT directly
+        const response = await teamApi.put(`/teams/${id}`, data);
+        return extractData(response);
+      }
     } catch (error) {
       throw handleApiError(error);
     }

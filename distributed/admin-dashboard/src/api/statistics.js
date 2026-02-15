@@ -161,4 +161,13 @@ export const statisticsService = {
       throw handleApiError(error);
     }
   },
+
+  getRefereeMatchesByStatus: async () => {
+    try {
+      const response = await matchApi.get('/statistics/referee/matches-by-status');
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
 };

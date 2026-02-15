@@ -298,9 +298,9 @@ export default function TeamsList() {
                         <td>{team.id}</td>
                         <td className="font-medium">
                           <div className="flex items-center space-x-2">
-                            {team.logo && (
+                            {team.logo_url && (
                               <img
-                                src={team.logo}
+                                src={team.logo_url}
                                 alt={team.name}
                                 className="w-8 h-8 rounded-full object-cover"
                                 onError={(e) => {

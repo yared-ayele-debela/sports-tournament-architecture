@@ -1,29 +1,40 @@
 import axios from 'axios';
 
 // Get base URLs from environment variables
-const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || 'http://127.0.0.1:8001/api';
-const TOURNAMENT_SERVICE_URL = import.meta.env.VITE_TOURNAMENT_SERVICE_URL || 'http://127.0.0.1:8002/api';
-const TEAM_SERVICE_URL = import.meta.env.VITE_TEAM_SERVICE_URL || 'http://127.0.0.1:8003/api';
-const MATCH_SERVICE_URL = import.meta.env.VITE_MATCH_SERVICE_URL || 'http://127.0.0.1:8004/api';
-const RESULTS_SERVICE_URL = import.meta.env.VITE_RESULTS_SERVICE_URL || 'http://127.0.0.1:8005/api';
+// In Docker, these will be proxied by Vite to the service names
+const AUTH_SERVICE_URL = import.meta.env.VITE_AUTH_SERVICE_URL || '/api/auth';
+const TOURNAMENT_SERVICE_URL = import.meta.env.VITE_TOURNAMENT_SERVICE_URL || '/api/tournaments';
+const TEAM_SERVICE_URL = import.meta.env.VITE_TEAM_SERVICE_URL || '/api/teams';
+const MATCH_SERVICE_URL = import.meta.env.VITE_MATCH_SERVICE_URL || '/api/matches';
+const RESULTS_SERVICE_URL = import.meta.env.VITE_RESULTS_SERVICE_URL || '/api/results';
 
 // Create axios instances for each service
 const createApiInstance = (baseURL) => {
   const instance = axios.create({
     baseURL,
     headers: {
-      'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
   });
 
-  // Request interceptor to add auth token
+  // Request interceptor to add auth token and set Content-Type conditionally
   instance.interceptors.request.use(
     (config) => {
       const token = localStorage.getItem('access_token');
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
+      
+      // Handle Content-Type for file uploads
+      // FormData needs multipart/form-data which axios sets automatically
+      // We must delete the Content-Type header for FormData so axios can set it with boundary
+      if (config.data instanceof FormData) {
+        delete config.headers['Content-Type'];
+      } else if (config.data && typeof config.data === 'object') {
+        // Only set Content-Type to application/json for JSON data
+        config.headers['Content-Type'] = 'application/json';
+      }
+      
       return config;
     },
     (error) => {

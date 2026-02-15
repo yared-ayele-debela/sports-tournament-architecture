@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\TeamController;
 use App\Http\Controllers\Api\PlayerController;
 use App\Http\Controllers\Api\StatisticsController;
+use App\Http\Controllers\HealthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,15 +23,7 @@ use App\Http\Controllers\Api\StatisticsController;
 | Health Check (Public)
 |--------------------------------------------------------------------------
 */
-Route::get('health', function () {
-    return response()->json([
-        'success' => true,
-        'message' => 'Team Service is running',
-        'service' => 'team-service',
-        'version' => '1.0.0',
-        'timestamp' => now()->toISOString()
-    ]);
-});
+Route::get('health', HealthController::class);
 
 /*
 |--------------------------------------------------------------------------
@@ -61,7 +54,8 @@ Route::middleware(['api', \App\Http\Middleware\ValidateUserServiceToken::class])
     Route::get('/tournaments/{tournamentId}/teams', [TeamController::class, 'index'])->where('tournamentId', '[0-9]+');
     Route::post('/teams', [TeamController::class, 'store']);
     Route::get('/teams/{id}', [TeamController::class, 'show']);
-    Route::put('/teams/{id}', [TeamController::class, 'update']);
+    // Support both PUT and POST (with method spoofing) for updates to handle file uploads
+    Route::match(['put', 'post'], '/teams/{id}', [TeamController::class, 'update'])->where('id', '[0-9]+');
     Route::delete('/teams/{id}', [TeamController::class, 'destroy']);
     Route::get('/teams/{id}/players', [PlayerController::class, 'index']);
     Route::get('/teams/{teamId}/players/{playerId}/validate', [PlayerController::class, 'validatePlayer']);

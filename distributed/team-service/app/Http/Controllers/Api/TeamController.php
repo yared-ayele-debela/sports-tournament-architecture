@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class TeamController extends Controller
 {
@@ -58,6 +59,13 @@ class TeamController extends Controller
         $perPage = max(1, min(100, $perPage));
 
         $teams = $query->orderByDesc('id')->paginate($perPage);
+
+        // Enrich teams with logo URLs
+        $teams->getCollection()->transform(function ($team) {
+            $team->setAttribute('logo_url', $this->getLogoUrl($team->logo));
+            $team->makeVisible(['logo_url']);
+            return $team;
+        });
 
         return ApiResponse::paginated($teams, 'Teams retrieved successfully');
     }
@@ -187,9 +195,10 @@ class TeamController extends Controller
                 $team->setAttribute('tournament', $tournamentData);
                 $team->setAttribute('coaches_list', $coachNames);
                 $team->setAttribute('coaches_count', count($coachNames));
+                $team->setAttribute('logo_url', $this->getLogoUrl($team->logo));
 
                 // Make sure these attributes are visible in JSON serialization
-                $team->makeVisible(['tournament', 'coaches_list', 'coaches_count']);
+                $team->makeVisible(['tournament', 'coaches_list', 'coaches_count', 'logo_url']);
 
                 Log::info('Team enriched', [
                     'team_id' => $team->id,
@@ -208,14 +217,32 @@ class TeamController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Debug: Log request details before validation
+        Log::info('Team creation request received', [
+            'content_type' => $request->header('Content-Type'),
+            'has_file_logo' => $request->hasFile('logo'),
+            'all_files' => array_keys($request->allFiles()),
+            'request_keys' => array_keys($request->all()),
+            'request_method' => $request->method(),
+            'is_multipart' => str_contains($request->header('Content-Type', ''), 'multipart/form-data'),
+            'logo_file_info' => $request->hasFile('logo') ? [
+                'name' => $request->file('logo')->getClientOriginalName(),
+                'size' => $request->file('logo')->getSize(),
+                'mime' => $request->file('logo')->getMimeType(),
+            ] : null
+        ]);
+
         $validator = Validator::make($request->all(), [
             'tournament_id' => 'required|integer',
             'name' => 'required|string|max:255',
-            'logo' => 'nullable|string|max:500',
+            'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'coach_id' => 'required|integer'
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Team creation validation failed', [
+                'errors' => $validator->errors()->toArray()
+            ]);
             return ApiResponse::validationError($validator->errors());
         }
 
@@ -234,11 +261,42 @@ class TeamController extends Controller
 
             DB::beginTransaction();
 
+            // Handle logo upload
+            $logoPath = null;
+
+            if ($request->hasFile('logo')) {
+                try {
+                    $logoFile = $request->file('logo');
+                    $logoName = time() . '_' . uniqid() . '.' . $logoFile->getClientOriginalExtension();
+
+                    // Ensure logos directory exists
+                    $logosDir = public_path('logos');
+                    if (!file_exists($logosDir)) {
+                        mkdir($logosDir, 0755, true);
+                    }
+
+                    // Store logo in public/logos directory
+                    $logoFile->move($logosDir, $logoName);
+                    $logoPath = 'logos/' . $logoName;
+
+                    Log::info('Team logo uploaded successfully', [
+                        'logo_path' => $logoPath,
+                        'file_name' => $logoName
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to upload team logo', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Continue without logo rather than failing the entire request
+                }
+            }
+
             // Create team
             $team = Team::create([
                 'tournament_id' => $request->tournament_id,
                 'name' => $request->name,
-                'logo' => $request->logo,
+                'logo' => $logoPath,
             ]);
 
             // Attach coach to team (direct DB insert since users are in auth-service)
@@ -258,7 +316,10 @@ class TeamController extends Controller
             // Dispatch team created event to queue (default priority)
             $this->dispatchTeamCreatedQueueEvent($team, ['id' => $request->coach_id, 'name' => 'Coach']);
 
-            return ApiResponse::created($team, 'Team created successfully');
+            // Enrich team data with logo URL
+            $enrichedTeam = $this->enrichTeamData($team);
+
+            return ApiResponse::created($enrichedTeam, 'Team created successfully');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -280,7 +341,10 @@ class TeamController extends Controller
             return ApiResponse::forbidden('Unauthorized');
         }
 
-        return ApiResponse::success($team);
+        // Enrich team data with logo URL
+        $enrichedTeam = $this->enrichTeamData($team);
+
+        return ApiResponse::success($enrichedTeam);
     }
 
     public function update(Request $request, string $id): JsonResponse
@@ -296,18 +360,92 @@ class TeamController extends Controller
             return ApiResponse::forbidden('Unauthorized');
         }
 
+        // Debug: Log request details before validation
+        Log::info('Team update request received', [
+            'team_id' => $id,
+            'content_type' => $request->header('Content-Type'),
+            'has_file_logo' => $request->hasFile('logo'),
+            'all_files' => array_keys($request->allFiles()),
+            'request_keys' => array_keys($request->all()),
+            'request_method' => $request->method(),
+            'is_multipart' => str_contains($request->header('Content-Type', ''), 'multipart/form-data'),
+            'logo_file_info' => $request->hasFile('logo') ? [
+                'name' => $request->file('logo')->getClientOriginalName(),
+                'size' => $request->file('logo')->getSize(),
+                'mime' => $request->file('logo')->getMimeType(),
+            ] : null,
+            'current_logo' => $team->logo
+        ]);
+
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
-            'logo' => 'sometimes|nullable|string|max:500'
+            'logo' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
         ]);
 
         if ($validator->fails()) {
+            Log::warning('Team update validation failed', [
+                'team_id' => $id,
+                'errors' => $validator->errors()->toArray(),
+                'request_data' => $request->except(['logo']) // Exclude file from log
+            ]);
             return ApiResponse::validationError($validator->errors());
         }
 
         try {
             $oldData = $team->toArray();
-            $team->update($request->only(['name', 'logo']));
+
+            // Handle logo upload
+            $logoPath = $team->logo; // Keep existing logo by default
+            if ($request->hasFile('logo')) {
+                try {
+                    // Delete old logo if exists
+                    if ($team->logo && file_exists(public_path($team->logo))) {
+                        unlink(public_path($team->logo));
+                    }
+
+                    $logoFile = $request->file('logo');
+                    $logoName = time() . '_' . uniqid() . '.' . $logoFile->getClientOriginalExtension();
+
+                    // Ensure logos directory exists
+                    $logosDir = public_path('logos');
+                    if (!file_exists($logosDir)) {
+                        mkdir($logosDir, 0755, true);
+                    }
+
+                    // Store new logo
+                    $logoFile->move($logosDir, $logoName);
+                    $logoPath = 'logos/' . $logoName;
+
+                    Log::info('Team logo updated successfully', [
+                        'team_id' => $team->id,
+                        'logo_path' => $logoPath,
+                        'file_name' => $logoName
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error('Failed to update team logo', [
+                        'team_id' => $team->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Keep existing logo if upload fails
+                }
+            }
+
+            // Build update data
+            $updateData = [
+                'name' => $request->has('name') ? trim($request->name) : $team->name,
+                'logo' => $logoPath,
+            ];
+
+            $team->update($updateData);
+
+            Log::info('Team updated successfully', [
+                'team_id' => $team->id,
+                'name_changed' => $request->has('name') && trim($request->name) !== ($oldData['name'] ?? ''),
+                'logo_changed' => $request->hasFile('logo')
+            ]);
+
+            $team->update($updateData);
 
             // Immediately invalidate public API cache for this team
             $this->invalidateTeamCache($team);
@@ -318,7 +456,10 @@ class TeamController extends Controller
             // Dispatch team updated event to queue (default priority)
             $this->dispatchTeamUpdatedQueueEvent($team, $oldData);
 
-            return ApiResponse::success($team, 'Team updated successfully');
+            // Enrich team data with logo URL
+            $enrichedTeam = $this->enrichTeamData($team);
+
+            return ApiResponse::success($enrichedTeam, 'Team updated successfully');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('Failed to update team: ' . $e->getMessage(), $e);
@@ -338,8 +479,52 @@ class TeamController extends Controller
             return ApiResponse::forbidden('Unauthorized. Only admin can delete teams.');
         }
 
+        // Store team data for logging before deletion
+        $teamData = [
+            'id' => $team->id,
+            'name' => $team->name,
+            'tournament_id' => $team->tournament_id,
+            'logo' => $team->logo
+        ];
+
+        Log::info('Team deletion request received', [
+            'team_id' => $id,
+            'team_name' => $teamData['name'],
+            'tournament_id' => $teamData['tournament_id'],
+            'has_logo' => !empty($teamData['logo']),
+            'logo_path' => $teamData['logo']
+        ]);
+
         try {
             DB::beginTransaction();
+
+            // Delete logo file if exists
+            if ($team->logo) {
+                try {
+                    $logoPath = public_path($team->logo);
+                    if (file_exists($logoPath)) {
+                        unlink($logoPath);
+                        Log::info('Team logo deleted successfully', [
+                            'team_id' => $team->id,
+                            'logo_path' => $team->logo
+                        ]);
+                    } else {
+                        Log::warning('Team logo file not found during deletion', [
+                            'team_id' => $team->id,
+                            'logo_path' => $team->logo,
+                            'full_path' => $logoPath
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    Log::error('Failed to delete team logo file', [
+                        'team_id' => $team->id,
+                        'logo_path' => $team->logo,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                    // Continue with team deletion even if logo deletion fails
+                }
+            }
 
             // Detach coaches (direct DB delete since users are in auth-service)
             DB::table('team_coach')->where('team_id', $team->id)->delete();
@@ -351,6 +536,12 @@ class TeamController extends Controller
             $team->delete();
 
             DB::commit();
+
+            Log::info('Team deleted successfully', [
+                'team_id' => $teamData['id'],
+                'team_name' => $teamData['name'],
+                'tournament_id' => $teamData['tournament_id']
+            ]);
 
             // Dispatch team deleted event to queue (default priority)
             $this->dispatchTeamDeletedQueueEvent($team, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'Admin']);
@@ -514,6 +705,32 @@ class TeamController extends Controller
                 'error' => $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Get full logo URL for a team
+     */
+    protected function getLogoUrl(?string $logoPath): ?string
+    {
+        if (!$logoPath) {
+            return null;
+        }
+
+        // Return full URL to the logo
+        return url($logoPath);
+    }
+
+    /**
+     * Enrich team data with additional information
+     */
+    protected function enrichTeamData($team): array
+    {
+        $data = $team->toArray();
+
+        // Add full logo URL
+        $data['logo_url'] = $this->getLogoUrl($team->logo);
+
+        return $data;
     }
 
     /**

@@ -2,9 +2,12 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { matchesService } from '../../api/matches';
+import { teamsService } from '../../api/teams';
 import { useToast } from '../../context/ToastContext';
-import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Users, Clock, Trophy, CheckCircle } from 'lucide-react';
+import { usePermissions } from '../../hooks/usePermissions';
+import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Users, Clock, Trophy, CheckCircle, X } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+
 
 const STATUS_OPTIONS = [
   { value: 'scheduled', label: 'Scheduled' },
@@ -25,21 +28,61 @@ export default function MatchDetail() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
+  const { isReferee, hasPermission, isAdmin } = usePermissions();
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteEventId, setDeleteEventId] = useState(null);
   const [activeTab, setActiveTab] = useState('overview');
+
+  // Check if user can record events
+  const canRecordEvents = hasPermission('record_events') || isAdmin();
+
+  // Determine the back navigation path based on user role
+  const getBackPath = () => {
+    return isReferee() ? '/matches/my-matches' : '/matches';
+  };
 
   const { data: match, isLoading, error } = useQuery({
     queryKey: ['match', id],
     queryFn: () => matchesService.get(id),
   });
 
-  const { data: eventsData } = useQuery({
+  const { data: eventsData, refetch: refetchEvents } = useQuery({
     queryKey: ['match-events', id],
     queryFn: () => matchesService.getEvents(id),
     enabled: !!match,
   });
 
   const events = Array.isArray(eventsData) ? eventsData : eventsData?.data || [];
+
+  // Fetch players for home team
+  const { data: homeTeamPlayersData } = useQuery({
+    queryKey: ['team-players', match?.home_team_id],
+    queryFn: () => teamsService.getPlayers(match?.home_team_id, { per_page: 100 }),
+    enabled: !!match?.home_team_id && activeTab === 'events',
+  });
+
+  // Fetch players for away team
+  const { data: awayTeamPlayersData } = useQuery({
+    queryKey: ['team-players', match?.away_team_id],
+    queryFn: () => teamsService.getPlayers(match?.away_team_id, { per_page: 100 }),
+    enabled: !!match?.away_team_id && activeTab === 'events',
+  });
+
+  const homeTeamPlayers = Array.isArray(homeTeamPlayersData) 
+    ? homeTeamPlayersData 
+    : homeTeamPlayersData?.data || [];
+  const awayTeamPlayers = Array.isArray(awayTeamPlayersData) 
+    ? awayTeamPlayersData 
+    : awayTeamPlayersData?.data || [];
+
+  // Get all players for selected team
+  const getPlayersForTeam = (teamId) => {
+    if (!teamId) return [];
+    const teamIdNum = typeof teamId === 'string' ? parseInt(teamId) : teamId;
+    if (teamIdNum === match?.home_team_id) return homeTeamPlayers;
+    if (teamIdNum === match?.away_team_id) return awayTeamPlayers;
+    return [];
+  };
 
   const statusMutation = useMutation({
     mutationFn: (status) => matchesService.updateStatus(id, status),
@@ -58,10 +101,24 @@ export default function MatchDetail() {
     onSuccess: () => {
       queryClient.invalidateQueries(['matches']);
       toast.success('Match deleted successfully');
-      navigate('/matches');
+      navigate(getBackPath());
     },
     onError: (error) => {
       toast.error(error?.response?.data?.message || 'Failed to delete match');
+    },
+  });
+
+  const deleteEventMutation = useMutation({
+    mutationFn: (eventId) => matchesService.deleteEvent(eventId),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['match-events', id]);
+      queryClient.invalidateQueries(['match', id]);
+      refetchEvents();
+      toast.success('Event deleted successfully');
+      setDeleteEventId(null);
+    },
+    onError: (error) => {
+      toast.error(error?.response?.data?.message || 'Failed to delete event');
     },
   });
 
@@ -91,11 +148,11 @@ export default function MatchDetail() {
     <div>
       <div className="mb-6">
         <button
-          onClick={() => navigate('/matches')}
+          onClick={() => navigate(getBackPath())}
           className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Matches
+          Back to {isReferee() ? 'My Matches' : 'Matches'}
         </button>
         <div className="flex justify-between items-start">
           <div>
@@ -305,37 +362,69 @@ export default function MatchDetail() {
       )}
 
       {activeTab === 'events' && (
+        <div className="space-y-6">
+          {/* Events List */}
         <div className="card">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Match Events</h2>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Match Events</h2>
+            </div>
+
+            {/* Events List */}
           {events.length === 0 ? (
             <p className="text-gray-500 text-center py-8">No events recorded for this match</p>
           ) : (
             <div className="space-y-4">
-              {events.map((event) => (
+                {events.map((event) => {
+                  const eventTeam = event.team_id === match?.home_team_id 
+                    ? match.home_team 
+                    : match?.away_team;
+                  const eventPlayers = getPlayersForTeam(event.team_id);
+                  const eventPlayer = eventPlayers.find(p => p.id === event.player_id);
+                  
+                  return (
                 <div
                   key={event.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center font-bold text-primary-600">
+                      <div className="flex items-center space-x-4 flex-1">
+                        <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center font-bold text-primary-600 flex-shrink-0">
                       {event.minute}'
                     </div>
-                    <div>
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2 mb-1">
                       <p className="font-medium text-gray-900">
                         {EVENT_TYPE_LABELS[event.event_type] || event.event_type}
                       </p>
+                            <span className="px-2 py-1 bg-primary-100 text-primary-800 rounded text-xs font-medium">
+                              {eventTeam?.name || `Team ${event.team_id}`}
+                            </span>
+                          </div>
+                          {eventPlayer && (
+                            <p className="text-sm text-gray-700 font-medium">
+                              {eventPlayer.full_name || eventPlayer.name || `Player ${event.player_id}`}
+                              {eventPlayer.jersey_number && ` (#${eventPlayer.jersey_number})`}
+                            </p>
+                          )}
                       {event.description && (
-                        <p className="text-sm text-gray-600">{event.description}</p>
+                            <p className="text-sm text-gray-600 mt-1">{event.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      {canRecordEvents && match?.status !== 'completed' && (
+                        <button
+                          onClick={() => setDeleteEventId(event.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Delete event"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
                       )}
-                      <p className="text-xs text-gray-500">
-                        Player ID: {event.player_id} | Team ID: {event.team_id}
-                      </p>
                     </div>
-                  </div>
-                </div>
-              ))}
+                  );
+                })}
             </div>
           )}
+          </div>
         </div>
       )}
 
@@ -409,6 +498,17 @@ export default function MatchDetail() {
         }}
         onCancel={() => setDeleteConfirm(false)}
         isLoading={deleteMutation.isLoading}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteEventId}
+        title="Delete Event"
+        message="Are you sure you want to delete this event? This action cannot be undone."
+        onConfirm={() => {
+          deleteEventMutation.mutate(deleteEventId);
+        }}
+        onCancel={() => setDeleteEventId(null)}
+        isLoading={deleteEventMutation.isLoading}
       />
     </div>
   );

@@ -40,8 +40,11 @@ export default function MatchFinalizeForm() {
       queryClient.invalidateQueries(['matches']);
       queryClient.invalidateQueries(['results']);
       queryClient.invalidateQueries(['standings']);
+      queryClient.invalidateQueries(['match', matchId]);
       toast.success('Match finalized successfully');
-      navigate(`/matches/${matchId}`);
+      // Navigate back to my-matches if coming from my-matches context, otherwise to matches
+      const fromMyMatches = window.location.pathname.includes('/my-matches');
+      navigate(fromMyMatches ? `/matches/my-matches/${matchId}` : `/matches/${matchId}`);
     },
     onError: (error) => {
       if (error.errors) {

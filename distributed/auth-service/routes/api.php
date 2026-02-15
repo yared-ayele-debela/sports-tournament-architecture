@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\PermissionController;
 use App\Http\Controllers\Api\StatisticsController;
+use App\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -107,15 +108,7 @@ use Illuminate\Support\Facades\Route;
     | Health Check (Public)
     |--------------------------------------------------------------------------
     */
-    Route::get('health', function () {
-        return response()->json([
-            'success' => true,
-            'message' => 'Authentication Service is running',
-            'service' => 'auth-service',
-            'version' => '1.0.0',
-            'timestamp' => now()->toISOString()
-        ]);
-    });
+    Route::get('health', HealthController::class);
 
     /*
     |--------------------------------------------------------------------------

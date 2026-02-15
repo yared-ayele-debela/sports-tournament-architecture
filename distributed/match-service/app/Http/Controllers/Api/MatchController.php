@@ -74,17 +74,29 @@ class MatchController extends Controller
             }
         }
 
+        // If user is referee, only show matches assigned to them
+        if (AuthHelper::isReferee()) {
+            $refereeId = AuthHelper::getCurrentUserId();
+            if ($refereeId) {
+                $query->where('referee_id', $refereeId);
+            } else {
+                // If referee ID not found, return empty result
+                $query->whereRaw('1 = 0');
+            }
+        }
+
         $perPage = (int) $request->query('per_page', 20);
         $perPage = max(1, min(100, $perPage));
 
         $paginator = $query->orderBy('match_date')->paginate($perPage);
 
-        // Enrich matches with team and tournament data
+        // Enrich matches with team, tournament, and venue data
         $items = collect($paginator->items())
             ->map(function ($match) {
                 $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
                 $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
                 $tournament = $this->tournamentServiceClient->getPublicTournament($match->tournament_id);
+                $venue = $match->venue_id ? $this->tournamentServiceClient->getPublicVenue($match->venue_id) : null;
 
                 $match->home_team = $homeTeam ? [
                     'id' => $homeTeam['id'] ?? null,
@@ -97,6 +109,10 @@ class MatchController extends Controller
                 $match->tournament = $tournament ? [
                     'id' => $tournament['id'] ?? null,
                     'name' => $tournament['name'] ?? null,
+                ] : null;
+                $match->venue = $venue ? [
+                    'id' => $venue['id'] ?? null,
+                    'name' => $venue['name'] ?? null,
                 ] : null;
 
                 return $match;
@@ -141,7 +157,7 @@ class MatchController extends Controller
         if (AuthHelper::isCoach() && !AuthHelper::isAdmin()) {
             $teamIds = AuthHelper::getCoachTeamIds();
             $hasAccess = in_array($match->home_team_id, $teamIds) || in_array($match->away_team_id, $teamIds);
-            
+
             if (!$hasAccess) {
                 return ApiResponse::forbidden('Unauthorized to view this match');
             }

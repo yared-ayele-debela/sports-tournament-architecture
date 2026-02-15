@@ -41,6 +41,23 @@ class AuthHelper
         return false;
     }
 
+    public static function isReferee(): bool
+    {
+        $user = request('authenticated_user');
+        $roles = request('user_roles', []);
+
+        // Check if user has Referee role
+        if (!empty($roles)) {
+            foreach ($roles as $role) {
+                if (is_array($role) && $role['name'] === 'Referee') {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public static function getCurrentUserId(): ?int
     {
         $user = request('authenticated_user');

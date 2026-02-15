@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\MatchController;
 use App\Http\Controllers\Api\MatchEventController;
 use App\Http\Controllers\Api\MatchReportController;
 use App\Http\Controllers\Api\StatisticsController;
+use App\Http\Controllers\HealthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -23,15 +24,8 @@ use App\Http\Controllers\Api\StatisticsController;
 | Health Check (Public)
 |--------------------------------------------------------------------------
 */
-Route::get('health', function () {
-    return response()->json([
-        'success' => true,
-        'message' => 'Match Service is runnings',
-        'service' => 'match-service',
-        'version' => '1.0.0',
-        'timestamp' => now()->toISOString()
-    ]);
-});
+Route::get('health', HealthController::class);
+
 // Legacy public routes (for backward compatibility)
 Route::get('/public/tournaments/{tournamentId}/matches', [MatchController::class, 'index']);
 Route::get('/public/matches', [MatchController::class, 'index']);
@@ -47,9 +41,10 @@ Route::get('/public/matches/{id}/events/public', [MatchEventController::class, '
 Route::get('/statistics', [StatisticsController::class, 'index']); // GET /api/statistics
 Route::get('/statistics/matches-by-status', [StatisticsController::class, 'matchesByStatus']); // GET /api/statistics/matches-by-status
 
-// Coach statistics endpoint (requires authentication)
+// Coach and Referee statistics endpoints (requires authentication)
 Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
     Route::get('/statistics/coach/matches-by-status', [StatisticsController::class, 'coachMatchesByStatus']); // GET /api/statistics/coach/matches-by-status
+    Route::get('/statistics/referee/matches-by-status', [StatisticsController::class, 'refereeMatchesByStatus']); // GET /api/statistics/referee/matches-by-status
 });
 
 
@@ -67,6 +62,7 @@ Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group
     // Match Events Routes (Protected)
     Route::get('/matches/{matchId}/events', [MatchEventController::class, 'index']);
     Route::post('/matches/{matchId}/events', [MatchEventController::class, 'store']);
+    Route::put('/events/{id}', [MatchEventController::class, 'update']);
     Route::delete('/events/{id}', [MatchEventController::class, 'destroy']);
 
     // Match Reports Routes (Protected)

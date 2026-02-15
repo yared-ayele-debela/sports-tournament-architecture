@@ -57,7 +57,7 @@ class MatchReportController extends Controller
         $match->status = 'completed';
         $match->home_score = $validated['home_score'];
         $match->away_score = $validated['away_score'];
-        $match->save(); // Save first to ensure scores are in the database
+        $match->save(); 
 
         // Dispatch match completed event to queue (high priority - CRITICAL for standings)
         $user = Auth::user();

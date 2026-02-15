@@ -158,4 +158,50 @@ class StatisticsController extends Controller
             return ApiResponse::serverError('Failed to retrieve coach match statistics', $e);
         }
     }
+
+    /**
+     * Get match statistics by status for referee's assigned matches
+     *
+     * @return JsonResponse
+     */
+    public function refereeMatchesByStatus(): JsonResponse
+    {
+        try {
+            // Get referee's user ID
+            $refereeId = AuthHelper::getCurrentUserId();
+
+            if (!$refereeId) {
+                // Return zeros if referee ID not found
+                return ApiResponse::success([
+                    'scheduled' => 0,
+                    'in_progress' => 0,
+                    'completed' => 0,
+                    'cancelled' => 0,
+                    'total' => 0,
+                ], 'Referee match statistics retrieved successfully');
+            }
+
+            // Query matches assigned to this referee
+            $query = MatchGame::where('referee_id', $refereeId);
+
+            $scheduled = (clone $query)->where('status', 'scheduled')->count();
+            $inProgress = (clone $query)->where('status', 'in_progress')->count();
+            $completed = (clone $query)->where('status', 'completed')->count();
+            $cancelled = (clone $query)->where('status', 'cancelled')->count();
+            $total = (clone $query)->count();
+
+            $data = [
+                'scheduled' => $scheduled,
+                'in_progress' => $inProgress,
+                'completed' => $completed,
+                'cancelled' => $cancelled,
+                'total' => $total,
+            ];
+
+            return ApiResponse::success($data, 'Referee match statistics retrieved successfully');
+        } catch (\Exception $e) {
+            Log::error('Error getting referee match statistics: ' . $e->getMessage());
+            return ApiResponse::serverError('Failed to retrieve referee match statistics', $e);
+        }
+    }
 }

@@ -3,6 +3,11 @@ version: '3.8'
 services:
   auth-service:
     build: ./auth-service
+    volumes:
+    - ./auth-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
+    restart: unless-stopped
     ports:
       - "8001:8001"
     environment:
@@ -13,13 +18,25 @@ services:
       - DB_DATABASE=auth_db
       - DB_USERNAME=root
       - DB_PASSWORD=rootpassword
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=null
+      - REDIS_CLIENT=phpredis
     depends_on:
       - auth-db
+      - redis
     networks:
       - tournament-network
 
   tournament-service:
     build: ./tournament-service
+    volumes:
+    - ./tournament-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
+    restart: unless-stopped
     ports:
       - "8002:8002"
     environment:
@@ -30,72 +47,164 @@ services:
       - DB_DATABASE=tournament_db
       - DB_USERNAME=root
       - DB_PASSWORD=rootpassword
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=null
+      - REDIS_CLIENT=phpredis
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - TEAM_SERVICE_URL=http://team-service:8003
+      - MATCH_SERVICE_URL=http://match-service:8004
     depends_on:
       - tournament-db
       - auth-service
+      - redis
     networks:
       - tournament-network
 
   team-service:
     build: ./team-service
+    volumes:
+    - ./team-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
+    restart: unless-stopped
     ports:
       - "8003:8003"
     environment:
       - SERVICE_PORT=8003
-      - DATABASE_URL=mysql://user:password@team-db:3306/team_db
+      - DB_CONNECTION=mysql
+      - DB_HOST=team-db
+      - DB_PORT=3306
+      - DB_DATABASE=team_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpassword
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=null
+      - REDIS_CLIENT=phpredis
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - TOURNAMENT_SERVICE_URL=http://tournament-service:8002
+      - MATCH_SERVICE_URL=http://match-service:8004
     depends_on:
       - team-db
       - auth-service
+      - redis
     networks:
       - tournament-network
 
   match-service:
     build: ./match-service
+    volumes:
+    - ./match-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
+    restart: unless-stopped
     ports:
       - "8004:8004"
     environment:
       - SERVICE_PORT=8004
-      - DATABASE_URL=mysql://user:password@match-db:3306/match_db
+      - DB_CONNECTION=mysql
+      - DB_HOST=match-db
+      - DB_PORT=3306
+      - DB_DATABASE=match_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpassword
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=null
+      - REDIS_CLIENT=phpredis
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - TEAM_SERVICE_URL=http://team-service:8003
+      - TOURNAMENT_SERVICE_URL=http://tournament-service:8002
     depends_on:
       - match-db
       - auth-service
       - tournament-service
       - team-service
+      - redis
     networks:
       - tournament-network
 
   results-service:
     build: ./results-service
+    volumes:
+    - ./results-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
+    restart: unless-stopped
     ports:
       - "8005:8005"
     environment:
       - SERVICE_PORT=8005
-      - DATABASE_URL=mysql://user:password@results-db:3306/results_db
+      - DB_CONNECTION=mysql
+      - DB_HOST=results-db
+      - DB_PORT=3306
+      - DB_DATABASE=results_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=rootpassword
+      - CACHE_STORE=redis
+      - QUEUE_CONNECTION=redis
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=null
+      - REDIS_CLIENT=phpredis
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - TEAM_SERVICE_URL=http://team-service:8003
+      - MATCH_SERVICE_URL=http://match-service:8004
+      - TOURNAMENT_SERVICE_URL=http://tournament-service:8002
     depends_on:
       - results-db
       - auth-service
       - match-service
+      - redis
     networks:
       - tournament-network
 
-  gateway-service:
-    build: ./gateway-service
+  # Frontend Applications
+  admin-dashboard:
+    build: ./admin-dashboard
+    restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "3000:80"
+    volumes:
+    - ./admin-dashboard:/app
+    - /app/node_modules
     environment:
-      - SERVICE_PORT=8000
-    depends_on:
-      - auth-service
-      - tournament-service
-      - team-service
-      - match-service
-      - results-service
+      - VITE_AUTH_SERVICE_URL=http://localhost:8001/api
+      - VITE_TOURNAMENT_SERVICE_URL=http://localhost:8002/api
+      - VITE_TEAM_SERVICE_URL=http://localhost:8003/api
+      - VITE_MATCH_SERVICE_URL=http://localhost:8004/api
+      - VITE_RESULTS_SERVICE_URL=http://localhost:8005/api
+    networks:
+      - tournament-network
+
+  public-view:
+    build: ./public-view
+    restart: unless-stopped
+    ports:
+      - "3001:80"
+    volumes:
+    - ./public-view:/app
+    - /app/node_modules
+    environment:
+      - VITE_AUTH_SERVICE_URL=http://localhost:8001/api
+      - VITE_TOURNAMENT_SERVICE_URL=http://localhost:8002/api
+      - VITE_TEAM_SERVICE_URL=http://localhost:8003/api
+      - VITE_MATCH_SERVICE_URL=http://localhost:8004/api
+      - VITE_RESULTS_SERVICE_URL=http://localhost:8005/api
     networks:
       - tournament-network
 
   # Databases
   auth-db:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       - MYSQL_DATABASE=auth_db
       - MYSQL_USER=user
@@ -108,6 +217,7 @@ services:
 
   tournament-db:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       - MYSQL_DATABASE=tournament_db
       - MYSQL_USER=user
@@ -120,6 +230,7 @@ services:
 
   team-db:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       - MYSQL_DATABASE=team_db
       - MYSQL_USER=user
@@ -132,6 +243,7 @@ services:
 
   match-db:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       - MYSQL_DATABASE=match_db
       - MYSQL_USER=user
@@ -144,6 +256,7 @@ services:
 
   results-db:
     image: mysql:8.0
+    restart: unless-stopped
     environment:
       - MYSQL_DATABASE=results_db
       - MYSQL_USER=user
@@ -154,15 +267,35 @@ services:
     networks:
       - tournament-network
 
+  # Redis
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # Port mapping removed - services connect via Docker network
+    # External access not needed for queue operations
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - tournament-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # phpMyAdmin
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
+    restart: unless-stopped
     ports:
-      - "8080:80"
+      - "8082:80"
     environment:
       - PMA_HOSTS=auth-db,tournament-db,team-db,match-db,results-db
+      - PMA_PORTS=3306,3306,3306,3306,3306
       - PMA_USER=root
       - PMA_PASSWORD=rootpassword
+      - UPLOAD_LIMIT=300M
     depends_on:
       - auth-db
       - tournament-db
@@ -178,6 +311,7 @@ volumes:
   team_db_data:
   match_db_data:
   results_db_data:
+  redis_data:
 
 networks:
   tournament-network:

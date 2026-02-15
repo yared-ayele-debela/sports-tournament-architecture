@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\StandingsController;
 use App\Http\Controllers\Api\MatchResultController;
 use App\Http\Controllers\Api\StatisticsController;
+use App\Http\Controllers\HealthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -22,15 +23,7 @@ use App\Http\Controllers\Api\StatisticsController;
 | Health Check (Public)
 |--------------------------------------------------------------------------
 */
-Route::get('health', function () {
-    return response()->json([
-        'success' => true,
-        'message' => 'Results Service is running',
-        'service' => 'results-service',
-        'version' => '1.0.0',
-        'timestamp' => now()->toISOString()
-    ]);
-});
+Route::get('health', HealthController::class);
 
 /*
 |--------------------------------------------------------------------------
@@ -56,16 +49,16 @@ Route::get('/statistics/top-scoring-teams', [StatisticsController::class, 'topSc
 
 
 Route::middleware([\App\Http\Middleware\ValidateUserServiceToken::class])->group(function () {
-    
+
     // Standings Routes (Protected)
     Route::post('/standings/recalculate/{tournamentId}', [StandingsController::class, 'recalculate']);
-    
+
     // Match Results Routes (Protected)
     Route::get('/tournaments/{tournamentId}/results', [MatchResultController::class, 'index']);
     Route::get('/results/{id}', [MatchResultController::class, 'show']);
     Route::post('/matches/{matchId}/finalize', [MatchResultController::class, 'finalize']);
-    
+
     // Statistics Routes (Protected)
     Route::get('/teams/{teamId}/statistics', [StatisticsController::class, 'teamStatistics']);
-    
+
 });

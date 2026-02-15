@@ -13,7 +13,7 @@ use Exception;
 
 /**
  * Match Completed Event Handler
- * 
+ *
  * CRITICAL HANDLER - Processes match.completed events and triggers standings calculation
  */
 class MatchCompletedHandler extends BaseEventHandler implements EventHandlerInterface
@@ -83,8 +83,8 @@ class MatchCompletedHandler extends BaseEventHandler implements EventHandlerInte
                     'away_team_id' => $payload['away_team_id'],
                     'home_score' => (int) $payload['home_score'],
                     'away_score' => (int) $payload['away_score'],
-                    'completed_at' => isset($payload['completed_at']) 
-                        ? \Carbon\Carbon::parse($payload['completed_at']) 
+                    'completed_at' => isset($payload['completed_at'])
+                        ? \Carbon\Carbon::parse($payload['completed_at'])
                         : now(),
                     'processed_at' => now(),
                 ]
@@ -127,7 +127,7 @@ class MatchCompletedHandler extends BaseEventHandler implements EventHandlerInte
 
         } catch (Exception $e) {
             DB::rollBack();
-            
+
             $this->errorLog('Failed to process match result', $event, [
                 'match_id' => $payload['match_id'] ?? 'unknown',
                 'tournament_id' => $payload['tournament_id'] ?? 'unknown',

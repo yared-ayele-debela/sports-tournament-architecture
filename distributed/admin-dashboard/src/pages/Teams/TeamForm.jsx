@@ -6,7 +6,7 @@ import { tournamentsService } from '../../api/tournaments';
 import { usersService } from '../../api/users';
 import { useToast } from '../../context/ToastContext';
 import { usePermissions } from '../../hooks/usePermissions';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Upload, X } from 'lucide-react';
 
 export default function TeamForm() {
   const { id } = useParams();
@@ -24,9 +24,10 @@ export default function TeamForm() {
   const [formData, setFormData] = useState({
     tournament_id: '',
     name: '',
-    logo: '',
     coach_id: '',
   });
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoPreview, setLogoPreview] = useState('');
   const [errors, setErrors] = useState({});
 
   // Fetch team if editing
@@ -61,13 +62,16 @@ export default function TeamForm() {
 
   // Populate form when team data loads
   useEffect(() => {
-    if (teamData && isEdit) {
+    if (teamData) {
       setFormData({
         tournament_id: teamData.tournament_id || '',
         name: teamData.name || '',
-        logo: teamData.logo || '',
         coach_id: teamData.coaches?.[0]?.id || teamData.coaches?.[0] || '',
       });
+      // Set logo preview for existing logo
+      if (teamData.logo_url) {
+        setLogoPreview(teamData.logo_url);
+      }
     }
   }, [teamData, isEdit]);
 
@@ -99,14 +103,80 @@ export default function TeamForm() {
     e.preventDefault();
     setErrors({});
 
-    // Prepare data
-    const submitData = {
-      ...formData,
-      tournament_id: parseInt(formData.tournament_id),
-      coach_id: parseInt(formData.coach_id),
-    };
+    // Validate required fields
+    if (!formData.name || formData.name.trim() === '') {
+      setErrors({ name: 'Team name is required' });
+      return;
+    }
+
+    if (!isEdit && (!formData.tournament_id || !formData.coach_id)) {
+      setErrors({ 
+        tournament_id: !formData.tournament_id ? 'Tournament is required' : undefined,
+        coach_id: !formData.coach_id ? 'Coach is required' : undefined
+      });
+      return;
+    }
+
+    // Prepare form data with file upload
+    const submitData = new FormData();
+    
+    if (isEdit) {
+      // For updates, only send name and logo (tournament_id and coach_id cannot be changed)
+      submitData.append('name', formData.name.trim());
+      
+      // Only append logo if a new file was selected
+      if (logoFile) {
+        submitData.append('logo', logoFile);
+      }
+      // If logoFile is null but logoPreview was cleared, we need to handle logo removal
+      // Note: To remove logo, user would need to upload a new one or we'd need a separate "remove logo" endpoint
+    } else {
+      // For creation, send all required fields
+      submitData.append('tournament_id', parseInt(formData.tournament_id));
+      submitData.append('name', formData.name.trim());
+      submitData.append('coach_id', parseInt(formData.coach_id));
+      
+      if (logoFile) {
+        submitData.append('logo', logoFile);
+      }
+    }
 
     mutation.mutate(submitData);
+  };
+
+  const handleLogoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      // Validate file type and size
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+      const maxSize = 4 * 1024 * 1024; // 2MB
+
+      if (!allowedTypes.includes(file.type)) {
+        setErrors({ logo: 'Please upload a valid image file (JPEG, PNG, JPG, GIF)' });
+        return;
+      }
+
+      if (file.size > maxSize) {
+        setErrors({ logo: 'File size must be less than 2MB' });
+        return;
+      }
+
+      setLogoFile(file);
+      setErrors({});
+
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setLogoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview('');
+    setErrors({});
   };
 
   const handleChange = (e) => {
@@ -196,33 +266,52 @@ export default function TeamForm() {
 
           {/* Logo */}
           <div>
-            <label htmlFor="logo" className="label">Logo URL</label>
-            <input
-              id="logo"
-              name="logo"
-              type="url"
-              value={formData.logo}
-              onChange={handleChange}
-              className={`input ${errors.logo ? 'border-red-500' : ''}`}
-              placeholder="https://example.com/logo.png"
-            />
-            {errors.logo && (
-              <p className="mt-1 text-sm text-red-600">
-                {Array.isArray(errors.logo) ? errors.logo[0] : errors.logo}
-              </p>
-            )}
-            {formData.logo && (
-              <div className="mt-2">
-                <img
-                  src={formData.logo}
-                  alt="Team logo preview"
-                  className="w-16 h-16 rounded-full object-cover border border-gray-300"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                  }}
-                />
+            <label htmlFor="logo" className="label">Team Logo</label>
+            <div className="mt-1">
+              <div className="flex items-center space-x-4">
+                <label className="cursor-pointer">
+                  <input
+                    id="logo"
+                    name="logo"
+                    type="file"
+                    accept="image/jpeg,image/png,image/jpg,image/gif"
+                    onChange={handleLogoChange}
+                    className="hidden"
+                  />
+                  <div className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    <span>Choose Logo</span>
+                  </div>
+                </label>
+                {logoPreview && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveLogo}
+                    className="flex items-center space-x-2 px-3 py-2 text-red-600 border border-red-300 rounded-md hover:bg-red-50"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Remove</span>
+                  </button>
+                )}
               </div>
-            )}
+              {errors.logo && (
+                <p className="mt-1 text-sm text-red-600">
+                  {Array.isArray(errors.logo) ? errors.logo[0] : errors.logo}
+                </p>
+              )}
+              <p className="mt-1 text-sm text-gray-500">
+                Accepted formats: JPEG, PNG, JPG, GIF (Max 2MB)
+              </p>
+              {logoPreview && (
+                <div className="mt-3">
+                  <img
+                    src={logoPreview}
+                    alt="Team logo preview"
+                    className="w-20 h-20 rounded-full object-cover border border-gray-300"
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Coach */}

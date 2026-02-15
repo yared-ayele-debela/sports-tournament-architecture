@@ -9,6 +9,7 @@ use App\Services\AuthServiceClient;
 use App\Services\TournamentServiceClient;
 use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
+use App\Services\PublicCacheService;
 use App\Events\TeamCreated;
 use App\Events\TeamUpdated;
 use App\Helpers\AuthHelper;
@@ -26,12 +27,14 @@ class TeamController extends Controller
     protected $authService;
     protected $tournamentService;
     protected QueuePublisher $queuePublisher;
+    protected PublicCacheService $cacheService;
 
-    public function __construct(AuthServiceClient $authService, TournamentServiceClient $tournamentService, QueuePublisher $queuePublisher)
+    public function __construct(AuthServiceClient $authService, TournamentServiceClient $tournamentService, QueuePublisher $queuePublisher, PublicCacheService $cacheService)
     {
         $this->authService = $authService;
         $this->tournamentService = $tournamentService;
         $this->queuePublisher = $queuePublisher;
+        $this->cacheService = $cacheService;
     }
 
     public function public_index(Request $request): JsonResponse
@@ -306,6 +309,9 @@ class TeamController extends Controller
             $oldData = $team->toArray();
             $team->update($request->only(['name', 'logo']));
 
+            // Immediately invalidate public API cache for this team
+            $this->invalidateTeamCache($team);
+
             // Fire legacy event
             event(new TeamUpdated($team, AuthHelper::getCurrentUserId()));
 
@@ -547,6 +553,46 @@ class TeamController extends Controller
                 'team_id' => $team->id,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Immediately invalidate public API cache for a team
+     *
+     * @param Team $team
+     * @return void
+     */
+    protected function invalidateTeamCache(Team $team): void
+    {
+        try {
+            $tags = [
+                'public-api',
+                'teams',
+                "team:{$team->id}",
+                "public:team:{$team->id}",
+                "public:team:{$team->id}:players",
+                "public:team:{$team->id}:matches",
+            ];
+
+            // Also invalidate tournament teams cache if tournament_id is available
+            if ($team->tournament_id) {
+                $tags[] = "tournament:{$team->tournament_id}";
+                $tags[] = "public:tournament:{$team->tournament_id}:teams";
+            }
+
+            $this->cacheService->forgetByTags($tags);
+
+            Log::info('Team cache invalidated immediately', [
+                'team_id' => $team->id,
+                'tournament_id' => $team->tournament_id,
+                'tags' => $tags
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to invalidate team cache immediately', [
+                'team_id' => $team->id,
+                'error' => $e->getMessage()
+            ]);
+            // Don't throw - cache invalidation failure shouldn't break the update
         }
     }
 }

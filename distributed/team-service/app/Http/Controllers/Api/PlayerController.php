@@ -9,6 +9,7 @@ use App\Events\PlayerCreated;
 use App\Events\PlayerUpdated;
 use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
+use App\Services\PublicCacheService;
 use App\Helpers\AuthHelper;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
@@ -20,10 +21,12 @@ use Illuminate\Support\Facades\Log;
 class PlayerController extends Controller
 {
     protected QueuePublisher $queuePublisher;
+    protected PublicCacheService $cacheService;
 
-    public function __construct(QueuePublisher $queuePublisher)
+    public function __construct(QueuePublisher $queuePublisher, PublicCacheService $cacheService)
     {
         $this->queuePublisher = $queuePublisher;
+        $this->cacheService = $cacheService;
     }
 
     /**
@@ -119,6 +122,9 @@ class PlayerController extends Controller
             // Load relationships
             $player->load('team');
 
+            // Immediately invalidate public API cache for this team's players
+            $this->invalidatePlayerCache($player);
+
             // Fire legacy event
             event(new PlayerCreated($player, AuthHelper::getCurrentUserId()));
 
@@ -187,6 +193,12 @@ class PlayerController extends Controller
             $oldData = $player->toArray();
             $player->update($request->only(['full_name', 'position', 'jersey_number']));
 
+            // Reload team relationship to ensure we have latest data
+            $player->load('team');
+
+            // Immediately invalidate public API cache for this team's players
+            $this->invalidatePlayerCache($player);
+
             // Fire legacy event
             event(new PlayerUpdated($player, AuthHelper::getCurrentUserId()));
 
@@ -227,7 +239,14 @@ class PlayerController extends Controller
         }
 
         try {
+            // Store team info before deletion (needed for cache invalidation)
+            $teamId = $player->team_id;
+            $team = $player->team;
+
             $player->delete();
+
+            // Immediately invalidate public API cache for this team's players
+            $this->invalidatePlayerCacheForTeam($teamId, $team);
 
             // Dispatch player deleted event to queue (default priority)
             $this->dispatchPlayerDeletedQueueEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
@@ -296,6 +315,69 @@ class PlayerController extends Controller
                 'player_id' => $player->id,
                 'error' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Immediately invalidate public API cache for a player's team
+     *
+     * @param Player $player
+     * @return void
+     */
+    protected function invalidatePlayerCache(Player $player): void
+    {
+        if (!$player->team) {
+            $player->load('team');
+        }
+
+        $this->invalidatePlayerCacheForTeam($player->team_id, $player->team);
+    }
+
+    /**
+     * Immediately invalidate public API cache for a team's players
+     *
+     * @param int $teamId
+     * @param Team|null $team
+     * @return void
+     */
+    protected function invalidatePlayerCacheForTeam(int $teamId, ?Team $team = null): void
+    {
+        try {
+            $tags = [
+                'public-api',
+                'teams',
+                'players',
+                "team:{$teamId}",
+                "public:team:{$teamId}",
+                "public:team:{$teamId}:players",
+            ];
+
+            // Also invalidate tournament teams cache if tournament_id is available
+            if ($team && $team->tournament_id) {
+                $tags[] = "tournament:{$team->tournament_id}";
+                $tags[] = "public:tournament:{$team->tournament_id}:teams";
+            } elseif ($teamId) {
+                // If team is not loaded, try to get tournament_id from database
+                $team = Team::find($teamId);
+                if ($team && $team->tournament_id) {
+                    $tags[] = "tournament:{$team->tournament_id}";
+                    $tags[] = "public:tournament:{$team->tournament_id}:teams";
+                }
+            }
+
+            $this->cacheService->forgetByTags($tags);
+
+            Log::info('Player cache invalidated immediately', [
+                'team_id' => $teamId,
+                'tournament_id' => $team?->tournament_id,
+                'tags' => $tags
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to invalidate player cache immediately', [
+                'team_id' => $teamId,
+                'error' => $e->getMessage()
+            ]);
+            // Don't throw - cache invalidation failure shouldn't break the operation
         }
     }
 }

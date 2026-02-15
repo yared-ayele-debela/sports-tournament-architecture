@@ -12,6 +12,7 @@ use App\Services\Queue\QueuePublisher;
 use App\Services\Clients\MatchServiceClient;
 use App\Services\Clients\ResultsServiceClient;
 use App\Services\Clients\TeamServiceClient;
+use App\Services\PublicCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -25,19 +26,22 @@ class TournamentController extends Controller
     protected MatchServiceClient $matchServiceClient;
     protected ResultsServiceClient $resultsServiceClient;
     protected TeamServiceClient $teamServiceClient;
+    protected PublicCacheService $cacheService;
 
     public function __construct(
         AuthService $authService,
         QueuePublisher $queuePublisher,
         MatchServiceClient $matchServiceClient,
         ResultsServiceClient $resultsServiceClient,
-        TeamServiceClient $teamServiceClient
+        TeamServiceClient $teamServiceClient,
+        PublicCacheService $cacheService
     ) {
         $this->authService = $authService;
         $this->queuePublisher = $queuePublisher;
         $this->matchServiceClient = $matchServiceClient;
         $this->resultsServiceClient = $resultsServiceClient;
         $this->teamServiceClient = $teamServiceClient;
+        $this->cacheService = $cacheService;
     }
 
     /**
@@ -117,6 +121,9 @@ class TournamentController extends Controller
                 'user_id' => $user['id']
             ]);
 
+            // Immediately invalidate public API cache for tournaments
+            $this->invalidateTournamentCache($tournament);
+
             // Dispatch tournament created event to queue (default priority)
             $this->dispatchTournamentCreatedQueueEvent($tournament, $user);
 
@@ -188,6 +195,9 @@ class TournamentController extends Controller
                 'name' => $tournament->name
             ]);
 
+            // Immediately invalidate public API cache for this tournament
+            $this->invalidateTournamentCache($tournament);
+
             // Dispatch tournament updated event to queue (default priority)
             $this->dispatchTournamentUpdatedQueueEvent($tournament, $oldData);
 
@@ -227,6 +237,9 @@ class TournamentController extends Controller
 
             // Get authenticated user from middleware
             $user = $request->get('authenticated_user', []);
+
+            // Immediately invalidate public API cache for this tournament (before deletion)
+            $this->invalidateTournamentCacheById($id);
 
             // Delete tournament
             $tournament->delete();
@@ -317,6 +330,9 @@ class TournamentController extends Controller
                 'old_status' => $currentStatus,
                 'new_status' => $newStatus
             ]);
+
+            // Immediately invalidate public API cache for this tournament
+            $this->invalidateTournamentCache($tournament);
 
             // Dispatch tournament status changed event to queue (high priority - critical)
             $this->dispatchTournamentStatusChangedQueueEvent($tournament, $currentStatus);
@@ -808,5 +824,56 @@ class TournamentController extends Controller
         ];
 
         return in_array($to, $validTransitions[$from] ?? []);
+    }
+
+    /**
+     * Immediately invalidate public API cache for a tournament
+     *
+     * @param Tournament $tournament
+     * @return void
+     */
+    protected function invalidateTournamentCache(Tournament $tournament): void
+    {
+        $this->invalidateTournamentCacheById($tournament->id);
+    }
+
+    /**
+     * Immediately invalidate public API cache for a tournament by ID
+     *
+     * @param int $tournamentId
+     * @return void
+     */
+    protected function invalidateTournamentCacheById(int $tournamentId): void
+    {
+        try {
+            $tags = [
+                'public-api',
+                'tournaments',
+                'tournaments:list',
+                'public:tournaments:list',
+                'tournaments:featured',
+                'public:tournaments:featured',
+                'tournaments:upcoming',
+                'public:tournaments:upcoming',
+                "tournament:{$tournamentId}",
+                "public:tournament:{$tournamentId}",
+                // Also invalidate team-service cache for this tournament's teams
+                "tournament:{$tournamentId}",
+                "public:tournament:{$tournamentId}:teams",
+            ];
+
+            $this->cacheService->forgetByTags($tags);
+
+            Log::info('Tournament cache invalidated immediately', [
+                'tournament_id' => $tournamentId,
+                'tags' => $tags
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to invalidate tournament cache immediately', [
+                'tournament_id' => $tournamentId,
+                'error' => $e->getMessage()
+            ]);
+            // Don't throw - cache invalidation failure shouldn't break the operation
+        }
     }
 }

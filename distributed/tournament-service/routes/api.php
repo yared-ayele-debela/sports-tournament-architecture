@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\TournamentController;
 use App\Http\Controllers\Api\TournamentSettingsController;
 use App\Http\Controllers\Api\VenueController;
 use App\Http\Controllers\Api\StatisticsController;
+use App\Http\Controllers\HealthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -119,15 +120,7 @@ Route::middleware(['auth.passport'])->group(function () {
 */
 
 Route::prefix('health')->group(function () {
-    Route::get('/', function () {
-        return response()->json([
-            'success' => true,
-            'message' => 'Tournament Service is healthys',
-            'service' => 'tournament-service',
-            'timestamp' => now()->toISOString(),
-            'version' => '1.0.0'
-        ]);
-    });
+    Route::get('/', HealthController::class);
 
     Route::get('/info', function () {
         return response()->json([

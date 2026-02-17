@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Radio } from 'lucide-react';
 
 const Header = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -9,6 +9,7 @@ const Header = () => {
     { name: 'Home', path: '/' },
     { name: 'Tournaments', path: '/tournaments' },
     { name: 'Matches', path: '/matches' },
+    { name: 'Live Matches', path: '/matches/live', highlight: true },
     { name: 'Teams', path: '/teams' },
   ];
 
@@ -19,7 +20,9 @@ const Header = () => {
           {/* Logo */}
           <div className="flex-shrink-0">
             <Link to="/" className="flex items-center">
-              <span className="text-2xl font-bold text-primary-600">SportsTour</span>
+              <img src="src/assets/logo.png" alt="Sports Tournament" className="h-10 w-10" />
+              <span className="text-2xl font-bold text-primary-600">
+                Sports Tournament</span>
             </Link>
           </div>
 
@@ -29,8 +32,13 @@ const Header = () => {
               <Link
                 key={item.name}
                 to={item.path}
-                className="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
+                className={`px-3 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${
+                  item.highlight
+                    ? 'text-red-600 hover:text-red-700 font-semibold'
+                    : 'text-gray-700 hover:text-primary-600'
+                }`}
               >
+                {item.highlight && <Radio className="h-4 w-4 animate-pulse" />}
                 {item.name}
               </Link>
             ))}
@@ -56,8 +64,13 @@ const Header = () => {
                   key={item.name}
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 text-base font-medium text-gray-700 hover:text-primary-600 hover:bg-gray-50 rounded-md transition-colors"
+                  className={`px-3 py-2 text-base font-medium rounded-md transition-colors flex items-center gap-2 ${
+                    item.highlight
+                      ? 'text-red-600 hover:text-red-700 hover:bg-red-50 font-semibold'
+                      : 'text-gray-700 hover:text-primary-600 hover:bg-gray-50'
+                  }`}
                 >
+                  {item.highlight && <Radio className="h-4 w-4 animate-pulse" />}
                   {item.name}
                 </Link>
               ))}

@@ -61,7 +61,38 @@ export const matchService = {
       return response.data;
     }
 
-    // Default: combine today and upcoming
+    if (params.status === 'completed') {
+      const response = await matchApi.get('/matches/completed', { params: { limit: params.limit || params.per_page, page: params.page } });
+      return response.data;
+    }
+
+    // If status is 'all' or not specified, combine all matches
+    if (params.status === 'all' || !params.status) {
+      const [liveResponse, todayResponse, upcomingResponse, completedResponse] = await Promise.all([
+        matchApi.get('/matches/live').catch(() => ({ data: { data: { matches: [] }, matches: [] } })),
+        matchApi.get('/matches/today').catch(() => ({ data: { data: { matches: [] }, matches: [] } })),
+        matchApi.get('/matches/upcoming', { params: { limit: 50 } }).catch(() => ({ data: { data: { matches: [] }, matches: [] } })),
+        matchApi.get('/matches/completed', { params: { limit: 50, page: 1 } }).catch(() => ({ data: { data: { matches: [] }, matches: [] } })),
+      ]);
+
+      const liveMatches = liveResponse.data?.data?.matches || liveResponse.data?.matches || [];
+      const todayMatches = todayResponse.data?.data?.matches || todayResponse.data?.matches || [];
+      const upcomingMatches = upcomingResponse.data?.data?.matches || upcomingResponse.data?.matches || [];
+      const completedMatches = completedResponse.data?.data?.matches || completedResponse.data?.matches || [];
+      
+      // Combine all matches and remove duplicates by ID
+      const allMatches = [...liveMatches, ...todayMatches, ...upcomingMatches, ...completedMatches];
+      const uniqueMatches = Array.from(new Map(allMatches.map(match => [match.id, match])).values());
+      
+      return {
+        success: true,
+        data: {
+          matches: uniqueMatches,
+        },
+      };
+    }
+
+    // Default: combine today and upcoming (for backward compatibility)
     const [todayResponse, upcomingResponse] = await Promise.all([
       matchApi.get('/matches/today'),
       matchApi.get('/matches/upcoming', { params: { limit: params.limit || params.per_page } }),

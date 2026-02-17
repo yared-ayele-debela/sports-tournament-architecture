@@ -26,7 +26,7 @@ Team and Player Management Service for the Sports Tournament Architecture. This 
 
 ### Base URL
 ```
-http://localhost:8004/api/v1
+http://localhost:8003/api/v1
 ```
 
 ### Public Endpoints (No Authentication Required)
@@ -34,6 +34,7 @@ http://localhost:8004/api/v1
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Health check endpoint |
+| GET | `/statistics` | Service statistics |
 | GET | `/public/teams/{id}` | Get team profile |
 | GET | `/public/teams/{id}/overview` | Get team overview |
 | GET | `/public/teams/{id}/squad` | Get team squad/players |
@@ -238,10 +239,10 @@ php artisan migrate
 
 7. **Start the development server**
 ```bash
-php artisan serve --port=8004
+php artisan serve --port=8003
 ```
 
-The service will be available at `http://localhost:8004`
+The service will be available at `http://localhost:8003`
 
 ## Environment Variables
 
@@ -252,7 +253,7 @@ APP_NAME="Team Service"
 APP_ENV=local
 APP_KEY=
 APP_DEBUG=true
-APP_URL=http://localhost:8004
+APP_URL=http://localhost:8003
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -270,7 +271,7 @@ CACHE_DRIVER=redis
 
 # Service URLs (for inter-service communication)
 TOURNAMENT_SERVICE_URL=http://localhost:8002
-MATCH_SERVICE_URL=http://localhost:8003
+MATCH_SERVICE_URL=http://localhost:8004
 RESULTS_SERVICE_URL=http://localhost:8005
 ```
 
@@ -327,7 +328,7 @@ The service consumes events from other services:
 
 ### Create a Team
 ```bash
-curl -X POST http://localhost:8004/api/v1/teams \
+curl -X POST http://localhost:8003/api/teams \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -342,12 +343,12 @@ curl -X POST http://localhost:8004/api/v1/teams \
 
 ### Get Team Profile (Public)
 ```bash
-curl -X GET http://localhost:8004/api/v1/public/teams/1
+curl -X GET http://localhost:8004/api/public/teams/1
 ```
 
 ### Create a Player
 ```bash
-curl -X POST http://localhost:8004/api/v1/players \
+curl -X POST http://localhost:8003/api/players \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -364,17 +365,17 @@ curl -X POST http://localhost:8004/api/v1/players \
 
 ### Get Team Squad
 ```bash
-curl -X GET http://localhost:8004/api/v1/public/teams/1/squad
+curl -X GET http://localhost:8003/api/public/teams/1/squad
 ```
 
 ### Get Teams by Tournament
 ```bash
-curl -X GET http://localhost:8004/api/v1/public/tournaments/1/teams
+curl -X GET http://localhost:8003/api/public/tournaments/1/teams
 ```
 
 ### List Teams with Search
 ```bash
-curl -X GET "http://localhost:8004/api/v1/teams?per_page=10&search=team" \
+curl -X GET "http://localhost:8003/api/teams?per_page=10&search=team" \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN"
 ```
 

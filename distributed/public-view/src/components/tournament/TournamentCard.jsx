@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Calendar, Trophy, Users, Activity, ArrowRight } from 'lucide-react';
+import { Calendar, Trophy, ArrowRight } from 'lucide-react';
 import Badge from '../common/Badge';
 import { formatDate } from '../../utils/dateUtils';
 import { truncateText } from '../../utils/formatUtils';
@@ -50,31 +50,15 @@ const TournamentCard = ({ tournament, viewMode = 'grid' }) => {
               </div>
             </div>
 
-            {/* Middle: Dates and Stats */}
-            <div className="flex flex-col md:flex-row gap-6 md:items-center">
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Calendar className="h-4 w-4" />
-                  <span>{formatDate(tournament.start_date)}</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Calendar className="h-4 w-4" />
-                  <span>{formatDate(tournament.end_date)}</span>
-                </div>
+            {/* Middle: Dates */}
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>{formatDate(tournament.start_date)}</span>
               </div>
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm text-gray-600">
-                    <span className="font-semibold text-gray-900">{tournament.team_count ?? 'N/A'}</span> teams
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-green-600" />
-                  <span className="text-sm text-gray-600">
-                    <span className="font-semibold text-gray-900">{tournament.match_count ?? 'N/A'}</span> matches
-                  </span>
-                </div>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <Calendar className="h-4 w-4" />
+                <span>{formatDate(tournament.end_date)}</span>
               </div>
             </div>
 
@@ -102,14 +86,11 @@ const TournamentCard = ({ tournament, viewMode = 'grid' }) => {
       className="bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer border border-gray-100 overflow-hidden h-full flex flex-col group"
     >
       {/* Header with gradient background */}
-      <div className="bg-gradient-to-br from-primary-600 to-primary-800 p-6 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white opacity-10 rounded-full -mr-16 -mt-16"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white opacity-10 rounded-full -ml-12 -mb-12"></div>
-        
+      <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-6 border-b border-gray-200 relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-4">
             {tournament.logo && (
-              <div className="bg-white p-2 rounded-lg shadow-md">
+              <div className="bg-white p-2 rounded-lg border border-gray-200">
                 <img
                   src={tournament.logo}
                   alt={tournament.name}
@@ -119,18 +100,17 @@ const TournamentCard = ({ tournament, viewMode = 'grid' }) => {
             )}
             <Badge
               variant={tournament.status === 'ongoing' ? 'success' : tournament.status === 'upcoming' ? 'info' : 'default'}
-              className="bg-white bg-opacity-20 backdrop-blur-sm"
             >
               {tournament.status}
             </Badge>
           </div>
           
-          <h3 className="text-2xl font-bold mb-2 line-clamp-2 leading-tight">
+          <h3 className="text-2xl font-bold mb-2 line-clamp-2 leading-tight text-gray-900">
             {tournament.name}
           </h3>
           
           {tournament.sport && (
-            <div className="flex items-center gap-2 text-primary-100">
+            <div className="flex items-center gap-2 text-gray-600">
               <Trophy className="h-4 w-4" />
               <span className="text-sm font-medium">
                 {tournament.sport.name || tournament.sport}
@@ -152,40 +132,18 @@ const TournamentCard = ({ tournament, viewMode = 'grid' }) => {
         {/* Dates */}
         <div className="space-y-3 mb-4">
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4 text-primary-600" />
+            <Calendar className="h-4 w-4 text-gray-600" />
             <div>
               <span className="font-medium text-gray-700">Start:</span>
               <span className="ml-2">{formatDate(tournament.start_date)}</span>
             </div>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Calendar className="h-4 w-4 text-primary-600" />
+            <Calendar className="h-4 w-4 text-gray-600" />
             <div>
               <span className="font-medium text-gray-700">End:</span>
               <span className="ml-2">{formatDate(tournament.end_date)}</span>
             </div>
-          </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200 mb-4">
-          <div className="text-center p-3 bg-blue-50 rounded-lg">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Users className="h-4 w-4 text-blue-600" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {tournament.team_count ?? 'N/A'}
-            </div>
-            <div className="text-xs text-gray-600">Teams</div>
-          </div>
-          <div className="text-center p-3 bg-green-50 rounded-lg">
-            <div className="flex items-center justify-center gap-2 mb-1">
-              <Activity className="h-4 w-4 text-green-600" />
-            </div>
-            <div className="text-2xl font-bold text-gray-900">
-              {tournament.match_count ?? 'N/A'}
-            </div>
-            <div className="text-xs text-gray-600">Matches</div>
           </div>
         </div>
 

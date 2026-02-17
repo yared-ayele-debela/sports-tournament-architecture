@@ -35,6 +35,9 @@ http://localhost:8005/api/v1
 | GET | `/health` | Health check endpoint |
 | GET | `/tournaments/{tournamentId}/standings` | Get tournament standings |
 | GET | `/tournaments/{tournamentId}/statistics` | Get tournament statistics |
+| GET | `/statistics` | Service statistics |
+| GET | `/statistics/goals-per-tournament` | Goals per tournament statistics |
+| GET | `/statistics/top-scoring-teams` | Top scoring teams statistics |
 
 ### Protected Endpoints (Requires Service Token)
 
@@ -220,8 +223,8 @@ CACHE_DRIVER=redis
 
 # Service URLs (for inter-service communication)
 TOURNAMENT_SERVICE_URL=http://localhost:8002
-MATCH_SERVICE_URL=http://localhost:8003
-TEAM_SERVICE_URL=http://localhost:8004
+MATCH_SERVICE_URL=http://localhost:8004
+TEAM_SERVICE_URL=http://localhost:8003
 ```
 
 ## Database Schema
@@ -291,12 +294,12 @@ Standings are calculated based on:
 
 ### Get Tournament Standings
 ```bash
-curl -X GET http://localhost:8005/api/v1/tournaments/1/standings
+curl -X GET http://localhost:8005/api/tournaments/1/standings
 ```
 
 ### Finalize Match Result
 ```bash
-curl -X POST http://localhost:8005/api/v1/matches/1/finalize \
+curl -X POST http://localhost:8005/api/matches/1/finalize \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -311,18 +314,18 @@ curl -X POST http://localhost:8005/api/v1/matches/1/finalize \
 
 ### Get Tournament Statistics
 ```bash
-curl -X GET http://localhost:8005/api/v1/tournaments/1/statistics
+curl -X GET http://localhost:8005/api/tournaments/1/statistics
 ```
 
 ### Get Team Statistics
 ```bash
-curl -X GET http://localhost:8005/api/v1/teams/1/statistics \
+curl -X GET http://localhost:8005/api/teams/1/statistics \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN"
 ```
 
 ### Recalculate Standings
 ```bash
-curl -X POST http://localhost:8005/api/v1/standings/recalculate/1 \
+curl -X POST http://localhost:8005/api/standings/recalculate/1 \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN"
 ```
 

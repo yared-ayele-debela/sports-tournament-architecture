@@ -77,28 +77,28 @@ export default function RefereeDashboard() {
       value: scheduledCount,
       icon: Calendar,
       color: 'bg-blue-500',
-      link: '/matches?status=scheduled',
+      link: '/matches/my-matches?status=scheduled',
     },
     {
       title: 'In Progress',
       value: inProgressCount,
       icon: Clock,
       color: 'bg-orange-500',
-      link: '/matches?status=in_progress',
+      link: '/matches/my-matches?status=in_progress',
     },
     {
       title: 'Completed Matches',
       value: completedCount,
       icon: CheckCircle,
       color: 'bg-green-500',
-      link: '/matches?status=completed',
+      link: '/matches/my-matches?status=completed',
     },
     {
       title: 'Cancelled Matches',
       value: cancelledCount,
       icon: Calendar,
       color: 'bg-red-500',
-      link: '/matches?status=cancelled',
+      link: '/matches/my-matches?status=cancelled',
     },
   ];
 

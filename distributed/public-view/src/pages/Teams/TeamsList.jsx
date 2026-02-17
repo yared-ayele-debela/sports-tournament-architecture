@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Search } from 'lucide-react';
+import { Search, RefreshCw } from 'lucide-react';
 import { teamService } from '../../api/teams';
 import { tournamentService } from '../../api/tournaments';
 import TeamCard from '../../components/team/TeamCard';
@@ -18,18 +18,23 @@ const TeamsList = () => {
     queryFn: () => tournamentService.getAll({ limit: 100 }),
   });
 
-  // Build query params
-  const queryParams = {
+  // Build query params - memoized to prevent unnecessary re-renders
+  const queryParams = useMemo(() => ({
     page: currentPage,
     limit: 20,
     ...(searchQuery.trim() && { search: searchQuery.trim() }),
-  };
+  }), [currentPage, searchQuery]);
 
   // Fetch teams from tournament
-  const { data: teamsData, isLoading, error } = useQuery({
+  const { data: teamsData, isLoading, error, refetch, isRefetching } = useQuery({
     queryKey: ['tournamentTeams', tournamentId, queryParams],
     queryFn: () => teamService.getTournamentTeams(tournamentId, queryParams),
     enabled: !!tournamentId,
+    staleTime: 30 * 1000, // 30 seconds - reasonable cache time
+    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    refetchOnWindowFocus: true, // Refetch when window regains focus (user returns to tab)
+    // No refetchInterval - only refetch on user actions to reduce server load
+    // Manual refresh button available for users who want immediate updates
   });
 
   const teams = Array.isArray(teamsData?.data?.teams) 
@@ -46,9 +51,22 @@ const TeamsList = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Teams</h1>
-          <p className="text-gray-600">Browse teams by tournament</p>
+        <div className="mb-6 flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Teams</h1>
+            <p className="text-gray-600">Browse teams by tournament</p>
+          </div>
+          {tournamentId && (
+            <button
+              onClick={() => refetch()}
+              disabled={isRefetching}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              title="Refresh teams list"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefetching ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          )}
         </div>
 
         {/* Filters */}
@@ -112,7 +130,7 @@ const TeamsList = () => {
           />
         ) : teams.length > 0 ? (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
               {teams.map((team) => (
                 <TeamCard key={team.id} team={team} />
               ))}

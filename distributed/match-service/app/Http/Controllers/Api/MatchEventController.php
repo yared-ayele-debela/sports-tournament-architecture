@@ -8,6 +8,8 @@ use App\Models\MatchEvent;
 use App\Services\Clients\TeamServiceClient;
 use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
+use App\Events\MatchEventRecorded;
+use App\Events\MatchMinuteUpdated;
 use App\Support\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -86,6 +88,18 @@ class MatchEventController extends Controller
         // Update current minute
         $match->current_minute = $validated['minute'];
         $match->save();
+
+        // Broadcast match event to WebSocket (real-time)
+        $matchData = [
+            'id' => $match->id,
+            'home_score' => $match->home_score ?? 0,
+            'away_score' => $match->away_score ?? 0,
+            'current_minute' => $match->current_minute ?? 0,
+            'status' => $match->status,
+        ];
+
+        broadcast(new MatchEventRecorded($event, $matchData))->toOthers();
+        broadcast(new MatchMinuteUpdated($match, $validated['minute']))->toOthers();
 
         // Dispatch match event recorded event to queue (high priority - real-time)
         $user = Auth::user();
@@ -173,6 +187,21 @@ class MatchEventController extends Controller
         }
 
         $match->save();
+
+        // Broadcast match event to WebSocket (real-time)
+        $matchData = [
+            'id' => $match->id,
+            'home_score' => $match->home_score ?? 0,
+            'away_score' => $match->away_score ?? 0,
+            'current_minute' => $match->current_minute ?? 0,
+            'status' => $match->status,
+        ];
+        broadcast(new MatchEventRecorded($event->fresh(), $matchData))->toOthers();
+
+        // Broadcast minute update if changed
+        if (isset($validated['minute'])) {
+            broadcast(new MatchMinuteUpdated($match, $validated['minute']))->toOthers();
+        }
 
         // Dispatch match event recorded event to queue (high priority - real-time)
         $user = Auth::user();

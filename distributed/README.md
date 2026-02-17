@@ -90,21 +90,48 @@ For instructions on creating and updating these diagrams, see:
 
 ### 1. Auth Service (Port 8001)
 
+**Base URL:** `http://localhost:8001/api`
+
 **Responsibilities:**
 - User authentication and authorization
 - Role-based access control (RBAC)
 - Permission management
 - Token generation and validation
 
-**Key Features:**
-- Laravel Passport OAuth2
-- User, Role, Permission CRUD
-- JWT token management
-- Service-to-service token validation
+**Implemented Features:**
+- User registration and login (public endpoints)
+- User logout, token refresh, and profile (protected endpoints)
+- User CRUD operations (protected endpoints)
+- Role CRUD operations (protected endpoints)
+- Permission CRUD operations (protected endpoints)
+- Service-to-service user validation endpoints
+- Statistics endpoint
+- Health check endpoint
+
+**Public Endpoints:**
+- `POST /auth/register` - Register new user
+- `POST /auth/login` - User login
+- `GET /health` - Health check
+- `GET /statistics` - Service statistics
+
+**Protected Endpoints:**
+- `POST /auth/logout` - Logout user
+- `POST /auth/refresh` - Refresh token
+- `GET /auth/me` - Get authenticated user profile
+- `GET|POST|PUT|PATCH|DELETE /admin/users` - User management
+- `GET|POST|PUT|PATCH|DELETE /admin/roles` - Role management
+- `GET|POST|PUT|PATCH|DELETE /admin/permissions` - Permission management
+- `GET /users/{id}` - Get user (internal service endpoint)
+- `GET /users/{id}/validate` - Validate user (internal service endpoint)
+- `POST /users/{id}/roles` - Assign role to user
+- `GET /users/{id}/permissions` - Get user permissions
+- `POST /users/validate` - Validate user by email
 
 **Documentation:** [auth-service/README.md](./auth-service/README.md)
 
 ### 2. Tournament Service (Port 8002)
+
+**Base URL:** `http://localhost:8002/api`
 
 **Responsibilities:**
 - Tournament lifecycle management
@@ -112,15 +139,38 @@ For instructions on creating and updating these diagrams, see:
 - Venue management
 - Tournament settings configuration
 
-**Key Features:**
+**Implemented Features:**
 - Tournament CRUD operations
-- Status management (draft, published, ongoing, completed)
-- Tournament formats (league, knockout, group stage)
-- Public tournament information API
+- Tournament status management
+- Tournament overview, statistics, and standings
+- Sports CRUD operations
+- Venue CRUD operations
+- Tournament settings management
+- Public tournament information endpoints
+
+**Public Endpoints:**
+- `GET /tournaments` - List all tournaments
+- `GET /tournaments/{id}` - Get tournament details
+- `GET /tournaments/{id}/matches` - Get tournament matches
+- `GET /tournaments/{id}/teams` - Get tournament teams
+- `GET /tournaments/{id}/overview` - Get tournament overview
+- `GET /tournaments/{id}/statistics` - Get tournament statistics
+- `GET /tournaments/{id}/standings` - Get tournament standings
+- `GET /statistics` - Service statistics
+- `GET /health` - Health check
+
+**Protected Endpoints:**
+- `POST|PUT|DELETE /tournaments` - Tournament management
+- `PATCH /tournaments/{id}/status` - Update tournament status
+- `GET|POST /tournaments/{id}/settings` - Tournament settings
+- `GET|POST|PUT|DELETE /sports` - Sports management
+- `GET|POST|PUT|DELETE /venues` - Venues management
 
 **Documentation:** [tournament-service/README.md](./tournament-service/README.md)
 
 ### 3. Team Service (Port 8003)
+
+**Base URL:** `http://localhost:8003/api`
 
 **Responsibilities:**
 - Team management
@@ -128,15 +178,35 @@ For instructions on creating and updating these diagrams, see:
 - Squad management
 - Team statistics
 
-**Key Features:**
-- Team and player CRUD
+**Implemented Features:**
+- Team CRUD operations
+- Player CRUD operations
 - Team-tournament associations
-- Player position management
-- Public team profiles
+- Public team profiles and squad information
+- Team statistics and match history
+
+**Public Endpoints:**
+- `GET /public/teams/{id}` - Get team profile
+- `GET /public/teams/{id}/overview` - Get team overview
+- `GET /public/teams/{id}/squad` - Get team squad/players
+- `GET /public/teams/{id}/matches` - Get team matches
+- `GET /public/teams/{id}/statistics` - Get team statistics
+- `GET /public/tournaments/{tournamentId}/teams` - Get teams by tournament
+- `GET /statistics` - Service statistics
+- `GET /health` - Health check
+
+**Protected Endpoints:**
+- `GET|POST|PUT|DELETE /teams` - Team management
+- `GET /tournaments/{tournamentId}/teams` - Get teams by tournament
+- `GET /teams/{id}/players` - Get players by team
+- `GET /teams/{teamId}/players/{playerId}/validate` - Validate player belongs to team
+- `GET|POST|PUT|DELETE /players` - Player management
 
 **Documentation:** [team-service/README.md](./team-service/README.md)
 
 ### 4. Match Service (Port 8004)
+
+**Base URL:** `http://localhost:8004/api`
 
 **Responsibilities:**
 - Match creation and scheduling
@@ -144,15 +214,41 @@ For instructions on creating and updating these diagrams, see:
 - Match events tracking (goals, cards, substitutions)
 - Match reports
 
-**Key Features:**
+**Implemented Features:**
+- Match CRUD operations
 - Automatic schedule generation
-- Live match updates
-- Match event tracking
+- Live match updates and status management
+- Match event tracking (goals, cards, substitutions)
 - Match report generation
+- Public match information endpoints
+
+**Public Endpoints:**
+- `GET /public/tournaments/{tournamentId}/matches` - Get tournament matches
+- `GET /public/matches` - List all matches
+- `GET /public/matches/live` - Get live matches
+- `GET /public/matches/upcoming` - Get upcoming matches
+- `GET /public/matches/completed` - Get completed matches
+- `GET /public/matches/date/{date}` - Get matches by date
+- `GET /public/matches/{id}` - Get match details
+- `GET /public/matches/{id}/events/public` - Get match events
+- `GET /statistics` - Service statistics
+- `GET /statistics/matches-by-status` - Match statistics by status
+- `GET /health` - Health check
+
+**Protected Endpoints:**
+- `GET|POST|PUT|DELETE /matches` - Match management
+- `PATCH /matches/{id}/status` - Update match status
+- `POST /tournaments/{tournamentId}/generate-schedule` - Generate match schedule
+- `GET|POST|PUT|DELETE /matches/{matchId}/events` - Match events management
+- `GET|POST /matches/{matchId}/report` - Match reports
+- `GET /statistics/coach/matches-by-status` - Coach match statistics
+- `GET /statistics/referee/matches-by-status` - Referee match statistics
 
 **Documentation:** [match-service/README.md](./match-service/README.md)
 
 ### 5. Results Service (Port 8005)
+
+**Base URL:** `http://localhost:8005/api`
 
 **Responsibilities:**
 - Tournament standings calculation
@@ -160,11 +256,26 @@ For instructions on creating and updating these diagrams, see:
 - Statistics aggregation
 - Top scorers tracking
 
-**Key Features:**
-- Automatic standings recalculation
-- Real-time statistics
-- Team and player statistics
-- Tournament statistics
+**Implemented Features:**
+- Automatic standings calculation
+- Match results finalization
+- Tournament and team statistics
+- Public standings and statistics endpoints
+
+**Public Endpoints:**
+- `GET /tournaments/{tournamentId}/standings` - Get tournament standings
+- `GET /tournaments/{tournamentId}/statistics` - Get tournament statistics
+- `GET /statistics` - Service statistics
+- `GET /statistics/goals-per-tournament` - Goals per tournament statistics
+- `GET /statistics/top-scoring-teams` - Top scoring teams statistics
+- `GET /health` - Health check
+
+**Protected Endpoints:**
+- `POST /standings/recalculate/{tournamentId}` - Manually recalculate standings
+- `GET /tournaments/{tournamentId}/results` - Get tournament results
+- `GET /results/{id}` - Get specific match result
+- `POST /matches/{matchId}/finalize` - Finalize match result
+- `GET /teams/{teamId}/statistics` - Get team statistics
 
 **Documentation:** [results-service/README.md](./results-service/README.md)
 
@@ -191,25 +302,28 @@ For instructions on creating and updating these diagrams, see:
 ## ✨ Features
 
 ### Core Features
-- ✅ User authentication and authorization
-- ✅ Tournament management (create, update, delete)
-- ✅ Team and player management
-- ✅ Match scheduling and management
-- ✅ Live match updates
-- ✅ Results and standings tracking
-- ✅ Comprehensive statistics
-- ✅ Search functionality
-- ✅ Public and protected APIs
+- ✅ User authentication and authorization (Auth Service)
+- ✅ User, Role, and Permission management (Auth Service)
+- ✅ Tournament CRUD operations (Tournament Service)
+- ✅ Sports and Venues management (Tournament Service)
+- ✅ Team and Player CRUD operations (Team Service)
+- ✅ Match CRUD operations and scheduling (Match Service)
+- ✅ Match events tracking (goals, cards, substitutions) (Match Service)
+- ✅ Match reports (Match Service)
+- ✅ Tournament standings calculation (Results Service)
+- ✅ Match results finalization (Results Service)
+- ✅ Statistics aggregation (All Services)
+- ✅ Public and protected APIs (All Services)
+- ✅ Health check endpoints (All Services)
 
 ### Advanced Features
-- ✅ Event-driven architecture
+- ✅ Event-driven architecture (Redis Pub/Sub)
 - ✅ Real-time cache invalidation
 - ✅ Service-to-service communication
 - ✅ Public and protected API endpoints
-- ✅ Rate limiting
+- ✅ Rate limiting (where implemented)
 - ✅ Caching strategies
-- ✅ Health monitoring
-- ✅ Self-documenting APIs
+- ✅ Health monitoring endpoints
 
 ## 🚀 Getting Started
 
@@ -221,6 +335,8 @@ For instructions on creating and updating these diagrams, see:
 - **PHP 8.2+** (for local development)
 - **Composer** (for local development)
 - **Node.js 18+** (for frontend development)
+
+> **📖 For detailed Docker setup instructions, see [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)**
 
 ### Quick Start with Docker
 
@@ -287,8 +403,8 @@ cd admin-dashboard
 npm install
 npm run dev
 
-# Public App
-cd tournament-public-app
+# Public View
+cd public-view
 npm install
 npm run dev
 ```
@@ -318,11 +434,11 @@ Each service requires specific environment variables. See individual service REA
 
 ### Base URLs
 
-- **Auth Service**: `http://localhost:8001/api/v1`
+- **Auth Service**: `http://localhost:8001/api`
 - **Tournament Service**: `http://localhost:8002/api`
-- **Team Service**: `http://localhost:8003/api/v1`
-- **Match Service**: `http://localhost:8004/api/v1`
-- **Results Service**: `http://localhost:8005/api/v1`
+- **Team Service**: `http://localhost:8003/api`
+- **Match Service**: `http://localhost:8004/api`
+- **Results Service**: `http://localhost:8005/api`
 
 **Note**: Each service provides both public and protected API endpoints. Public endpoints are accessible without authentication, while protected endpoints require Bearer token authentication.
 
@@ -336,17 +452,14 @@ Each service provides comprehensive API documentation:
 - [Match Service API](./match-service/README.md#api-endpoints)
 - [Results Service API](./results-service/README.md#api-endpoints)
 
-### Self-Documenting APIs
+### Health Check Endpoints
 
-Some services provide auto-generated API documentation:
-- Tournament Service: `GET /api/public/docs`
-- Team Service: `GET /api/public/docs`
-- Match Service: `GET /api/public/docs`
-- Results Service: `GET /api/public/docs`
-
-### Postman Collections
-
-- [Auth Service Postman Collection](./auth-service/Auth-Service-CRUD.postman_collection.json)
+All services provide health check endpoints:
+- Auth Service: `GET http://localhost:8001/api/health`
+- Tournament Service: `GET http://localhost:8002/api/health`
+- Team Service: `GET http://localhost:8003/api/health`
+- Match Service: `GET http://localhost:8004/api/health`
+- Results Service: `GET http://localhost:8005/api/health`
 
 ### Authentication
 
@@ -359,7 +472,7 @@ curl -X GET http://localhost:8002/api/tournaments \
 
 Get an access token by logging in:
 ```bash
-curl -X POST http://localhost:8001/api/v1/auth/login \
+curl -X POST http://localhost:8001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "user@example.com",
@@ -373,16 +486,17 @@ curl -X POST http://localhost:8001/api/v1/auth/login \
 
 ```
 distributed/
-├── auth-service/          # Authentication service
-├── tournament-service/     # Tournament management
-├── team-service/          # Team and player management
-├── match-service/         # Match management
-├── results-service/       # Results and statistics
+├── auth-service/          # Authentication service (Port 8001)
+├── tournament-service/     # Tournament management (Port 8002)
+├── team-service/          # Team and player management (Port 8003)
+├── match-service/         # Match management (Port 8004)
+├── results-service/       # Results and statistics (Port 8005)
 ├── admin-dashboard/       # Admin frontend
-├── tournament-public-app/  # Public frontend
+├── public-view/           # Public frontend
 ├── docs/                  # Documentation and diagrams
 │   ├── System Architecture Diagram/
 │   └── Sequence Diagrams/
+├── feedbackDocs/          # Additional documentation
 ├── docker-compose.yml      # Docker orchestration
 └── README.md              # This file
 ```
@@ -456,6 +570,8 @@ php artisan db:seed
 
 ## 🚢 Deployment
 
+> **📖 For comprehensive Docker setup and deployment instructions, see [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)**
+
 ### Docker Deployment
 
 1. **Build and start services**
@@ -487,13 +603,13 @@ docker-compose exec auth-service php artisan passport:install --force
 
 ### Health Checks
 
-Check service health:
+All services provide health check endpoints:
 ```bash
-curl http://localhost:8001/api/v1/health
+curl http://localhost:8001/api/health
 curl http://localhost:8002/api/health
-curl http://localhost:8003/api/v1/health
-curl http://localhost:8004/api/v1/health
-curl http://localhost:8005/api/v1/health
+curl http://localhost:8003/api/health
+curl http://localhost:8004/api/health
+curl http://localhost:8005/api/health
 ```
 
 ## 🔧 Troubleshooting
@@ -586,8 +702,10 @@ For detailed error code documentation, see [ERROR_CODES.md](./ERROR_CODES.md).
 
 ## 📖 Additional Documentation
 
+- [Docker Setup Guide](./DOCKER_SETUP_GUIDE.md) - Comprehensive Docker setup and deployment instructions
 - [API Documentation](./API_DOCUMENTATION.md) - Self-documenting API endpoints
 - [Error Codes Reference](./ERROR_CODES.md) - Complete error code documentation
+- [Architecture Decision Records](./docs/architecture/decisions/) - Documented architectural decisions
 - [Search Implementation](./SEARCH_IMPLEMENTATION.md) - Search functionality details
 - [Project Feedback](./PROJECT_FEEDBACK.md) - Improvement recommendations
 - [Quick Improvements](./QUICK_IMPROVEMENTS.md) - Quick action checklist
@@ -629,4 +747,3 @@ For issues and questions:
 
 ---
 
-**Built with ❤️ for Software Architecture Course**

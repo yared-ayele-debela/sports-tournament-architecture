@@ -16,14 +16,14 @@ Authentication and Authorization Service for the Sports Tournament Architecture.
 
 - **Framework**: Laravel 11
 - **Authentication**: Laravel Passport (OAuth2)
-- **Database**: MySQL/PostgreSQL (configurable)
-- **Queue**: Redis/RabbitMQ (for event publishing)
+- **Database**: MySQL (configurable)
+- **Queue**: Redis (for event publishing)
 
 ## API Endpoints
 
 ### Base URL
 ```
-http://localhost:8000/api/v1
+http://localhost:8001/api
 ```
 
 ### Authentication Endpoints
@@ -35,7 +35,7 @@ http://localhost:8000/api/v1
 | POST | `/auth/register` | Register a new user |
 | POST | `/auth/login` | User login (returns access token) |
 | GET | `/health` | Health check endpoint |
-| GET | `/info` | Service information |
+| GET | `/statistics` | Service statistics |
 
 #### Protected Endpoints (Requires Bearer Token)
 
@@ -237,7 +237,7 @@ php artisan passport:install
 php artisan serve
 ```
 
-The service will be available at `http://localhost:8000`
+The service will be available at `http://localhost:8001`
 
 ## Environment Variables
 
@@ -248,7 +248,7 @@ APP_NAME="Auth Service"
 APP_ENV=local
 APP_KEY=
 APP_DEBUG=true
-APP_URL=http://localhost:8000
+APP_URL=http://localhost:8001
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -302,7 +302,7 @@ A complete Postman collection is available for testing all endpoints:
 1. Open Postman
 2. Click **Import**
 3. Select `Auth-Service-CRUD.postman_collection.json`
-4. Update the `base_url` variable if needed (default: `http://localhost:8000`)
+4. Update the `base_url` variable if needed (default: `http://localhost:8001`)
 5. Use the **Login** or **Register** endpoint to get an access token
 6. The token will be automatically saved and used for protected endpoints
 
@@ -317,7 +317,7 @@ A complete Postman collection is available for testing all endpoints:
 
 ### Register a User
 ```bash
-curl -X POST http://localhost:8000/api/v1/auth/register \
+curl -X POST http://localhost:8001/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
     "name": "John Doe",
@@ -329,7 +329,7 @@ curl -X POST http://localhost:8000/api/v1/auth/register \
 
 ### Login
 ```bash
-curl -X POST http://localhost:8000/api/v1/auth/login \
+curl -X POST http://localhost:8001/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{
     "email": "john@example.com",
@@ -339,7 +339,7 @@ curl -X POST http://localhost:8000/api/v1/auth/login \
 
 ### Create a Permission (with token)
 ```bash
-curl -X POST http://localhost:8000/api/v1/admin/permissions \
+curl -X POST http://localhost:8001/api/admin/permissions \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -350,7 +350,7 @@ curl -X POST http://localhost:8000/api/v1/admin/permissions \
 
 ### Create a Role (with token)
 ```bash
-curl -X POST http://localhost:8000/api/v1/admin/roles \
+curl -X POST http://localhost:8001/api/admin/roles \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -362,7 +362,7 @@ curl -X POST http://localhost:8000/api/v1/admin/roles \
 
 ### List Users (with token)
 ```bash
-curl -X GET "http://localhost:8000/api/v1/admin/users?per_page=10&search=john" \
+curl -X GET "http://localhost:8001/api/admin/users?per_page=10&search=john" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 

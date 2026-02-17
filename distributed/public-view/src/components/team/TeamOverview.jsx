@@ -16,6 +16,9 @@ const TeamOverview = ({ team }) => {
     queryKey: ['tournamentStandings', team.tournament?.id],
     queryFn: () => resultsService.getStandings(team.tournament?.id),
     enabled: !!team.tournament?.id,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Extract standings array from response structure
@@ -37,6 +40,9 @@ const TeamOverview = ({ team }) => {
     queryKey: ['teamRecentMatches', team.id],
     queryFn: () => teamService.getMatches(team.id, { limit: 5, status: 'completed' }),
     enabled: !!team.id,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Extract matches array from response structure

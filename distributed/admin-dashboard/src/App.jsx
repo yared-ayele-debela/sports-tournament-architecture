@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { AdminRoute } from './components/AdminRoute';
 import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
 import DashboardRouter from './components/DashboardRouter';
@@ -58,9 +59,11 @@ function App() {
         path="/dashboard/admin"
         element={
           <ProtectedRoute>
-            <Layout>
-              <AdminDashboard />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <AdminDashboard />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -88,9 +91,11 @@ function App() {
         path="/users"
         element={
           <ProtectedRoute>
-            <Layout>
-              <UsersList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <UsersList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -98,9 +103,11 @@ function App() {
         path="/users/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <UserForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <UserForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -108,9 +115,11 @@ function App() {
         path="/users/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <UserDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <UserDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -118,9 +127,11 @@ function App() {
         path="/users/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <UserForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <UserForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -128,9 +139,11 @@ function App() {
         path="/roles"
         element={
           <ProtectedRoute>
-            <Layout>
-              <RolesList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <RolesList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -138,9 +151,11 @@ function App() {
         path="/roles/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <RoleForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <RoleForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -148,9 +163,11 @@ function App() {
         path="/roles/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <RoleDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <RoleDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -158,9 +175,11 @@ function App() {
         path="/roles/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <RoleForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <RoleForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -168,9 +187,11 @@ function App() {
         path="/tournaments"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TournamentsList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TournamentsList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -178,9 +199,11 @@ function App() {
         path="/tournaments/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TournamentForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TournamentForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -188,9 +211,11 @@ function App() {
         path="/tournaments/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TournamentDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TournamentDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -198,9 +223,11 @@ function App() {
         path="/tournaments/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TournamentForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TournamentForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -208,9 +235,11 @@ function App() {
         path="/sports"
         element={
           <ProtectedRoute>
-            <Layout>
-              <SportsList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <SportsList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -218,9 +247,11 @@ function App() {
         path="/sports/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <SportForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <SportForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -228,9 +259,11 @@ function App() {
         path="/sports/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <SportDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <SportDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -238,9 +271,11 @@ function App() {
         path="/sports/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <SportForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <SportForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -248,9 +283,11 @@ function App() {
         path="/teams"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TeamsList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TeamsList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -268,9 +305,11 @@ function App() {
         path="/teams/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TeamForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TeamForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -278,9 +317,11 @@ function App() {
         path="/teams/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TeamDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TeamDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -288,9 +329,11 @@ function App() {
         path="/teams/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <TeamForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <TeamForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -308,9 +351,11 @@ function App() {
         path="/players"
         element={
           <ProtectedRoute>
-            <Layout>
-              <PlayersList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <PlayersList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -318,9 +363,11 @@ function App() {
         path="/players/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <PlayerForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <PlayerForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -328,9 +375,11 @@ function App() {
         path="/players/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <PlayerDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <PlayerDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -338,9 +387,11 @@ function App() {
         path="/players/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <PlayerForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <PlayerForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -348,9 +399,11 @@ function App() {
         path="/matches"
         element={
           <ProtectedRoute>
-            <Layout>
-              <MatchesList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <MatchesList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -378,9 +431,11 @@ function App() {
         path="/matches/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <MatchForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <MatchForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -388,9 +443,11 @@ function App() {
         path="/matches/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <MatchDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <MatchDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -398,9 +455,11 @@ function App() {
         path="/matches/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <MatchForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <MatchForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -458,9 +517,11 @@ function App() {
         path="/venues"
         element={
           <ProtectedRoute>
-            <Layout>
-              <VenuesList />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <VenuesList />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -468,9 +529,11 @@ function App() {
         path="/venues/new"
         element={
           <ProtectedRoute>
-            <Layout>
-              <VenueForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <VenueForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -478,9 +541,11 @@ function App() {
         path="/venues/:id"
         element={
           <ProtectedRoute>
-            <Layout>
-              <VenueDetail />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <VenueDetail />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />
@@ -488,9 +553,11 @@ function App() {
         path="/venues/:id/edit"
         element={
           <ProtectedRoute>
-            <Layout>
-              <VenueForm />
-            </Layout>
+            <AdminRoute>
+              <Layout>
+                <VenueForm />
+              </Layout>
+            </AdminRoute>
           </ProtectedRoute>
         }
       />

@@ -173,21 +173,21 @@ export default function Sidebar({ onCollapseChange }) {
 
   return (
     <aside
-      className={`bg-gray-900 text-white transition-all duration-300 ${
+      className={`bg-white border-r border-gray-200 text-gray-900 transition-all duration-300 ${
         collapsed ? 'w-16' : 'w-64'
       } min-h-screen fixed left-0 top-0 z-40`}
     >
       <div className="flex flex-col h-full">
         {/* Logo/Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-800">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-200">
           {!collapsed && (
-            <h1 className="text-xl font-bold text-white">
+            <h1 className="text-xl font-bold text-gray-900">
               {isAdmin() ? 'Admin Panel' : isCoach() ? 'Coach Panel' : isReferee() ? 'Referee Panel' : 'Panel'}
             </h1>
           )}
           <button
             onClick={handleToggle}
-            className="p-2 rounded hover:bg-gray-800 transition-colors"
+            className="p-2 rounded hover:bg-gray-100 transition-colors text-gray-600"
             title={collapsed ? 'Expand' : 'Collapse'}
           >
             {collapsed ? (
@@ -210,8 +210,8 @@ export default function Sidebar({ onCollapseChange }) {
                     to={item.path}
                     className={`flex items-center px-4 py-3 rounded-lg transition-colors ${
                       active
-                        ? 'bg-primary-600 text-white'
-                        : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        ? 'bg-gray-100 text-gray-900 font-medium'
+                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                     }`}
                     title={collapsed ? item.label : ''}
                   >

@@ -11,6 +11,9 @@ const TeamStatistics = ({ teamId, team }) => {
     queryKey: ['teamMatchesForStats', teamId],
     queryFn: () => teamService.getMatches(teamId, { limit: 100, status: 'completed' }),
     enabled: !!teamId,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const matches = matchesData?.data?.data || matchesData?.data || matchesData?.matches || [];

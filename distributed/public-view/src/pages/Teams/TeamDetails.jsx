@@ -16,6 +16,9 @@ const TeamDetails = () => {
   const { data: teamData, isLoading: teamLoading, error: teamError } = useQuery({
     queryKey: ['team', id],
     queryFn: () => teamService.getById(id),
+    staleTime: 30 * 1000, // 30 seconds - reasonable cache time
+    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    refetchOnWindowFocus: true, // Refetch when window regains focus (user returns to tab)
   });
 
   // Fetch team matches
@@ -23,6 +26,9 @@ const TeamDetails = () => {
     queryKey: ['teamMatches', id],
     queryFn: () => teamService.getMatches(id, { limit: 10 }),
     enabled: !!id,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch team players (separate endpoint)
@@ -30,6 +36,9 @@ const TeamDetails = () => {
     queryKey: ['teamPlayers', id],
     queryFn: () => teamService.getPlayers(id, { limit: 50 }),
     enabled: !!id,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   const team = teamData?.data || teamData;
@@ -85,7 +94,7 @@ const TeamDetails = () => {
         <div className="bg-white rounded-lg shadow-md p-8 mb-6">
           <div className="flex flex-col md:flex-row items-center md:items-start gap-6">
             <div className="bg-gray-50 p-4 rounded-lg">
-              <TeamLogo logo={team.logo} name={team.name} size="xl" />
+              <TeamLogo logo={team.logo_url} name={team.name} size="xl" />
             </div>
             <div className="flex-1 text-center md:text-left">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{team.name}</h1>

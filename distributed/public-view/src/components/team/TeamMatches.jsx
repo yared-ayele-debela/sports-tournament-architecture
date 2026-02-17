@@ -38,6 +38,9 @@ const TeamMatches = ({ teamId, team }) => {
     queryKey: ['teamMatches', teamId, queryParams],
     queryFn: () => teamService.getMatches(teamId, queryParams),
     enabled: !!teamId,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Extract matches array from response structure

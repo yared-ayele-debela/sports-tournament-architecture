@@ -26,7 +26,7 @@ Match Management Service for the Sports Tournament Architecture. This service ha
 
 ### Base URL
 ```
-http://localhost:8003/api/v1
+http://localhost:8004/api/v1
 ```
 
 ### Public Endpoints (No Authentication Required)
@@ -41,7 +41,9 @@ http://localhost:8003/api/v1
 | GET | `/public/matches/completed` | Get completed matches |
 | GET | `/public/matches/date/{date}` | Get matches by date (YYYY-MM-DD) |
 | GET | `/public/matches/{id}` | Get match details |
-| GET | `/public/matches/{id}/events` | Get match events |
+| GET | `/public/matches/{id}/events/public` | Get match events |
+| GET | `/statistics` | Service statistics |
+| GET | `/statistics/matches-by-status` | Match statistics by status |
 
 ### Protected Endpoints (Requires Service Token)
 
@@ -102,7 +104,10 @@ http://localhost:8003/api/v1
 |--------|----------|-------------|
 | GET | `/matches/{matchId}/events` | Get all events for a match |
 | POST | `/matches/{matchId}/events` | Create a match event |
+| PUT | `/events/{id}` | Update a match event |
 | DELETE | `/events/{id}` | Delete a match event |
+| GET | `/statistics/coach/matches-by-status` | Coach match statistics |
+| GET | `/statistics/referee/matches-by-status` | Referee match statistics |
 
 **Request Body (Create Event):**
 ```json
@@ -246,10 +251,10 @@ php artisan migrate
 
 7. **Start the development server**
 ```bash
-php artisan serve --port=8003
+php artisan serve --port=8004
 ```
 
-The service will be available at `http://localhost:8003`
+The service will be available at `http://localhost:8004`
 
 ## Environment Variables
 
@@ -260,7 +265,7 @@ APP_NAME="Match Service"
 APP_ENV=local
 APP_KEY=
 APP_DEBUG=true
-APP_URL=http://localhost:8003
+APP_URL=http://localhost:8004
 
 DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
@@ -278,7 +283,7 @@ CACHE_DRIVER=redis
 
 # Service URLs (for inter-service communication)
 TOURNAMENT_SERVICE_URL=http://localhost:8002
-TEAM_SERVICE_URL=http://localhost:8004
+TEAM_SERVICE_URL=http://localhost:8003
 RESULTS_SERVICE_URL=http://localhost:8005
 ```
 
@@ -339,7 +344,7 @@ The service consumes events from other services:
 
 ### Create a Match
 ```bash
-curl -X POST http://localhost:8003/api/v1/matches \
+curl -X POST http://localhost:8004/api/matches \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -354,12 +359,12 @@ curl -X POST http://localhost:8003/api/v1/matches \
 
 ### Get Live Matches
 ```bash
-curl -X GET http://localhost:8003/api/v1/public/matches/live
+curl -X GET http://localhost:8004/api/public/matches/live
 ```
 
 ### Update Match Status
 ```bash
-curl -X PATCH http://localhost:8003/api/v1/matches/1/status \
+curl -X PATCH http://localhost:8004/api/matches/1/status \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -369,7 +374,7 @@ curl -X PATCH http://localhost:8003/api/v1/matches/1/status \
 
 ### Add Match Event
 ```bash
-curl -X POST http://localhost:8003/api/v1/matches/1/events \
+curl -X POST http://localhost:8004/api/matches/1/events \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
@@ -383,7 +388,7 @@ curl -X POST http://localhost:8003/api/v1/matches/1/events \
 
 ### Generate Schedule
 ```bash
-curl -X POST http://localhost:8003/api/v1/tournaments/1/generate-schedule \
+curl -X POST http://localhost:8004/api/tournaments/1/generate-schedule \
   -H "Authorization: Bearer YOUR_SERVICE_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{

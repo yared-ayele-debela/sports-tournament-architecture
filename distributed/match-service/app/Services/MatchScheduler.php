@@ -68,7 +68,7 @@ class MatchScheduler
     {
         // Fetch teams for this specific tournament
         $response = $this->teamService->getTournamentTeams($tournamentId);
-        
+
         if (!$response || !isset($response['data'])) {
             return collect([]);
         }
@@ -79,7 +79,7 @@ class MatchScheduler
     protected function generateRoundRobinMatches(Collection $teams): array
     {
         $teamCount = $teams->count();
-        
+
         // If odd number of teams, add a bye (null)
         if ($teamCount % 2 !== 0) {
             $teams->push(null);
@@ -93,12 +93,12 @@ class MatchScheduler
         // Generate (n-1) rounds
         for ($round = 0; $round < $numRounds; $round++) {
             $roundMatches = [];
-            
+
             // Pair teams for this round
             for ($i = 0; $i < $teamCount / 2; $i++) {
                 $homeTeam = $teamList[$i];
                 $awayTeam = $teamList[$teamCount - 1 - $i];
-                
+
                 // Skip if either team is null (bye)
                 if ($homeTeam !== null && $awayTeam !== null) {
                     $roundMatches[] = [
@@ -107,9 +107,9 @@ class MatchScheduler
                     ];
                 }
             }
-            
+
             $rounds[] = $roundMatches;
-            
+
             // Rotate teams (except first team which is fixed)
             $this->rotateTeams($teamList);
         }
@@ -122,12 +122,12 @@ class MatchScheduler
         // Fix first team, rotate others clockwise
         $firstTeam = $teams[0];
         $lastTeam = array_pop($teams);
-        
+
         // Shift all teams except first one to the right
         for ($i = count($teams) - 1; $i > 0; $i--) {
             $teams[$i] = $teams[$i - 1];
         }
-        
+
         $teams[1] = $lastTeam;
         $teams[0] = $firstTeam;
     }
@@ -143,7 +143,7 @@ class MatchScheduler
             foreach ($roundMatches as $match) {
                 // Check if current time exceeds daily end time
                 $dailyEndTime = Carbon::parse($currentDate->format('Y-m-d') . ' ' . $settings['daily_end_time']);
-                
+
                 if ($currentDate->gt($dailyEndTime)) {
                     // Move to next day
                     $currentDate = Carbon::parse($currentDate->addDay()->format('Y-m-d') . ' ' . $settings['daily_start_time']);

@@ -20,6 +20,9 @@ const TeamPlayers = ({ teamId }) => {
     queryKey: ['teamPlayers', teamId, currentPage, perPage],
     queryFn: () => teamService.getPlayers(teamId, { page: currentPage, limit: perPage }),
     enabled: !!teamId,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Extract players array from response structure

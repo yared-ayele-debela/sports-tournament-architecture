@@ -21,6 +21,10 @@ const TournamentsList = () => {
   const { data: tournamentsData, isLoading, error } = useQuery({
     queryKey: ['tournaments', queryParams],
     queryFn: () => tournamentService.getAll(queryParams),
+    staleTime: 60 * 1000, // 1 minute - reasonable cache time for list data
+    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    refetchOnWindowFocus: true, // Refetch when window regains focus (user returns to tab)
+    // No refetchInterval - only refetch on user actions to reduce server load
   });
 
   const tournaments = tournamentsData?.data?.data || tournamentsData?.data || [];

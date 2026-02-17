@@ -37,6 +37,7 @@ http://localhost:8002/api
 |--------|----------|-------------|
 | GET | `/health` | Health check endpoint |
 | GET | `/health/info` | Service information |
+| GET | `/statistics` | Service statistics |
 | GET | `/tournaments` | List all tournaments |
 | GET | `/tournaments/{id}` | Get tournament details |
 | GET | `/tournaments/{id}/matches` | Get tournament matches |
@@ -332,9 +333,9 @@ PASSPORT_CLIENT_ID=
 PASSPORT_CLIENT_SECRET=
 
 # Service URLs (for inter-service communication)
-AUTH_SERVICE_URL=http://localhost:8000
-MATCH_SERVICE_URL=http://localhost:8003
-TEAM_SERVICE_URL=http://localhost:8004
+AUTH_SERVICE_URL=http://localhost:8001
+MATCH_SERVICE_URL=http://localhost:8004
+TEAM_SERVICE_URL=http://localhost:8003
 RESULTS_SERVICE_URL=http://localhost:8005
 ```
 

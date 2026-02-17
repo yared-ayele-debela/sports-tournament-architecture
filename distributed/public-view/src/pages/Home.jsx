@@ -9,10 +9,21 @@ import Loading from '../components/common/Loading';
 import ErrorMessage from '../components/common/ErrorMessage';
 
 const Home = () => {
-  // Fetch featured tournaments
   const { data: featuredData, isLoading: featuredLoading, error: featuredError } = useQuery({
     queryKey: ['featuredTournaments'],
     queryFn: () => tournamentService.getFeatured(),
+    staleTime: 60 * 1000, // 1 minute - reasonable cache time for featured content
+    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    refetchOnWindowFocus: true, // Refetch when window regains focus (user returns to tab)
+    // No refetchInterval - only refetch on user actions to reduce server load
+  });
+
+  // Fetch live matches
+  const { data: liveMatchesData, isLoading: liveMatchesLoading } = useQuery({
+    queryKey: ['liveMatches', 'home'],
+    queryFn: () => matchService.getLive(),
+    refetchInterval: 10000, // Refresh every 10 seconds
+    staleTime: 5000,
   });
 
   // Fetch upcoming matches
@@ -22,6 +33,8 @@ const Home = () => {
   });
 
   const featuredTournaments = featuredData?.data?.slice(0, 6) || [];
+  const liveMatches = liveMatchesData?.data?.matches || liveMatchesData?.matches || liveMatchesData || [];
+  const displayLiveMatches = liveMatches.slice(0, 6);
   const upcomingMatches = (upcomingMatchesData || []).slice(0, 6);
 
   return (
@@ -90,6 +103,39 @@ const Home = () => {
         </div>
       </section>
 
+      {/* Live Matches Section */}
+      <section className="py-12 bg-gradient-to-br from-red-50 to-orange-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="h-3 w-3 bg-red-600 rounded-full animate-pulse"></div>
+              <h2 className="text-3xl font-bold text-gray-900">Live Matches</h2>
+            </div>
+            <Link
+              to="/matches/live"
+              className="text-red-600 hover:text-red-700 font-semibold flex items-center"
+            >
+              View All Live
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Link>
+          </div>
+
+          {liveMatchesLoading ? (
+            <Loading />
+          ) : displayLiveMatches.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {displayLiveMatches.map((match) => (
+                <MatchCard key={match.id} match={match} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              No live matches at the moment. Check back later!
+            </div>
+          )}
+        </div>
+      </section>
+
       {/* Upcoming Matches Section */}
       <section className="py-12 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -107,7 +153,7 @@ const Home = () => {
           {upcomingMatchesLoading ? (
             <Loading />
           ) : upcomingMatches.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {upcomingMatches.map((match) => (
                 <MatchCard key={match.id} match={match} />
               ))}

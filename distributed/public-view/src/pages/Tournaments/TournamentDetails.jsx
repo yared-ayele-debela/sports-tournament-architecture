@@ -19,6 +19,9 @@ const TournamentDetails = () => {
   const { data: tournamentData, isLoading: isLoadingTournament, error: tournamentError } = useQuery({
     queryKey: ['tournament', id],
     queryFn: () => tournamentService.getById(id),
+    staleTime: 30 * 1000, // 30 seconds - reasonable cache time
+    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    refetchOnWindowFocus: true, // Refetch when window regains focus (user returns to tab)
   });
 
   // Fetch standings
@@ -26,6 +29,9 @@ const TournamentDetails = () => {
     queryKey: ['tournamentStandings', id],
     queryFn: () => resultsService.getStandings(id),
     enabled: !!id,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
   // Fetch matches
@@ -33,6 +39,10 @@ const TournamentDetails = () => {
     queryKey: ['tournamentMatches', id],
     queryFn: () => tournamentService.getMatches(id, { limit: 20 }),
     enabled: !!id,
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    // No refetchInterval - matches don't change frequently
   });
 
   // Fetch teams
@@ -40,6 +50,10 @@ const TournamentDetails = () => {
     queryKey: ['tournamentTeams', id],
     queryFn: () => tournamentService.getTeams(id, { limit: 20 }),
     enabled: !!id,
+    staleTime: 30 * 1000, // 30 seconds - reasonable cache time
+    refetchOnMount: true, // Always refetch when component mounts to get latest data
+    refetchOnWindowFocus: true, // Refetch when window regains focus (user returns to tab)
+    // No refetchInterval - only refetch on user actions to reduce server load
   });
 
   if (isLoadingTournament) {
@@ -164,7 +178,7 @@ const TournamentDetails = () => {
             {isLoadingTeams ? (
               <Loading />
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {teams.map((team) => (
                   <TeamCard key={team.id} team={team} />
                 ))}
@@ -180,7 +194,7 @@ const TournamentDetails = () => {
             {isLoadingMatches ? (
               <Loading />
             ) : (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {matches.map((match) => (
                   <MatchCard key={match.id} match={match} />
                 ))}

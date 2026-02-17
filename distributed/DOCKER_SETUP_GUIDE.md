@@ -16,6 +16,7 @@ Services must be set up in this order due to dependencies:
 3. **Team Service** (depends on Tournament Service)
 4. **Match Service** (no dependencies)
 5. **Results Service** (depends on Match, Tournament, and Team Services)
+6. **WebSocket Setup** (depends on Match Service)
 
 ---
 
@@ -77,7 +78,7 @@ docker-compose exec auth-service composer require laravel/passport --no-interact
 ### 2.5 Run Migrations
 
 ```bash
-docker-compose exec auth-service php artisan migrate --force
+docker-compose exec auth-service php artisan migrate:fresh --force
 ```
 
 Note: If you see "already exists" errors for Passport tables, this is normal if Passport was previously installed.
@@ -109,6 +110,13 @@ Note: If client already exists, you'll see an error - this is fine.
 ```bash
 docker-compose exec auth-service php artisan db:seed --force
 ```
+
+After running the database seeders, it's good practice to clear any cached data to ensure your application reflects the latest changes.
+
+```bash
+docker-compose exec auth-service php artisan optimize:clear
+```
+
 
 ---
 
@@ -142,6 +150,12 @@ docker-compose exec tournament-service php artisan migrate:fresh --force
 
 ```bash
 docker-compose exec tournament-service php artisan db:seed --force
+```
+
+After running the database seeders, it's good practice to clear any cached data to ensure your application reflects the latest changes.
+
+```bash
+docker-compose exec tournament-service php artisan optimize:clear
 ```
 
 ### 3.6 Verify Service is Running
@@ -206,6 +220,14 @@ docker-compose exec team-service php artisan migrate:fresh --force
 docker-compose exec team-service php artisan db:seed --force
 ```
 
+
+After running the database seeders, it's good practice to clear any cached data to ensure your application reflects the latest changes.
+
+```bash
+docker-compose exec team-service php artisan optimize:clear
+```
+
+
 Note: This will fetch tournaments from Tournament Service. If you see errors about no tournaments, make sure Tournament Service is seeded first.
 
 ---
@@ -233,7 +255,7 @@ docker-compose exec match-service php artisan key:generate --force
 ### 5.4 Run Migrations
 
 ```bash
-docker-compose exec match-service php artisan migrate --force
+docker-compose exec match-service php artisan migrate:fresh --force
 ```
 
 ### 5.5 Run Database Seeders
@@ -241,8 +263,14 @@ docker-compose exec match-service php artisan migrate --force
 ```bash
 docker-compose exec match-service php artisan db:seed --force
 ```
-
 ---
+
+After running the database seeders, it's good practice to clear any cached data to ensure your application reflects the latest changes.
+
+```bash
+docker-compose exec match-service php artisan optimize:clear
+```
+
 
 ## Step 6: Setup Results Service
 
@@ -285,7 +313,7 @@ docker-compose exec results-service php artisan key:generate --force
 ### 6.5 Run Migrations
 
 ```bash
-docker-compose exec results-service php artisan migrate --force
+docker-compose exec results-service php artisan migrate:fresh --force
 ```
 
 ### 6.6 Run Database Seeders
@@ -294,7 +322,123 @@ docker-compose exec results-service php artisan migrate --force
 docker-compose exec results-service php artisan db:seed --force
 ```
 
+After running the database seeders, it's good practice to clear any cached data to ensure your application reflects the latest changes.
+
+```bash
+docker-compose exec results-service php artisan optimize:clear
+```
+
+
 Note: This will fetch tournaments from Tournament Service and matches from Match Service. If you see warnings about no tournaments or matches, this is normal if data doesn't exist yet.
+
+---
+
+## Step 7: Setup WebSocket (Real-Time Updates)
+
+**Important:** Match Service must be running and configured before proceeding.
+
+### 7.1 Install Pusher PHP SDK
+
+```bash
+docker-compose exec match-service composer require pusher/pusher-php-server
+```
+
+### 7.2 Install WebSocket Dependencies in Frontend
+
+Choose one of the following options:
+
+**Option A: Install locally (recommended)**
+```bash
+cd public-view
+npm install laravel-echo pusher-js
+cd ..
+```
+
+**Option B: Install in container**
+```bash
+docker-compose exec public-view npm install laravel-echo pusher-js
+```
+
+### 7.3 Clear and Cache Configuration
+
+```bash
+docker-compose exec match-service php artisan config:clear
+docker-compose exec match-service php artisan config:cache
+```
+
+### 7.4 Restart Services
+
+```bash
+docker-compose restart match-service public-view
+```
+
+### 7.5 Verify Configuration
+
+**Check Backend Config:**
+```bash
+docker-compose exec match-service php artisan tinker
+>>> config('broadcasting.default')
+=> "pusher"
+>>> config('broadcasting.connections.pusher.key')
+=> "8d9785b428b83e896400"
+```
+
+**Check Frontend:**
+1. Open browser: `http://localhost:3001`
+2. Open DevTools Console
+3. Should see: `Laravel Echo initialized successfully with Pusher`
+
+### 7.6 Test Real-Time Updates
+
+1. Go to Live Matches page
+2. Create a match via API or admin panel
+3. Set match status to `in_progress`
+4. Add a match event (goal, card, etc.)
+5. Watch for real-time updates in the frontend!
+
+### WebSocket Environment Variables
+
+The following environment variables are configured in `docker-compose.yml`:
+
+**match-service:**
+- `BROADCAST_DRIVER=pusher`
+- `PUSHER_APP_ID=2116045`
+- `PUSHER_APP_KEY=8d9785b428b83e896400`
+- `PUSHER_APP_SECRET=35ab51339da676b7cd7a`
+- `PUSHER_APP_CLUSTER=eu`
+
+**public-view:**
+- `VITE_PUSHER_APP_KEY=8d9785b428b83e896400`
+- `VITE_PUSHER_APP_CLUSTER=eu`
+- `VITE_PUSHER_ENCRYPTED=true`
+
+### WebSocket Troubleshooting
+
+**WebSocket Not Connecting:**
+- Check browser console for errors
+- Verify Pusher credentials in docker-compose.yml
+- Check Pusher dashboard: https://dashboard.pusher.com
+
+**Events Not Broadcasting:**
+```bash
+# Check Laravel logs
+docker-compose logs match-service | grep -i broadcast
+
+# Verify config
+docker-compose exec match-service php artisan config:show broadcasting
+```
+
+**Frontend Not Receiving Updates:**
+- Check browser console for Echo errors
+- Verify VITE_PUSHER_APP_KEY is set
+- Check Network tab for WebSocket connections
+
+### Important WebSocket Notes
+
+- ✅ Pusher connections go directly from browser to Pusher (not through Docker)
+- ✅ No need to expose WebSocket ports in Docker
+- ✅ Backend only sends events to Pusher API
+- ✅ Frontend key is safe to expose (public key)
 
 ---
 
@@ -372,6 +516,7 @@ Once all services are set up, they will be available at:
 - **Team Service**: http://localhost:8003
 - **Match Service**: http://localhost:8004
 - **Results Service**: http://localhost:8005
+- **Public View (Frontend)**: http://localhost:3001
 - **phpMyAdmin**: http://localhost:8082
 
 ---
@@ -436,8 +581,10 @@ If a service fails because another service is not ready:
 - [ ] Team Service: Composer installed, key generated, migrations run, seeders run (after Tournament Service)
 - [ ] Match Service: Composer installed, key generated, migrations run, seeders run
 - [ ] Results Service: Composer installed, key generated, migrations run, seeders run (after all other services)
+- [ ] WebSocket Setup: Pusher PHP SDK installed, frontend dependencies installed, config cached, services restarted
 - [ ] All services responding to health checks
 - [ ] Can access phpMyAdmin at http://localhost:8082
+- [ ] WebSocket real-time updates verified in frontend
 
 ---
 

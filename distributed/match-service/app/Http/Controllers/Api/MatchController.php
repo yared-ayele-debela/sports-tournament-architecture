@@ -9,6 +9,9 @@ use App\Services\Queue\QueuePublisher;
 use App\Services\Events\EventPayloadBuilder;
 use App\Services\Clients\TeamServiceClient;
 use App\Services\Clients\TournamentServiceClient;
+use App\Events\MatchScoreUpdated;
+use App\Events\MatchStatusChanged;
+use App\Events\MatchMinuteUpdated;
 use App\Support\ApiResponse;
 use App\Helpers\AuthHelper;
 use Illuminate\Http\Request;
@@ -163,6 +166,16 @@ class MatchController extends Controller
             }
         }
 
+        // Check authorization for referees - only allow access to matches assigned to them
+        if (AuthHelper::isReferee() && !AuthHelper::isAdmin()) {
+            $refereeId = AuthHelper::getCurrentUserId();
+            $hasAccess = $match->referee_id && $match->referee_id == $refereeId;
+
+            if (!$hasAccess) {
+                return ApiResponse::forbidden('Unauthorized to view this match. You can only access matches assigned to you.');
+            }
+        }
+
         // Load external data using service clients for better error handling
         $homeTeam = $this->teamServiceClient->getPublicTeam($match->home_team_id);
         $awayTeam = $this->teamServiceClient->getPublicTeam($match->away_team_id);
@@ -242,12 +255,19 @@ class MatchController extends Controller
         // Dispatch match updated event to queue (default priority)
         $this->dispatchMatchUpdatedQueueEvent($match, $oldData);
 
-        // If score changed, dispatch score updated event (high priority for live matches)
+        // If score changed, broadcast and dispatch score updated event (high priority for live matches)
         if (isset($validated['home_score']) || isset($validated['away_score'])) {
             $newScore = ['home' => $match->home_score, 'away' => $match->away_score];
             if ($oldScore['home'] !== $newScore['home'] || $oldScore['away'] !== $newScore['away']) {
+                // Broadcast score update to WebSocket (real-time)
+                broadcast(new MatchScoreUpdated($match, $oldScore, $newScore))->toOthers();
                 $this->dispatchMatchScoreUpdatedQueueEvent($match, $oldScore, $newScore);
             }
+        }
+
+        // If minute changed, broadcast minute update
+        if (isset($validated['current_minute'])) {
+            broadcast(new MatchMinuteUpdated($match, $validated['current_minute']))->toOthers();
         }
 
         return ApiResponse::success($match->load(['matchEvents', 'matchReport']));
@@ -288,6 +308,8 @@ class MatchController extends Controller
 
         // Dispatch match status changed event if status changed (high priority)
         if (isset($validated['status']) && $validated['status'] !== $oldStatus) {
+            // Broadcast status change to WebSocket (real-time)
+            broadcast(new MatchStatusChanged($match, $oldStatus, $validated['status']))->toOthers();
             $this->dispatchMatchStatusChangedQueueEvent($match, $oldStatus);
 
             // If match started, dispatch match started event (high priority)
@@ -298,6 +320,11 @@ class MatchController extends Controller
                     'name' => $user?->name ?? 'System'
                 ]);
             }
+        }
+
+        // If minute changed, broadcast minute update
+        if (isset($validated['current_minute'])) {
+            broadcast(new MatchMinuteUpdated($match, $validated['current_minute']))->toOthers();
         }
 
         return ApiResponse::success($match);

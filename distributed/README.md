@@ -780,12 +780,6 @@ Each service has its own detailed README:
 
 This project is part of a Software Architecture course project.
 
-## 🙏 Acknowledgments
-
-- Laravel Framework
-- Redis
-- Docker
-- All open-source contributors
 
 ## 📞 Support
 

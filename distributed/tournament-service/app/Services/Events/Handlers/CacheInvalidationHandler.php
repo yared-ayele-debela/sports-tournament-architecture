@@ -202,7 +202,15 @@ class CacheInvalidationHandler implements EventHandlerInterface
 
             if ($tournamentId) {
                 $tags[] = "tournament:{$tournamentId}";
+                $tags[] = "public:tournament:{$tournamentId}";
                 $tags[] = "tournament:{$tournamentId}:matches";
+                // Match completion affects standings
+                if ($eventType === 'match.completed' || $eventType === 'sports.match.completed') {
+                    $tags[] = "public:tournament:{$tournamentId}:standings";
+                    $tags[] = "public:tournament:{$tournamentId}:statistics";
+                    $tags[] = 'standings';
+                    $tags[] = 'public:standings';
+                }
             }
 
             // Check if match is live
@@ -236,10 +244,14 @@ class CacheInvalidationHandler implements EventHandlerInterface
 
             if ($tournamentId) {
                 $tags[] = "tournament:{$tournamentId}";
+                $tags[] = "public:tournament:{$tournamentId}";
                 $tags[] = "standings:{$tournamentId}";
+                $tags[] = "public:tournament:{$tournamentId}:standings";
+                $tags[] = "public:tournament:{$tournamentId}:statistics";
             }
 
             $tags[] = 'standings';
+            $tags[] = 'public:standings';
         }
 
         // Statistics events

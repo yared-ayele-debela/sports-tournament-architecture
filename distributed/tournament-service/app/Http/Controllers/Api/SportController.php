@@ -107,8 +107,6 @@ class SportController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Dispatch sport created event to queue (low priority)
-            $this->dispatchSportCreatedQueueEvent($sport, $user);
 
             return ApiResponse::created($sport, 'Sport created successfully');
         } catch (\Exception $e) {
@@ -204,8 +202,6 @@ class SportController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Dispatch sport updated event to queue (low priority)
-            $this->dispatchSportUpdatedQueueEvent($sport, $oldData, $user);
 
             return response()->json([
                 'success' => true,
@@ -281,8 +277,6 @@ class SportController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Dispatch sport deleted event to queue (low priority)
-            $this->dispatchSportDeletedQueueEvent($id, $sportData, $user);
 
             return response()->json([
                 'success' => true,
@@ -303,86 +297,4 @@ class SportController extends Controller
         }
     }
 
-    /**
-     * Dispatch sport created event to queue (low priority)
-     *
-     * @param Sport $sport
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchSportCreatedQueueEvent(Sport $sport, array $user): void
-    {
-        try {
-            $this->queuePublisher->dispatchLow('events', [
-                'sport_id' => $sport->id,
-                'name' => $sport->name,
-                'team_based' => $sport->team_based,
-                'rules' => $sport->rules,
-                'description' => $sport->description,
-                'created_by' => $user['id'] ?? null,
-                'created_at' => now()->toIso8601String(),
-            ], 'sport.created');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch sport created queue event', [
-                'sport_id' => $sport->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch sport updated event to queue (low priority)
-     *
-     * @param Sport $sport
-     * @param array $oldData
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchSportUpdatedQueueEvent(Sport $sport, array $oldData, array $user): void
-    {
-        try {
-            $this->queuePublisher->dispatchLow('events', [
-                'sport_id' => $sport->id,
-                'id' => $sport->id,
-                'name' => $sport->name,
-                'team_based' => $sport->team_based,
-                'rules' => $sport->rules,
-                'description' => $sport->description,
-                'old_data' => $oldData,
-                'updated_by' => $user['id'] ?? null,
-                'updated_at' => now()->toIso8601String(),
-            ], 'sport.updated');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch sport updated queue event', [
-                'sport_id' => $sport->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch sport deleted event to queue (low priority)
-     *
-     * @param int|string $sportId
-     * @param array $sportData
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchSportDeletedQueueEvent($sportId, array $sportData, array $user): void
-    {
-        try {
-            $this->queuePublisher->dispatchLow('events', [
-                'sport_id' => $sportId,
-                'id' => $sportId,
-                'name' => $sportData['name'] ?? null,
-                'deleted_by' => $user['id'] ?? null,
-                'deleted_at' => now()->toIso8601String(),
-            ], 'sport.deleted');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch sport deleted queue event', [
-                'sport_id' => $sportId,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 }

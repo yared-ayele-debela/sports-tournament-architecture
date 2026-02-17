@@ -103,8 +103,6 @@ class VenueController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Dispatch venue created event to queue (low priority)
-            $this->dispatchVenueCreatedQueueEvent($venue, $user);
 
             return ApiResponse::created($venue, 'Venue created successfully');
         } catch (\Exception $e) {
@@ -198,8 +196,6 @@ class VenueController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Dispatch venue updated event to queue (low priority)
-            $this->dispatchVenueUpdatedQueueEvent($venue, $oldData, $user);
 
             return response()->json([
                 'success' => true,
@@ -272,8 +268,6 @@ class VenueController extends Controller
                 'user_id' => $user['id']
             ]);
 
-            // Dispatch venue deleted event to queue (low priority)
-            $this->dispatchVenueDeletedQueueEvent($id, $venueData, $user);
 
             return response()->json([
                 'success' => true,
@@ -294,84 +288,4 @@ class VenueController extends Controller
         }
     }
 
-    /**
-     * Dispatch venue created event to queue (low priority)
-     *
-     * @param Venue $venue
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchVenueCreatedQueueEvent(Venue $venue, array $user): void
-    {
-        try {
-            $this->queuePublisher->dispatchLow('events', [
-                'venue_id' => $venue->id,
-                'name' => $venue->name,
-                'location' => $venue->location,
-                'capacity' => $venue->capacity,
-                'created_by' => $user['id'] ?? null,
-                'created_at' => now()->toIso8601String(),
-            ], 'venue.created');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch venue created queue event', [
-                'venue_id' => $venue->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch venue updated event to queue (low priority)
-     *
-     * @param Venue $venue
-     * @param array $oldData
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchVenueUpdatedQueueEvent(Venue $venue, array $oldData, array $user): void
-    {
-        try {
-            $this->queuePublisher->dispatchLow('events', [
-                'venue_id' => $venue->id,
-                'id' => $venue->id,
-                'name' => $venue->name,
-                'location' => $venue->location,
-                'capacity' => $venue->capacity,
-                'old_data' => $oldData,
-                'updated_by' => $user['id'] ?? null,
-                'updated_at' => now()->toIso8601String(),
-            ], 'venue.updated');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch venue updated queue event', [
-                'venue_id' => $venue->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch venue deleted event to queue (low priority)
-     *
-     * @param int|string $venueId
-     * @param array $venueData
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchVenueDeletedQueueEvent($venueId, array $venueData, array $user): void
-    {
-        try {
-            $this->queuePublisher->dispatchLow('events', [
-                'venue_id' => $venueId,
-                'id' => $venueId,
-                'name' => $venueData['name'] ?? null,
-                'deleted_by' => $user['id'] ?? null,
-                'deleted_at' => now()->toIso8601String(),
-            ], 'venue.deleted');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch venue deleted queue event', [
-                'venue_id' => $venueId,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 }

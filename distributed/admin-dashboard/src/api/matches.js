@@ -56,9 +56,25 @@ export const matchesService = {
     }
   },
 
-  updateStatus: async (id, status) => {
+  updateStatus: async (id, status, currentMinute = null) => {
     try {
-      const response = await matchApi.patch(`/matches/${id}/status`, { status });
+      const data = { status };
+      if (currentMinute !== null) {
+        data.current_minute = currentMinute;
+      }
+      const response = await matchApi.patch(`/matches/${id}/status`, data);
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  updateMinute: async (id, currentMinute) => {
+    try {
+      // Use the update endpoint to update just the minute without changing status
+      const response = await matchApi.put(`/matches/${id}`, { 
+        current_minute: currentMinute 
+      });
       return extractData(response);
     } catch (error) {
       throw handleApiError(error);

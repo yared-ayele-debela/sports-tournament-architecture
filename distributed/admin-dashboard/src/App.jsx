@@ -317,11 +317,9 @@ function App() {
         path="/teams/:id"
         element={
           <ProtectedRoute>
-            <AdminRoute>
-              <Layout>
-                <TeamDetail />
-              </Layout>
-            </AdminRoute>
+            <Layout>
+              <TeamDetail />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -329,11 +327,9 @@ function App() {
         path="/teams/:id/edit"
         element={
           <ProtectedRoute>
-            <AdminRoute>
-              <Layout>
-                <TeamForm />
-              </Layout>
-            </AdminRoute>
+            <Layout>
+              <TeamForm />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -351,11 +347,9 @@ function App() {
         path="/players"
         element={
           <ProtectedRoute>
-            <AdminRoute>
-              <Layout>
-                <PlayersList />
-              </Layout>
-            </AdminRoute>
+            <Layout>
+              <PlayersList />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -363,11 +357,9 @@ function App() {
         path="/players/new"
         element={
           <ProtectedRoute>
-            <AdminRoute>
-              <Layout>
-                <PlayerForm />
-              </Layout>
-            </AdminRoute>
+            <Layout>
+              <PlayerForm />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -375,11 +367,9 @@ function App() {
         path="/players/:id"
         element={
           <ProtectedRoute>
-            <AdminRoute>
-              <Layout>
-                <PlayerDetail />
-              </Layout>
-            </AdminRoute>
+            <Layout>
+              <PlayerDetail />
+            </Layout>
           </ProtectedRoute>
         }
       />
@@ -387,11 +377,9 @@ function App() {
         path="/players/:id/edit"
         element={
           <ProtectedRoute>
-            <AdminRoute>
-              <Layout>
-                <PlayerForm />
-              </Layout>
-            </AdminRoute>
+            <Layout>
+              <PlayerForm />
+            </Layout>
           </ProtectedRoute>
         }
       />

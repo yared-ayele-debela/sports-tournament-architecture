@@ -141,13 +141,6 @@ class MatchController extends Controller
 
         $match = MatchGame::create($validated);
 
-        // Dispatch match created event to queue (default priority)
-        $user = Auth::user();
-        $this->dispatchMatchCreatedQueueEvent($match, [
-            'id' => Auth::id() ?? null,
-            'name' => $user?->name ?? 'System'
-        ]);
-
         return ApiResponse::created($match->load(['matchEvents', 'matchReport']));
     }
 
@@ -252,16 +245,12 @@ class MatchController extends Controller
         $oldScore = ['home' => $match->home_score, 'away' => $match->away_score];
         $match->update($validated);
 
-        // Dispatch match updated event to queue (default priority)
-        $this->dispatchMatchUpdatedQueueEvent($match, $oldData);
-
-        // If score changed, broadcast and dispatch score updated event (high priority for live matches)
+        // If score changed, broadcast to WebSocket (real-time)
         if (isset($validated['home_score']) || isset($validated['away_score'])) {
             $newScore = ['home' => $match->home_score, 'away' => $match->away_score];
             if ($oldScore['home'] !== $newScore['home'] || $oldScore['away'] !== $newScore['away']) {
                 // Broadcast score update to WebSocket (real-time)
                 broadcast(new MatchScoreUpdated($match, $oldScore, $newScore))->toOthers();
-                $this->dispatchMatchScoreUpdatedQueueEvent($match, $oldScore, $newScore);
             }
         }
 
@@ -286,12 +275,6 @@ class MatchController extends Controller
         $user = Auth::user();
         $match->delete();
 
-        // Dispatch match deleted event to queue
-        $this->dispatchMatchDeletedQueueEvent($matchData, [
-            'id' => Auth::id() ?? null,
-            'name' => $user?->name ?? 'System'
-        ]);
-
         return ApiResponse::success(null, 'Match deleted successfully', 204);
     }
 
@@ -306,20 +289,9 @@ class MatchController extends Controller
         $oldStatus = $match->status;
         $match->update($validated);
 
-        // Dispatch match status changed event if status changed (high priority)
+        // Broadcast status change to WebSocket (real-time) if status changed
         if (isset($validated['status']) && $validated['status'] !== $oldStatus) {
-            // Broadcast status change to WebSocket (real-time)
             broadcast(new MatchStatusChanged($match, $oldStatus, $validated['status']))->toOthers();
-            $this->dispatchMatchStatusChangedQueueEvent($match, $oldStatus);
-
-            // If match started, dispatch match started event (high priority)
-            if ($validated['status'] === 'in_progress' && $oldStatus !== 'in_progress') {
-                $user = Auth::user();
-                $this->dispatchMatchStartedQueueEvent($match, [
-                    'id' => Auth::id() ?? null,
-                    'name' => $user?->name ?? 'System'
-                ]);
-            }
         }
 
         // If minute changed, broadcast minute update
@@ -610,126 +582,4 @@ class MatchController extends Controller
         }
     }
 
-    /**
-     * Dispatch match created event to queue (default priority)
-     *
-     * @param MatchGame $match
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchMatchCreatedQueueEvent(MatchGame $match, array $user): void
-    {
-        try {
-            $payload = EventPayloadBuilder::matchCreated($match, $user);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'match.created');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch match created queue event', [
-                'match_id' => $match->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch match updated event to queue (default priority)
-     *
-     * @param MatchGame $match
-     * @param array $oldData
-     * @return void
-     */
-    protected function dispatchMatchUpdatedQueueEvent(MatchGame $match, array $oldData): void
-    {
-        try {
-            $payload = EventPayloadBuilder::matchUpdated($match, $oldData);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'match.updated');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch match updated queue event', [
-                'match_id' => $match->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch match status changed event to queue (high priority)
-     *
-     * @param MatchGame $match
-     * @param string $oldStatus
-     * @return void
-     */
-    protected function dispatchMatchStatusChangedQueueEvent(MatchGame $match, string $oldStatus): void
-    {
-        try {
-            $payload = EventPayloadBuilder::matchStatusChanged($match, $oldStatus);
-            $this->queuePublisher->dispatchHigh('events', $payload, 'match.status.changed');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch match status changed queue event', [
-                'match_id' => $match->id,
-                'old_status' => $oldStatus,
-                'new_status' => $match->status,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch match started event to queue (high priority)
-     *
-     * @param MatchGame $match
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchMatchStartedQueueEvent(MatchGame $match, array $user): void
-    {
-        try {
-            $payload = EventPayloadBuilder::matchStarted($match, $user);
-            $this->queuePublisher->dispatchHigh('events', $payload, 'match.started');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch match started queue event', [
-                'match_id' => $match->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch match score updated event to queue (high priority for live matches)
-     *
-     * @param MatchGame $match
-     * @param array $oldScore
-     * @param array $newScore
-     * @return void
-     */
-    protected function dispatchMatchScoreUpdatedQueueEvent(MatchGame $match, array $oldScore, array $newScore): void
-    {
-        try {
-            $payload = EventPayloadBuilder::matchScoreUpdated($match, $oldScore, $newScore);
-            $this->queuePublisher->dispatchHigh('events', $payload, 'match.score.updated');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch match score updated queue event', [
-                'match_id' => $match->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch match deleted event to queue
-     *
-     * @param array $matchData
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchMatchDeletedQueueEvent(array $matchData, array $user): void
-    {
-        try {
-            $payload = EventPayloadBuilder::matchDeleted($matchData, $user);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'match.deleted');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch match deleted queue event', [
-                'match_id' => $matchData['id'] ?? null,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
 }

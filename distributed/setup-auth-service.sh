@@ -220,7 +220,7 @@ verify_service_db_connection
 
 # Step 6: Run Migrations
 echo -e "${YELLOW}📦 Running database migrations...${NC}"
-migration_output=$(docker-compose exec -T $SERVICE_NAME php artisan migrate --force 2>&1)
+migration_output=$(docker-compose exec -T $SERVICE_NAME php artisan migrate:fresh --force 2>&1)
 migration_exit_code=$?
 
 if [ $migration_exit_code -eq 0 ]; then

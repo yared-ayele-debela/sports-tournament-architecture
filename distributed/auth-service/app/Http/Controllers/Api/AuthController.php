@@ -95,8 +95,6 @@ class AuthController extends Controller
             $user = auth()->user();
             $token = $user->createToken('Personal Access Token')->accessToken;
 
-            // Dispatch user logged in event to queue (low priority - for analytics)
-            $this->dispatchUserLoggedInQueueEvent($user, $request);
 
             return \App\Support\ApiResponse::success([
                 'user' => [
@@ -157,32 +155,6 @@ class AuthController extends Controller
             $this->queuePublisher->dispatchNormal('events', $payload, 'user.registered');
         } catch (\Exception $e) {
             Log::warning('Failed to dispatch user registered queue event', [
-                'user_id' => $user->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch user logged in event to queue (low priority - for analytics)
-     *
-     * @param User $user
-     * @param Request $request
-     * @return void
-     */
-    protected function dispatchUserLoggedInQueueEvent(User $user, Request $request): void
-    {
-        try {
-            $payload = EventPayloadBuilder::userLoggedIn($user, [
-                'method' => 'password',
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-                'remember_me' => $request->boolean('remember', false),
-            ]);
-
-            $this->queuePublisher->dispatchLow('events', $payload, 'user.logged.in');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch user logged in queue event', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);

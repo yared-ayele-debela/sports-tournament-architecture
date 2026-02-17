@@ -95,8 +95,6 @@ class UserServiceController extends Controller
 
             $user->roles()->attach($role->id);
 
-            // Dispatch role assigned event to queue (default priority)
-            $this->dispatchRoleAssignedQueueEvent($user, $role, $request);
 
             return ApiResponse::success([
                 'user_id' => $user->id,
@@ -180,33 +178,38 @@ class UserServiceController extends Controller
     }
 
     /**
-     * Dispatch role assigned event to queue (default priority)
+     * Validate if user exists by email.
      *
-     * @param User $user
-     * @param Role $role
      * @param Request $request
-     * @return void
+     * @return JsonResponse
      */
-    protected function dispatchRoleAssignedQueueEvent(User $user, Role $role, Request $request): void
+    public function validateUser(Request $request): JsonResponse
     {
         try {
-            $payload = EventPayloadBuilder::userRoleAssigned(
-                $user,
-                $role->id,
-                auth()->id() ?? null,
-                [
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                ]
-            );
-
-            $this->queuePublisher->dispatchNormal('events', $payload, 'user.role.assigned');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch role assigned queue event', [
-                'user_id' => $user->id,
-                'role_id' => $role->id,
-                'error' => $e->getMessage()
+            $request->validate([
+                'email' => 'required|email'
             ]);
+
+            $user = User::where('email', $request->email)->first();
+
+            if (!$user) {
+                return ApiResponse::error('User not found', 404, ['exists' => false]);
+            }
+
+            return ApiResponse::success([
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'is_active' => !is_null($user->email_verified_at),
+                'exists' => true
+            ], 'User exists');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return ApiResponse::validationError($e->errors());
+        } catch (\Exception $e) {
+            Log::error('Error validating user by email: ' . $e->getMessage());
+
+            return ApiResponse::serverError('Internal server error', $e, ['exists' => false]);
         }
     }
+
 }

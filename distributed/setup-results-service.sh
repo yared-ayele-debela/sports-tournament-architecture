@@ -253,10 +253,27 @@ else
     exit 1
 fi
 
-# Step 7: Run Database Seeders
-if ! run_command "Running database seeders" \
-    docker-compose exec -T $SERVICE_NAME php artisan db:seed --force; then
-    echo -e "${RED}❌ Fatal: Failed to run database seeders${NC}"
+# Step 7: Run Database Seeders (with simple retry logic)
+MAX_SEED_RETRIES=3
+SEED_ATTEMPT=1
+
+while [ $SEED_ATTEMPT -le $MAX_SEED_RETRIES ]; do
+    if run_command "Running database seeders (attempt ${SEED_ATTEMPT}/${MAX_SEED_RETRIES})" \
+        docker-compose exec -T $SERVICE_NAME php artisan db:seed --force; then
+        # Success - break out of the loop
+        break
+    fi
+
+    SEED_ATTEMPT=$((SEED_ATTEMPT + 1))
+
+    if [ $SEED_ATTEMPT -le $MAX_SEED_RETRIES ]; then
+        echo -e "${YELLOW}⚠️  Database seeding failed, retrying in 3 seconds...${NC}"
+        sleep 3
+    fi
+done
+
+if [ $SEED_ATTEMPT -gt $MAX_SEED_RETRIES ]; then
+    echo -e "${RED}❌ Fatal: Failed to run database seeders after ${MAX_SEED_RETRIES} attempts${NC}"
     exit 1
 fi
 

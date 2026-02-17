@@ -6,6 +6,7 @@ use App\Models\MatchResult;
 use App\Models\Standing;
 use App\Services\Clients\MatchServiceClient;
 use App\Services\Queue\QueuePublisher;
+use App\Services\PublicCacheService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redis;
@@ -15,11 +16,13 @@ class StandingsCalculator
 {
     protected MatchServiceClient $matchService;
     protected ?QueuePublisher $queuePublisher;
+    protected ?PublicCacheService $cacheService;
 
-    public function __construct(MatchServiceClient $matchService, ?QueuePublisher $queuePublisher = null)
+    public function __construct(MatchServiceClient $matchService, ?QueuePublisher $queuePublisher = null, ?PublicCacheService $cacheService = null)
     {
         $this->matchService = $matchService;
         $this->queuePublisher = $queuePublisher ?? app(QueuePublisher::class);
+        $this->cacheService = $cacheService ?? app(PublicCacheService::class);
     }
 
     public function updateStandingsFromMatch(MatchResult $result): void
@@ -177,7 +180,39 @@ class StandingsCalculator
 
     protected function clearTournamentCache(int $tournamentId): void
     {
+        // Clear internal Redis cache key
         Redis::del("tournament_standings:{$tournamentId}");
+        
+        // Also invalidate public API cache tags immediately
+        if ($this->cacheService) {
+            try {
+                $tags = [
+                    'public-api',
+                    'standings',
+                    'public:standings',
+                    "tournament:{$tournamentId}:standings",
+                    "public:tournament:{$tournamentId}:standings",
+                    "public:tournament:{$tournamentId}:statistics",
+                ];
+                
+                $this->cacheService->forgetByTags($tags);
+                
+                // Also invalidate specific cache keys
+                $cacheKey = $this->cacheService->generateKey("tournament:{$tournamentId}:standings");
+                $this->cacheService->forget($cacheKey);
+                
+                Log::info('Tournament standings cache invalidated', [
+                    'tournament_id' => $tournamentId,
+                    'tags' => $tags,
+                    'cache_key' => $cacheKey,
+                ]);
+            } catch (Exception $e) {
+                Log::warning('Failed to invalidate public API cache for standings', [
+                    'tournament_id' => $tournamentId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**

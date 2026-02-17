@@ -37,10 +37,23 @@ export default function MatchFinalizeForm() {
   const mutation = useMutation({
     mutationFn: (data) => resultsService.finalizeMatch(matchId, data),
     onSuccess: () => {
+      const tournamentId = match?.tournament_id || match?.tournament?.id;
+      
+      // Invalidate all related queries
       queryClient.invalidateQueries(['matches']);
       queryClient.invalidateQueries(['results']);
-      queryClient.invalidateQueries(['standings']);
+      queryClient.invalidateQueries(['standings']); // This invalidates ['standings', tournamentId] queries
       queryClient.invalidateQueries(['match', matchId]);
+      
+      if (tournamentId) {
+        queryClient.invalidateQueries(['standings', tournamentId]);
+        // Invalidate tournament detail page queries
+        queryClient.invalidateQueries(['tournamentStandings', tournamentId]);
+        queryClient.invalidateQueries(['tournament', tournamentId]);
+        queryClient.invalidateQueries(['tournamentMatches', tournamentId]);
+        queryClient.invalidateQueries(['tournamentTeams', tournamentId]);
+      }
+      
       toast.success('Match finalized successfully');
       // Navigate back to my-matches if coming from my-matches context, otherwise to matches
       const fromMyMatches = window.location.pathname.includes('/my-matches');

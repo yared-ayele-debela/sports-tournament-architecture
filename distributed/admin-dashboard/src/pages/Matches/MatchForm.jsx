@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { matchesService } from '../../api/matches';
 import { tournamentsService, venuesService } from '../../api/tournaments';
 import { teamsService } from '../../api/teams';
+import { usersService } from '../../api/users';
 import { useToast } from '../../context/ToastContext';
 import { ArrowLeft } from 'lucide-react';
 
@@ -53,6 +54,28 @@ export default function MatchForm() {
   });
 
   const teams = teamsData?.data || teamsData || [];
+
+  // Fetch referees (users with referee role)
+  const { data: refereesData } = useQuery({
+    queryKey: ['referees', 'list'],
+    queryFn: () => usersService.list({ per_page: 100, role: 'referee' }),
+  });
+
+  let referees = [];
+  if (Array.isArray(refereesData)) {
+    referees = refereesData;
+  } else if (refereesData?.data && Array.isArray(refereesData.data)) {
+    referees = refereesData.data;
+  } else if (refereesData?.data?.data && Array.isArray(refereesData.data.data)) {
+    referees = refereesData.data.data;
+  }
+
+  // Fallback filtering by role on client side
+  referees = referees.filter((user) =>
+    Array.isArray(user.roles)
+      ? user.roles.some((role) => (role.name || role)?.toString().toLowerCase() === 'referee')
+      : false
+  );
 
   // Fetch venues
   const { data: venuesData } = useQuery({
@@ -289,21 +312,26 @@ export default function MatchForm() {
             )}
           </div>
 
-          {/* Referee ID */}
+          {/* Referee */}
           <div>
             <label htmlFor="referee_id" className="label">
-              Referee ID <span className="text-red-500">*</span>
+              Referee <span className="text-red-500">*</span>
             </label>
-            <input
+            <select
               id="referee_id"
               name="referee_id"
-              type="number"
-              min="1"
               value={formData.referee_id}
               onChange={handleChange}
               className={`input ${errors.referee_id ? 'border-red-500' : ''}`}
               required
-            />
+            >
+              <option value="">Select a referee</option>
+              {referees.map((ref) => (
+                <option key={ref.id} value={ref.id}>
+                  {ref.name} {ref.email ? `(${ref.email})` : ''}
+                </option>
+              ))}
+            </select>
             {errors.referee_id && (
               <p className="mt-1 text-sm text-red-600">
                 {Array.isArray(errors.referee_id) ? errors.referee_id[0] : errors.referee_id}

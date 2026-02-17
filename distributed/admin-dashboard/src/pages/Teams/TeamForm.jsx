@@ -121,8 +121,12 @@ export default function TeamForm() {
     const submitData = new FormData();
     
     if (isEdit) {
-      // For updates, only send name and logo (tournament_id and coach_id cannot be changed)
+      // For updates, send name, optional coach_id, and optional logo
       submitData.append('name', formData.name.trim());
+
+      if (formData.coach_id) {
+        submitData.append('coach_id', parseInt(formData.coach_id));
+      }
       
       // Only append logo if a new file was selected
       if (logoFile) {
@@ -315,41 +319,39 @@ export default function TeamForm() {
           </div>
 
           {/* Coach */}
-          {!isEdit && (
-            <div>
-              <label htmlFor="coach_id" className="label">
-                Coach <span className="text-red-500">*</span>
-              </label>
-              <select
-                id="coach_id"
-                name="coach_id"
-                value={formData.coach_id}
-                onChange={handleChange}
-                className={`input ${errors.coach_id ? 'border-red-500' : ''}`}
-                required
-              >
-                <option value="">Select a coach</option>
-                {coaches.length > 0 ? (
-                  coaches.map((coach) => (
-                    <option key={coach.id} value={coach.id}>
-                      {coach.name} ({coach.email})
-                    </option>
-                  ))
-                ) : (
-                  users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name} ({user.email})
-                    </option>
-                  ))
-                )}
-              </select>
-              {errors.coach_id && (
-                <p className="mt-1 text-sm text-red-600">
-                  {Array.isArray(errors.coach_id) ? errors.coach_id[0] : errors.coach_id}
-                </p>
+          <div>
+            <label htmlFor="coach_id" className="label">
+              Coach <span className="text-red-500">*</span>
+            </label>
+            <select
+              id="coach_id"
+              name="coach_id"
+              value={formData.coach_id}
+              onChange={handleChange}
+              className={`input ${errors.coach_id ? 'border-red-500' : ''}`}
+              required
+            >
+              <option value="">Select a coach</option>
+              {coaches.length > 0 ? (
+                coaches.map((coach) => (
+                  <option key={coach.id} value={coach.id}>
+                    {coach.name} ({coach.email})
+                  </option>
+                ))
+              ) : (
+                users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({user.email})
+                  </option>
+                ))
               )}
-            </div>
-          )}
+            </select>
+            {errors.coach_id && (
+              <p className="mt-1 text-sm text-red-600">
+                {Array.isArray(errors.coach_id) ? errors.coach_id[0] : errors.coach_id}
+              </p>
+            )}
+          </div>
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-4 pt-4">

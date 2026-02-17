@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useParams } from 'react-router-dom';
 import { matchesService } from '../../api/matches';
@@ -59,6 +59,13 @@ export default function MyMatchDetail() {
     duration_minutes: 90,
   });
   const [reportErrors, setReportErrors] = useState({});
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const autoUpdateIntervalRef = useRef(null);
+  const countdownIntervalRef = useRef(null);
+  const matchMinuteRef = useRef(null);
+  const minuteMutationRef = useRef(null);
+  const isUpdatingRef = useRef(false); // Prevent duplicate updates
 
   // Check if user can record events
   const canRecordEvents = hasPermission('record_events') || isAdmin();
@@ -209,7 +216,7 @@ export default function MyMatchDetail() {
 
   // Status update mutation
   const statusMutation = useMutation({
-    mutationFn: (newStatus) => matchesService.updateStatus(id, newStatus),
+    mutationFn: ({ status, currentMinute }) => matchesService.updateStatus(id, status, currentMinute),
     onSuccess: () => {
       queryClient.invalidateQueries(['match', id]);
       queryClient.invalidateQueries(['matches']);
@@ -220,10 +227,167 @@ export default function MyMatchDetail() {
     },
   });
 
+  // Minute update mutation
+  const minuteMutation = useMutation({
+    mutationFn: (currentMinute) => matchesService.updateMinute(id, currentMinute),
+    onSuccess: (data, variables) => {
+      // Update the ref with the new minute value
+      matchMinuteRef.current = variables;
+      // Clear updating flag after successful update
+      isUpdatingRef.current = false;
+      queryClient.invalidateQueries(['match', id]);
+      queryClient.invalidateQueries(['matches']);
+      // Only show toast for manual updates, not auto-updates
+      if (!autoUpdateEnabled) {
+        toast.success('Match minute updated successfully');
+      }
+    },
+    onError: (error, variables) => {
+      // Clear updating flag on error and revert ref to previous value
+      isUpdatingRef.current = false;
+      // Revert to previous minute (variables is the attempted new minute, so subtract 1)
+      matchMinuteRef.current = Math.max(0, variables - 1);
+      toast.error(error?.response?.data?.message || 'Failed to update match minute');
+    },
+  });
+
+  // Store mutation function in ref for use in intervals
+  useEffect(() => {
+    minuteMutationRef.current = minuteMutation;
+  }, [minuteMutation]);
+
   // Handle status change
   const handleStatusChange = (newStatus) => {
     if (window.confirm(`Are you sure you want to change the match status to "${newStatus}"?`)) {
-      statusMutation.mutate(newStatus);
+      statusMutation.mutate({ status: newStatus, currentMinute: null });
+    }
+  };
+
+  // Handle minute update
+  const handleMinuteUpdate = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const minute = parseInt(formData.get('current_minute'));
+    
+    if (isNaN(minute) || minute < 0 || minute > 120) {
+      toast.error('Please enter a valid minute (0-120)');
+      return;
+    }
+
+    minuteMutation.mutate(minute);
+  };
+
+  // Update match minute ref when match data changes
+  useEffect(() => {
+    matchMinuteRef.current = match?.current_minute ?? 0;
+  }, [match?.current_minute]);
+
+  // Countdown timer for auto-update
+  useEffect(() => {
+    // Clear any existing interval first
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
+    if (autoUpdateEnabled && (match?.status === 'in_progress' || match?.status === 'live')) {
+      // Reset countdown when auto-update starts
+      setCountdown(60);
+      
+      // Countdown timer (updates every second)
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdown((prev) => {
+          const newCountdown = prev - 1;
+          
+          if (newCountdown <= 0) {
+            // Prevent duplicate updates
+            if (isUpdatingRef.current) {
+              return 60; // Already updating, just reset countdown
+            }
+
+            // When countdown reaches 0, update the minute
+            const currentMinute = matchMinuteRef.current ?? 0;
+            const newMinute = currentMinute + 1;
+
+            // Stop at 120 minutes
+            if (newMinute > 120) {
+              setAutoUpdateEnabled(false);
+              toast.info('Match minute reached maximum (120 minutes). Auto-update stopped.');
+              return 60; // Return 60 to prevent further updates
+            }
+
+            // Set updating flag
+            isUpdatingRef.current = true;
+            
+            // Update the ref immediately to prevent duplicate increments
+            matchMinuteRef.current = newMinute;
+
+            // Update minute using ref to avoid stale closure
+            if (minuteMutationRef.current) {
+              minuteMutationRef.current.mutate(newMinute);
+            } else {
+              isUpdatingRef.current = false;
+            }
+            
+            return 60; // Reset to 60 after update
+          }
+          
+          return newCountdown;
+        });
+      }, 1000);
+
+      return () => {
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+      };
+    } else {
+      setCountdown(60);
+    }
+  }, [autoUpdateEnabled, match?.status]);
+
+
+  // Stop auto-update when match is completed
+  useEffect(() => {
+    if (match?.status === 'completed' && autoUpdateEnabled) {
+      setAutoUpdateEnabled(false);
+      toast.info('Match completed. Auto-update stopped.');
+    }
+  }, [match?.status, autoUpdateEnabled]);
+
+  // Cleanup intervals on unmount
+  useEffect(() => {
+    return () => {
+      if (autoUpdateIntervalRef.current) {
+        clearInterval(autoUpdateIntervalRef.current);
+        autoUpdateIntervalRef.current = null;
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      isUpdatingRef.current = false;
+    };
+  }, []);
+
+  // Toggle auto-update
+  const toggleAutoUpdate = () => {
+    if (match?.status !== 'in_progress' && match?.status !== 'live') {
+      toast.error('Auto-update is only available for matches in progress');
+      return;
+    }
+
+    if (match?.current_minute >= 120) {
+      toast.error('Match minute is already at maximum (120 minutes)');
+      return;
+    }
+
+    setAutoUpdateEnabled(!autoUpdateEnabled);
+    if (!autoUpdateEnabled) {
+      toast.success('Auto-update enabled. Match minute will update every 60 seconds.');
+    } else {
+      toast.info('Auto-update disabled.');
     }
   };
 
@@ -697,6 +861,100 @@ export default function MyMatchDetail() {
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Finalize Match
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Match Minute Update */}
+          {canRecordEvents && (match.status === 'in_progress' || match.status === 'live') && (
+            <div className="card">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Update Match Minute</h2>
+              
+              {/* Auto-Update Toggle */}
+              <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="text-lg font-semibold text-gray-900">Auto-Update Minute</h3>
+                      {autoUpdateEnabled && (
+                        <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
+                          <span className="h-2 w-2 bg-green-600 rounded-full animate-pulse"></span>
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm text-gray-600">
+                      Automatically increment match minute every 60 seconds. 
+                      {autoUpdateEnabled && (
+                        <span className="font-medium text-green-700 ml-1">
+                          Next update in {countdown} seconds
+                        </span>
+                      )}
+                    </p>
+                    {autoUpdateEnabled && match.current_minute !== null && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Current: {match.current_minute}' | Will stop at 120'
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleAutoUpdate}
+                    disabled={match.current_minute >= 120}
+                    className={`btn ${autoUpdateEnabled ? 'btn-secondary' : 'btn-primary'}`}
+                  >
+                    {autoUpdateEnabled ? (
+                      <>
+                        <X className="w-4 h-4 mr-2" />
+                        Stop Auto-Update
+                      </>
+                    ) : (
+                      <>
+                        <Clock className="w-4 h-4 mr-2" />
+                        Start Auto-Update
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Manual Update Form */}
+              <div className="border-t border-gray-200 pt-4">
+                <h3 className="text-md font-semibold text-gray-900 mb-3">Manual Update</h3>
+                <form onSubmit={handleMinuteUpdate} className="flex items-end gap-4">
+                  <div className="flex-1">
+                    <label htmlFor="current_minute" className="block text-sm font-medium text-gray-700 mb-2">
+                      Current Minute
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="current_minute"
+                        name="current_minute"
+                        type="number"
+                        min="0"
+                        max="120"
+                        defaultValue={match.current_minute || 0}
+                        className="input w-32"
+                        placeholder="0"
+                        required
+                        disabled={autoUpdateEnabled}
+                      />
+                      <span className="text-gray-600">minutes</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {autoUpdateEnabled 
+                        ? 'Disable auto-update to manually set the minute'
+                        : 'Enter the current minute of the match (0-120)'}
+                    </p>
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={minuteMutation.isLoading || autoUpdateEnabled}
+                    className="btn btn-primary"
+                  >
+                    {minuteMutation.isLoading ? 'Updating...' : 'Update Minute'}
+                  </button>
+                </form>
               </div>
             </div>
           )}

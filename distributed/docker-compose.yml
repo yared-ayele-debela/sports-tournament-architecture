@@ -123,11 +123,11 @@ services:
       - TEAM_SERVICE_URL=http://team-service:8003
       - TOURNAMENT_SERVICE_URL=http://tournament-service:8002
       # Pusher Configuration for WebSocket Broadcasting
-      - BROADCAST_DRIVER=${BROADCAST_DRIVER:-pusher}
-      - PUSHER_APP_ID=${PUSHER_APP_ID}
-      - PUSHER_APP_KEY=${PUSHER_APP_KEY}
-      - PUSHER_APP_SECRET=${PUSHER_APP_SECRET}
-      - PUSHER_APP_CLUSTER=${PUSHER_APP_CLUSTER}
+      - BROADCAST_DRIVER=pusher
+      - PUSHER_APP_ID=2116045
+      - PUSHER_APP_KEY=8d9785b428b83e896400
+      - PUSHER_APP_SECRET=35ab51339da676b7cd7a
+      - PUSHER_APP_CLUSTER=eu
     depends_on:
       - match-db
       - auth-service
@@ -205,9 +205,9 @@ services:
       - VITE_MATCH_SERVICE_URL=http://localhost:8004/api
       - VITE_RESULTS_SERVICE_URL=http://localhost:8005/api
       # Pusher Configuration for WebSocket
-      - VITE_PUSHER_APP_KEY=${VITE_PUSHER_APP_KEY}
-      - VITE_PUSHER_APP_CLUSTER=${VITE_PUSHER_APP_CLUSTER}
-      - VITE_PUSHER_ENCRYPTED=${VITE_PUSHER_ENCRYPTED:-true}
+      - VITE_PUSHER_APP_KEY=8d9785b428b83e896400
+      - VITE_PUSHER_APP_CLUSTER=eu
+      - VITE_PUSHER_ENCRYPTED=true
     networks:
       - tournament-network
 

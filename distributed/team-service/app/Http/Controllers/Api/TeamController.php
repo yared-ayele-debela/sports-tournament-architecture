@@ -313,9 +313,6 @@ class TeamController extends Controller
             // Fire legacy event
             event(new TeamCreated($team, $request->coach_id));
 
-            // Dispatch team created event to queue (default priority)
-            $this->dispatchTeamCreatedQueueEvent($team, ['id' => $request->coach_id, 'name' => 'Coach']);
-
             // Enrich team data with logo URL
             $enrichedTeam = $this->enrichTeamData($team);
 
@@ -336,8 +333,11 @@ class TeamController extends Controller
             return ApiResponse::notFound('Team not found');
         }
 
-        // Check authorization for coaches
-        if (AuthHelper::isCoach() && !$team->isCoach(AuthHelper::getCurrentUserId())) {
+        // Authorization:
+        // - Public route (/public/teams/{id}) is readable by unauthenticated users
+        // - If a user is authenticated and is not an admin, they must be a coach of this team
+        $currentUserId = AuthHelper::getCurrentUserId();
+        if ($currentUserId && !AuthHelper::isAdmin() && !AuthHelper::canManageTeam($id)) {
             return ApiResponse::forbidden('Unauthorized');
         }
 
@@ -379,7 +379,8 @@ class TeamController extends Controller
 
         $validator = Validator::make($request->all(), [
             'name' => 'sometimes|required|string|max:255',
-            'logo' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'logo' => 'sometimes|nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'coach_id' => 'sometimes|integer'
         ]);
 
         if ($validator->fails()) {
@@ -431,6 +432,27 @@ class TeamController extends Controller
                 }
             }
 
+            // If coach_id provided, validate and update coach assignment
+            if ($request->has('coach_id')) {
+                // Validate coach exists in auth-service
+                $coachResponse = $this->authService->validateUser($request->coach_id);
+                if (!($coachResponse['success'] ?? false)) {
+                    return ApiResponse::badRequest('Invalid coach');
+                }
+
+                // Replace existing coach assignments for this team
+                DB::table('team_coach')
+                    ->where('team_id', $team->id)
+                    ->delete();
+
+                DB::table('team_coach')->insertOrIgnore([
+                    'team_id' => $team->id,
+                    'user_id' => $request->coach_id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+
             // Build update data
             $updateData = [
                 'name' => $request->has('name') ? trim($request->name) : $team->name,
@@ -445,16 +467,11 @@ class TeamController extends Controller
                 'logo_changed' => $request->hasFile('logo')
             ]);
 
-            $team->update($updateData);
-
             // Immediately invalidate public API cache for this team
             $this->invalidateTeamCache($team);
 
             // Fire legacy event
             event(new TeamUpdated($team, AuthHelper::getCurrentUserId()));
-
-            // Dispatch team updated event to queue (default priority)
-            $this->dispatchTeamUpdatedQueueEvent($team, $oldData);
 
             // Enrich team data with logo URL
             $enrichedTeam = $this->enrichTeamData($team);
@@ -543,8 +560,6 @@ class TeamController extends Controller
                 'tournament_id' => $teamData['tournament_id']
             ]);
 
-            // Dispatch team deleted event to queue (default priority)
-            $this->dispatchTeamDeletedQueueEvent($team, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'Admin']);
 
             return ApiResponse::success(null, 'Team deleted successfully');
 
@@ -688,26 +703,6 @@ class TeamController extends Controller
     }
 
     /**
-     * Dispatch team created event to queue (default priority)
-     *
-     * @param Team $team
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchTeamCreatedQueueEvent(Team $team, array $user): void
-    {
-        try {
-            $payload = EventPayloadBuilder::teamCreated($team, $user);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'team.created');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch team created queue event', [
-                'team_id' => $team->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
      * Get full logo URL for a team
      */
     protected function getLogoUrl(?string $logoPath): ?string
@@ -731,46 +726,6 @@ class TeamController extends Controller
         $data['logo_url'] = $this->getLogoUrl($team->logo);
 
         return $data;
-    }
-
-    /**
-     * Dispatch team updated event to queue (default priority)
-     *
-     * @param Team $team
-     * @param array $oldData
-     * @return void
-     */
-    protected function dispatchTeamUpdatedQueueEvent(Team $team, array $oldData): void
-    {
-        try {
-            $payload = EventPayloadBuilder::teamUpdated($team, $oldData);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'team.updated');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch team updated queue event', [
-                'team_id' => $team->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch team deleted event to queue (default priority)
-     *
-     * @param Team $team
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchTeamDeletedQueueEvent(Team $team, array $user): void
-    {
-        try {
-            $payload = EventPayloadBuilder::teamDeleted($team, $user);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'team.deleted');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch team deleted queue event', [
-                'team_id' => $team->id,
-                'error' => $e->getMessage()
-            ]);
-        }
     }
 
     /**

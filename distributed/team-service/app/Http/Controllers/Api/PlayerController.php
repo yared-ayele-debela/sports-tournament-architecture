@@ -38,6 +38,13 @@ class PlayerController extends Controller
     {
         $query = Player::with('team');
 
+        // Support both global players listing and per-team listing
+        // If called via /teams/{id}/players, use the route parameter as team_id
+        $routeTeamId = $request->route('teamId') ?? $request->route('id');
+        if ($routeTeamId) {
+            $request->merge(['team_id' => (int) $routeTeamId]);
+        }
+
         if ($request->has('team_id')) {
             $query->where('team_id', $request->team_id);
         }
@@ -67,7 +74,7 @@ class PlayerController extends Controller
                 $query->whereRaw('1 = 0');
             }
 
-            // If team_id is provided, verify coach has access to that team
+            // If team_id is provided (either query or route), verify coach has access to that team
             if ($request->has('team_id')) {
                 $requestedTeamId = (int) $request->team_id;
                 if (!in_array($requestedTeamId, $teamIds)) {
@@ -127,9 +134,6 @@ class PlayerController extends Controller
 
             // Fire legacy event
             event(new PlayerCreated($player, AuthHelper::getCurrentUserId()));
-
-            // Dispatch player created event to queue (default priority)
-            $this->dispatchPlayerCreatedQueueEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
 
             return ApiResponse::created($player, 'Player created successfully');
 
@@ -202,9 +206,6 @@ class PlayerController extends Controller
             // Fire legacy event
             event(new PlayerUpdated($player, AuthHelper::getCurrentUserId()));
 
-            // Dispatch player updated event to queue (default priority)
-            $this->dispatchPlayerUpdatedQueueEvent($player, $oldData);
-
             return ApiResponse::success($player->load('team'), 'Player updated successfully');
 
         } catch (\Exception $e) {
@@ -248,73 +249,10 @@ class PlayerController extends Controller
             // Immediately invalidate public API cache for this team's players
             $this->invalidatePlayerCacheForTeam($teamId, $team);
 
-            // Dispatch player deleted event to queue (default priority)
-            $this->dispatchPlayerDeletedQueueEvent($player, ['id' => AuthHelper::getCurrentUserId(), 'name' => 'User']);
-
             return ApiResponse::success(null, 'Player deleted successfully');
 
         } catch (\Exception $e) {
             return ApiResponse::serverError('Failed to delete player: ' . $e->getMessage(), $e);
-        }
-    }
-
-    /**
-     * Dispatch player created event to queue (default priority)
-     *
-     * @param Player $player
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchPlayerCreatedQueueEvent(Player $player, array $user): void
-    {
-        try {
-            $payload = EventPayloadBuilder::playerCreated($player, $user);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'player.created');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch player created queue event', [
-                'player_id' => $player->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch player updated event to queue (default priority)
-     *
-     * @param Player $player
-     * @param array $oldData
-     * @return void
-     */
-    protected function dispatchPlayerUpdatedQueueEvent(Player $player, array $oldData): void
-    {
-        try {
-            $payload = EventPayloadBuilder::playerUpdated($player, $oldData);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'player.updated');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch player updated queue event', [
-                'player_id' => $player->id,
-                'error' => $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Dispatch player deleted event to queue (default priority)
-     *
-     * @param Player $player
-     * @param array $user
-     * @return void
-     */
-    protected function dispatchPlayerDeletedQueueEvent(Player $player, array $user): void
-    {
-        try {
-            $payload = EventPayloadBuilder::playerDeleted($player, $user);
-            $this->queuePublisher->dispatchNormal('events', $payload, 'player.deleted');
-        } catch (\Exception $e) {
-            Log::warning('Failed to dispatch player deleted queue event', [
-                'player_id' => $player->id,
-                'error' => $e->getMessage()
-            ]);
         }
     }
 

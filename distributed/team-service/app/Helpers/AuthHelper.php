@@ -44,9 +44,11 @@ class AuthHelper
             return true;
         }
 
-        if (self::isCoach()) {
+        // For non-admin authenticated users, check if they are assigned as coach for the team
+        $userId = self::getCurrentUserId();
+        if ($userId) {
             $team = \App\Models\Team::find($teamId);
-            return $team && $team->isCoach(self::getCurrentUserId());
+            return $team && $team->isCoach($userId);
         }
 
         return false;

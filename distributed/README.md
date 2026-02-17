@@ -35,7 +35,7 @@ This project implements a distributed microservices architecture for managing sp
 
 The system follows a microservices architecture with 5 core services. Clients (Admin Dashboard and Public View) access services directly via HTTP/REST APIs.
 
-![System Architecture Diagram](docs/System%20Architecture%20Diagram/System%20Architecture%20Diagram.png)
+![System Architecture Diagram](docs/System%20Architecture%20Diagram.png)
 
 **Key Components:**
 - **5 Microservices**: Auth (8001), Tournament (8002), Team (8003), Match (8004), Results (8005)
@@ -47,7 +47,7 @@ The system follows a microservices architecture with 5 core services. Clients (A
 
 The following diagram shows how data flows through the system:
 
-![Data Flow Diagram](docs/System%20Architecture%20Diagram/Data%20Flow%20Diagram.png)
+![Data Flow Diagram](docs/Data%20Flow%20Diagram.png)
 
 **Flow Example: Tournament Creation**
 1. Admin Dashboard sends request to Tournament Service
@@ -60,7 +60,7 @@ The following diagram shows how data flows through the system:
 
 Services communicate asynchronously via Redis Pub/Sub for event-driven updates:
 
-![Event Flow Diagram](docs/System%20Architecture%20Diagram/Event%20Flow%20Diagram.png)
+![Event Flow Diagram](docs/Event%20Flow%20Diagram.png)
 
 **Event Types:**
 - `tournament.created`, `tournament.updated`, `tournament.status.changed`
@@ -72,19 +72,42 @@ Services communicate asynchronously via Redis Pub/Sub for event-driven updates:
 
 1. **Synchronous**: HTTP/REST for direct service-to-service calls and client requests
 2. **Asynchronous**: Redis Pub/Sub for event-driven communication
-3. **Authentication**: Token-based authentication via Auth Service (all services validate tokens)
+3. **Real-time**: WebSocket (Pusher) for live match updates
+4. **Authentication**: Token-based authentication via Auth Service (all services validate tokens)
+
+### WebSocket Architecture
+
+The system uses Pusher WebSocket service for real-time live match updates. Match Service broadcasts events to Pusher, which then delivers updates to all connected clients in real-time.
+
+![WebSocket Architecture Diagram](docs/WebSocket%20Architecture%20Diagram.png)
+
+**WebSocket Flow:**
+1. Match Service creates/updates match events, status, scores, or minutes
+2. Match Service broadcasts events to Pusher using Laravel Broadcasting
+3. Pusher WebSocket server receives events and broadcasts to subscribed channels
+4. Frontend clients (Public View, Admin Dashboard) connect via Laravel Echo and Pusher JS
+5. Clients receive real-time updates and update UI automatically
+
+**Channels:**
+- `match.{matchId}` - Specific match updates
+- `match.live` - All live matches
+- `match.events` - All match events
+- `match.scores` - Score updates
+
+**Broadcast Events:**
+- `MatchEventRecorded` - When goals, cards, or substitutions are recorded
+- `MatchStatusChanged` - When match status changes (scheduled → in_progress → completed)
+- `MatchScoreUpdated` - When match score changes
+- `MatchMinuteUpdated` - When current minute of match updates
 
 ### Sequence Diagrams
 
 For detailed flow diagrams, see the sequence diagrams:
 
-- [Tournament Creation Flow](docs/Sequence%20Diagrams/Tournament%20Creation%20Flow-.png)
-- [Match Completion Flow](docs/Sequence%20Diagrams/Match%20Completion%20Flow.png)
-- [User Authentication Flow](docs/Sequence%20Diagrams/User%20Authentication%20Flow.png)
-
-For instructions on creating and updating these diagrams, see:
-- [Architecture Diagram Guide](docs/ARCHITECTURE_DIAGRAM_GUIDE.md)
-- [Sequence Diagram Guide](docs/SEQUENCE_DIAGRAM_GUIDE.md)
+- [Tournament Creation Flow](docs/Tournament%20Creation%20Flow-.png)
+- [Match Completion Flow](docs/Match%20Completion%20Flow.png)
+- [Match Status Change Flow](docs/Sequence%20Diagram%20-%20Match%20Status%20Change.png)
+- [User Authentication Flow](docs/User%20Authentication%20Flow.png)
 
 ## 🚀 Services
 
@@ -442,9 +465,29 @@ Each service requires specific environment variables. See individual service REA
 
 **Note**: Each service provides both public and protected API endpoints. Public endpoints are accessible without authentication, while protected endpoints require Bearer token authentication.
 
-### API Documentation
+### OpenAPI Specifications
 
-Each service provides comprehensive API documentation:
+All services have comprehensive OpenAPI 3.0.3 specification files:
+
+- **Auth Service**: [`auth-service/openapi.yaml`](./auth-service/openapi.yaml)
+- **Tournament Service**: [`tournament-service/openapi.yaml`](./tournament-service/openapi.yaml)
+- **Team Service**: [`team-service/openapi.yaml`](./team-service/openapi.yaml)
+- **Match Service**: [`match-service/openapi.yaml`](./match-service/openapi.yaml)
+- **Results Service**: [`results-service/openapi.yaml`](./results-service/openapi.yaml)
+
+### Viewing OpenAPI Documentation
+
+To view and interact with the OpenAPI specifications, see the [OpenAPI Viewer Guide](./VIEW_OPENAPI_GUIDE.md) for multiple options:
+
+- **Online Tools**: Use Swagger Editor (https://editor.swagger.io/) or Redoc (https://redocly.github.io/redoc/)
+- **Docker**: Run Swagger UI containers for all services
+- **Laravel Integration**: Integrate Swagger UI directly into Laravel services
+
+**Quick Start**: Copy any `openapi.yaml` file content and paste it into [Swagger Editor](https://editor.swagger.io/) for instant viewing.
+
+### Service-Specific API Documentation
+
+Each service also provides detailed API documentation in their README files:
 
 - [Auth Service API](./auth-service/README.md#api-endpoints)
 - [Tournament Service API](./tournament-service/README.md#api-endpoints)
@@ -487,17 +530,29 @@ curl -X POST http://localhost:8001/api/auth/login \
 ```
 distributed/
 ├── auth-service/          # Authentication service (Port 8001)
+│   └── openapi.yaml       # OpenAPI 3.0.3 specification
 ├── tournament-service/     # Tournament management (Port 8002)
+│   └── openapi.yaml       # OpenAPI 3.0.3 specification
 ├── team-service/          # Team and player management (Port 8003)
+│   └── openapi.yaml       # OpenAPI 3.0.3 specification
 ├── match-service/         # Match management (Port 8004)
+│   └── openapi.yaml       # OpenAPI 3.0.3 specification
 ├── results-service/       # Results and statistics (Port 8005)
+│   └── openapi.yaml       # OpenAPI 3.0.3 specification
 ├── admin-dashboard/       # Admin frontend
 ├── public-view/           # Public frontend
-├── docs/                  # Documentation and diagrams
-│   ├── System Architecture Diagram/
-│   └── Sequence Diagrams/
-├── feedbackDocs/          # Additional documentation
+├── docs/                  # Architecture diagrams and documentation
+│   ├── System Architecture Diagram.png
+│   ├── Data Flow Diagram.png
+│   ├── Event Flow Diagram.png
+│   ├── WebSocket Architecture Diagram.png
+│   ├── Tournament Creation Flow-.png
+│   ├── Match Completion Flow.png
+│   ├── Sequence Diagram - Match Status Change.png
+│   └── User Authentication Flow.png
 ├── docker-compose.yml      # Docker orchestration
+├── VIEW_OPENAPI_GUIDE.md  # Guide for viewing OpenAPI specs
+├── DOCKER_SETUP_GUIDE.md  # Docker setup instructions
 └── README.md              # This file
 ```
 
@@ -542,17 +597,6 @@ cd results-service && php artisan serve --port=8005
 ```
 
 ## 🧪 Testing
-
-### Running Tests
-
-```bash
-# Run tests for a specific service
-cd auth-service
-php artisan test
-
-# Run all tests
-find . -name "phpunit.xml" -execdir php artisan test \;
-```
 
 ### Test Coverage
 
@@ -702,29 +746,35 @@ For detailed error code documentation, see [ERROR_CODES.md](./ERROR_CODES.md).
 
 ## 📖 Additional Documentation
 
+### Setup and Configuration Guides
+
 - [Docker Setup Guide](./DOCKER_SETUP_GUIDE.md) - Comprehensive Docker setup and deployment instructions
-- [API Documentation](./API_DOCUMENTATION.md) - Self-documenting API endpoints
-- [Error Codes Reference](./ERROR_CODES.md) - Complete error code documentation
-- [Architecture Decision Records](./docs/architecture/decisions/) - Documented architectural decisions
-- [Search Implementation](./SEARCH_IMPLEMENTATION.md) - Search functionality details
-- [Project Feedback](./PROJECT_FEEDBACK.md) - Improvement recommendations
-- [Quick Improvements](./QUICK_IMPROVEMENTS.md) - Quick action checklist
+- [OpenAPI Viewer Guide](./VIEW_OPENAPI_GUIDE.md) - How to view and interact with OpenAPI specifications
 
-## 🤝 Contributing
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Architecture Diagrams
 
-### Contribution Guidelines
+All architecture diagrams are located in the [`docs/`](./docs/) directory:
 
-- Follow PSR-12 coding standards
-- Write tests for new features
-- Update documentation
-- Ensure all tests pass
-- Follow the existing code structure
+- **System Architecture Diagram** - Overall system architecture
+- **Data Flow Diagram** - How data flows through the system
+- **Event Flow Diagram** - Event-driven communication patterns
+- **WebSocket Architecture Diagram** - Real-time WebSocket communication using Pusher for live match updates
+- **Sequence Diagrams** - Detailed flow diagrams for key operations:
+  - Tournament Creation Flow
+  - Match Completion Flow
+  - Match Status Change Flow - Real-time status updates via WebSocket
+  - User Authentication Flow
+
+### Service Documentation
+
+Each service has its own detailed README:
+
+- [Auth Service](./auth-service/README.md)
+- [Tournament Service](./tournament-service/README.md)
+- [Team Service](./team-service/README.md)
+- [Match Service](./match-service/README.md)
+- [Results Service](./results-service/README.md)
 
 ## 📝 License
 

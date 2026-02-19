@@ -133,16 +133,16 @@ run_command() {
 wait_for_database
 
 # Step 2: Install Composer Dependencies
-if ! run_command "Installing Composer dependencies" \
-    docker-compose exec -T $SERVICE_NAME composer install; then
-    echo -e "${YELLOW}⚠️  Composer install failed, retrying once...${NC}"
-    sleep 2
-    if ! run_command "Retrying Composer dependencies installation" \
-        docker-compose exec -T $SERVICE_NAME composer install; then
-        echo -e "${RED}❌ Fatal: Failed to install Composer dependencies after retry${NC}"
-        exit 1
-    fi
-fi
+# if ! run_command "Installing Composer dependencies" \
+#     docker-compose exec -T $SERVICE_NAME composer install; then
+#     echo -e "${YELLOW}⚠️  Composer install failed, retrying once...${NC}"
+#     sleep 2
+#     if ! run_command "Retrying Composer dependencies installation" \
+#         docker-compose exec -T $SERVICE_NAME composer install; then
+#         echo -e "${RED}❌ Fatal: Failed to install Composer dependencies after retry${NC}"
+#         exit 1
+#     fi
+# fi
 
 # Step 3: Verify and fix auth-service .env file
 echo -e "${YELLOW}🔍 Checking auth-service .env file...${NC}"
@@ -212,6 +212,12 @@ else
     fi
 fi
 
+# Step 5.1: Publish Passport migrations (if not already published)
+echo -e "${YELLOW}📦 Publishing Passport migrations...${NC}"
+docker-compose exec -T $SERVICE_NAME php artisan vendor:publish --tag=passport-migrations --force >/dev/null 2>&1 || true
+echo -e "${GREEN}✅ Passport migrations published${NC}"
+echo ""
+
 # Step 5.5: Fix database user permissions if needed
 fix_database_user
 
@@ -267,21 +273,23 @@ else
     exit 1
 fi
 
-# Step 7: Check and Install Passport Keys
+# Step 7: Generate Passport Keys (after migrations have created tables)
 echo -e "${YELLOW}📦 Checking if Passport keys exist...${NC}"
 if docker-compose exec -T $SERVICE_NAME test -f storage/oauth-private.key 2>/dev/null; then
     echo -e "${GREEN}✅ Passport keys already exist${NC}"
     echo ""
 else
     echo -e "${YELLOW}📦 Generating Passport keys...${NC}"
-    if ! run_command "Installing Passport keys" \
-        docker-compose exec -T $SERVICE_NAME php artisan passport:install --force; then
-        echo -e "${RED}❌ Fatal: Failed to install Passport keys${NC}"
+    if ! run_command "Generating Passport keys" \
+        docker-compose exec -T $SERVICE_NAME php artisan passport:keys --force; then
+        echo -e "${RED}❌ Fatal: Failed to generate Passport keys${NC}"
         exit 1
     fi
+    echo -e "${GREEN}✅ Passport keys generated${NC}"
+    echo ""
 fi
 
-# Step 8: Create Personal Access Client
+# Step 8: Create Personal Access Client (after tables and keys exist)
 echo -e "${YELLOW}📦 Creating Personal Access Client...${NC}"
 output=$(docker-compose exec -T $SERVICE_NAME php artisan passport:client --personal --name="Personal Access Client" --no-interaction 2>&1) || true
 if echo "$output" | grep -q "already exists"; then

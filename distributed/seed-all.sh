@@ -2,7 +2,6 @@
 set -e
 
 services=(
-  auth-service
   tournament-service
   team-service
   match-service

@@ -1,6 +1,12 @@
+version: '3.8'
+
 services:
   auth-service:
     build: ./auth-service
+    volumes:
+    - ./auth-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
     restart: unless-stopped
     ports:
       - "8001:8001"
@@ -26,6 +32,10 @@ services:
 
   tournament-service:
     build: ./tournament-service
+    volumes:
+    - ./tournament-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
     restart: unless-stopped
     ports:
       - "8002:8002"
@@ -55,6 +65,10 @@ services:
 
   team-service:
     build: ./team-service
+    volumes:
+    - ./team-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
     restart: unless-stopped
     ports:
       - "8003:8003"
@@ -84,6 +98,10 @@ services:
 
   match-service:
     build: ./match-service
+    volumes:
+    - ./match-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
     restart: unless-stopped
     ports:
       - "8004:8004"
@@ -121,6 +139,10 @@ services:
 
   results-service:
     build: ./results-service
+    volumes:
+    - ./results-service:/var/www/html
+    - /var/www/html/vendor
+    - /var/www/html/node_modules
     restart: unless-stopped
     ports:
       - "8005:8005"
@@ -156,6 +178,9 @@ services:
     restart: unless-stopped
     ports:
       - "3000:80"
+    volumes:
+    - ./admin-dashboard:/app
+    - /app/node_modules
     environment:
       - VITE_AUTH_SERVICE_URL=http://localhost:8001/api
       - VITE_TOURNAMENT_SERVICE_URL=http://localhost:8002/api
@@ -170,6 +195,9 @@ services:
     restart: unless-stopped
     ports:
       - "3001:80"
+    volumes:
+    - ./public-view:/app
+    - /app/node_modules
     environment:
       - VITE_AUTH_SERVICE_URL=http://localhost:8001/api
       - VITE_TOURNAMENT_SERVICE_URL=http://localhost:8002/api

@@ -19,6 +19,11 @@ const MatchCard = ({ match }) => {
             <span className="flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-semibold">
               <span className="h-2 w-2 bg-red-600 rounded-full animate-pulse"></span>
               LIVE
+              {match.current_minute !== undefined && match.current_minute !== null && (
+                <span className="ml-1 font-bold">
+                  {match.current_minute}'
+                </span>
+              )}
             </span>
           </div>
         )}
@@ -89,9 +94,16 @@ const MatchCard = ({ match }) => {
           )}
           <div className="flex items-center justify-between text-xs">
             <span className="text-gray-600">Status:</span>
-            <Badge variant="default">
-              {match.status === 'in_progress' ? 'Live' : match.status}
-            </Badge>
+            <div className="flex items-center gap-2">
+              {isLive && match.current_minute !== undefined && match.current_minute !== null && (
+                <span className="text-red-600 font-semibold">
+                  {match.current_minute}'
+                </span>
+              )}
+              <Badge variant="default">
+                {match.status === 'in_progress' ? 'Live' : match.status}
+              </Badge>
+            </div>
           </div>
         </div>
       </div>

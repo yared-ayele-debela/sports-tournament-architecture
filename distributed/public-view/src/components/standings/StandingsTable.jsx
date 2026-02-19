@@ -19,7 +19,6 @@ const StandingsTable = ({ standings = [], highlightTeamId = null, onTeamClick })
     { key: 'goals_against', label: 'GA', sortable: true },
     { key: 'goal_difference', label: 'GD', sortable: true },
     { key: 'points', label: 'Pts', sortable: true },
-    { key: 'form', label: 'Form', sortable: false },
   ];
 
   const handleSort = (column) => {
@@ -81,28 +80,6 @@ const StandingsTable = ({ standings = [], highlightTeamId = null, onTeamClick })
       newExpanded.add(index);
     }
     setExpandedRows(newExpanded);
-  };
-
-  const renderForm = (form) => {
-    if (!form || form.length === 0) return <span className="text-gray-400">-</span>;
-    
-    return (
-      <div className="flex gap-1">
-        {form.slice(0, 5).map((result, idx) => (
-          <span
-            key={idx}
-            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold text-white ${
-              result === 'W' ? 'bg-green-600' :
-              result === 'L' ? 'bg-red-600' :
-              'bg-gray-600'
-            }`}
-            title={result === 'W' ? 'Win' : result === 'L' ? 'Loss' : 'Draw'}
-          >
-            {result}
-          </span>
-        ))}
-      </div>
-    );
   };
 
   if (standings.length === 0) {
@@ -214,9 +191,6 @@ const StandingsTable = ({ standings = [], highlightTeamId = null, onTeamClick })
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className="font-bold text-primary-600">{standing.points || 0}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      {renderForm(standing.form)}
                     </td>
                   </tr>
                   {isExpanded && onTeamClick && (

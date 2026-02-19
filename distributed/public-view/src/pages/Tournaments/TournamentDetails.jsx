@@ -11,6 +11,7 @@ import MatchCard from '../../components/match/MatchCard';
 import TeamCard from '../../components/team/TeamCard';
 import { formatDate } from '../../utils/dateUtils';
 import { STATUS_COLORS } from '../../utils/constants';
+import { useLiveMatchesUpdates } from '../../hooks/useLiveMatchesUpdates';
 
 const TournamentDetails = () => {
   const { id } = useParams();
@@ -56,6 +57,19 @@ const TournamentDetails = () => {
     // No refetchInterval - only refetch on user actions to reduce server load
   });
 
+  // Extract match IDs for real-time updates (must be before early returns)
+  const matches = matchesData?.data?.matches || matchesData?.data?.data?.matches || [];
+  const matchIds = matches
+    .filter((match) => match.status === 'live' || match.status === 'in_progress')
+    .map((match) => match.id);
+
+  // Subscribe to real-time updates for live matches (MUST be before any early returns)
+  useLiveMatchesUpdates(matchIds, {
+    enabled: matchIds.length > 0,
+    tournamentId: id,
+  });
+
+  // Early returns AFTER all hooks
   if (isLoadingTournament) {
     return <Loading />;
   }
@@ -66,7 +80,6 @@ const TournamentDetails = () => {
 
   const tournament = tournamentData?.data || tournamentData;
   const standings = standingsData?.data?.standings || standingsData?.data || [];
-  const matches = matchesData?.data?.matches || matchesData?.data?.data?.matches || [];
   const teams = teamsData?.data?.teams || teamsData?.data?.data?.teams || teamsData?.data?.data || [];
 
   return (

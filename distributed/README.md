@@ -955,6 +955,21 @@ curl http://localhost:8005/api/health
 - Verify database credentials in `.env` files
 - Check network connectivity: `docker-compose exec auth-service ping auth-db`
 
+#### Database connection errors during setup
+If you encounter the following error during `./setup-auth-service.sh`:
+```
+❌ Error: Running database migrations failed
+[2026-02-20 01:35:13] production.ERROR: SQLSTATE[HY000] [2002] Connection refused
+```
+
+**Solution:**
+1. Stop all containers: `docker-compose down`
+2. Restart all containers: `docker-compose up -d`
+3. Wait 30 seconds for databases to initialize
+4. Run the setup script again: `./setup-auth-service.sh`
+
+This error occurs when the database containers haven't fully initialized before the migration attempts to connect.
+
 #### Redis connection errors
 - Ensure Redis container is running
 - Check Redis configuration in `.env` files

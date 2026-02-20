@@ -369,39 +369,219 @@ git clone <repository-url>
 cd sports-tournament-architecture/distributed
 ```
 
-2. **Set up environment variables**
-```bash
-# Copy environment files (if they exist)
-# Each service should have its own .env file
-```
-
-3. **Start all services**
+2. **Start all services**
 ```bash
 docker-compose up -d
 ```
 
-4. **Run migrations**
+This will start all services, databases, and Redis in detached mode.
+
+3. **Set up services using setup scripts**
+
+The easiest way to set up each service is using the provided setup scripts:
+
 ```bash
-# For each service, run migrations
-docker-compose exec auth-service php artisan migrate
-docker-compose exec tournament-service php artisan migrate
-docker-compose exec team-service php artisan migrate
-docker-compose exec match-service php artisan migrate
-docker-compose exec results-service php artisan migrate
+# Set up Auth Service (includes migrations, Passport installation, seeding)
+./setup-auth-service.sh
+
+# Set up Tournament Service
+./setup-tournament-service.sh
+
+# Set up Team Service
+./setup-team-service.sh
+
+# Set up Match Service
+./setup-match-service.sh
+
+# Set up Results Service
+./setup-results-service.sh
 ```
 
-5. **Install Passport (Auth Service)**
+**Or set up all services at once:**
 ```bash
-docker-compose exec auth-service php artisan passport:install
+./seed-all.sh
 ```
 
-6. **Access the services**
+4. **Access the services**
 - **Auth Service**: http://localhost:8001
 - **Tournament Service**: http://localhost:8002
 - **Team Service**: http://localhost:8003
 - **Match Service**: http://localhost:8004
 - **Results Service**: http://localhost:8005
 - **phpMyAdmin**: http://localhost:8080
+
+### Docker Compose Commands
+
+#### Starting Services
+
+```bash
+# Start all services in detached mode (background)
+docker-compose up -d
+
+# Start specific service
+docker-compose up -d auth-service
+
+# Start services and rebuild images
+docker-compose up -d --build
+
+# Start services and recreate containers
+docker-compose up -d --force-recreate
+```
+
+#### Stopping Services
+
+```bash
+# Stop all services
+docker-compose stop
+
+# Stop specific service
+docker-compose stop auth-service
+
+# Stop and remove containers
+docker-compose down
+
+# Stop and remove containers, volumes, and networks
+docker-compose down -v
+```
+
+#### Viewing Logs
+
+```bash
+# View logs for all services
+docker-compose logs
+
+# View logs for specific service
+docker-compose logs auth-service
+
+# Follow logs (real-time)
+docker-compose logs -f auth-service
+
+# View last 100 lines
+docker-compose logs --tail=100 auth-service
+```
+
+#### Checking Status
+
+```bash
+# Check running services
+docker-compose ps
+
+# Check service health
+curl http://localhost:8001/api/health
+curl http://localhost:8002/api/health
+curl http://localhost:8003/api/health
+curl http://localhost:8004/api/health
+curl http://localhost:8005/api/health
+```
+
+#### Rebuilding Services
+
+```bash
+# Rebuild specific service
+docker-compose build auth-service
+
+# Rebuild all services
+docker-compose build
+
+# Rebuild and restart
+docker-compose up -d --build auth-service
+```
+
+#### Executing Commands in Containers
+
+```bash
+# Run artisan commands
+docker-compose exec auth-service php artisan migrate
+docker-compose exec auth-service php artisan cache:clear
+
+# Access container shell
+docker-compose exec auth-service bash
+
+# Run composer commands
+docker-compose exec auth-service composer install
+
+# Check service environment variables
+docker-compose exec auth-service printenv
+```
+
+#### Restarting Services
+
+```bash
+# Restart all services
+docker-compose restart
+
+# Restart specific service
+docker-compose restart auth-service
+```
+
+#### Database Access
+
+```bash
+# Access MySQL via command line
+docker-compose exec auth-db mysql -uroot -prootpassword
+
+# Access via phpMyAdmin
+# Open http://localhost:8080 in browser
+# Login with: root / rootpassword
+```
+
+#### Redis Access
+
+```bash
+# Access Redis CLI
+docker-compose exec redis redis-cli
+
+# Check Redis keys
+docker-compose exec redis redis-cli KEYS "*"
+
+# Clear Redis cache
+docker-compose exec redis redis-cli FLUSHDB
+```
+
+#### Cleanup Commands
+
+```bash
+# Remove stopped containers
+docker-compose rm
+
+# Remove containers and volumes
+docker-compose down -v
+
+# Remove unused images
+docker image prune
+
+# Full cleanup (containers, volumes, networks, images)
+docker-compose down -v --rmi all
+```
+
+### Manual Setup (Alternative to Setup Scripts)
+
+If you prefer to set up services manually:
+
+1. **Run migrations**
+```bash
+docker-compose exec auth-service php artisan migrate --force
+docker-compose exec tournament-service php artisan migrate --force
+docker-compose exec team-service php artisan migrate --force
+docker-compose exec match-service php artisan migrate --force
+docker-compose exec results-service php artisan migrate --force
+```
+
+2. **Install Passport (Auth Service only)**
+```bash
+docker-compose exec auth-service php artisan passport:install --force
+docker-compose exec auth-service php artisan passport:keys --force
+docker-compose exec auth-service php artisan passport:client --personal --name="Personal Access Client" --no-interaction
+```
+
+3. **Seed databases**
+```bash
+docker-compose exec auth-service php artisan db:seed --force
+docker-compose exec tournament-service php artisan db:seed --force
+docker-compose exec team-service php artisan db:seed --force
+docker-compose exec match-service php artisan db:seed --force
+docker-compose exec results-service php artisan db:seed --force
+```
 
 ### Local Development Setup
 
@@ -618,20 +798,85 @@ php artisan db:seed
 
 ### Docker Deployment
 
-1. **Build and start services**
+#### Initial Setup
+
+1. **Build and start all services**
 ```bash
 docker-compose up -d --build
 ```
 
-2. **Run migrations**
+2. **Wait for services to be ready**
 ```bash
-docker-compose exec auth-service php artisan migrate --force
-# Repeat for other services
+# Check service status
+docker-compose ps
+
+# Wait for databases to be ready (services wait automatically via entrypoint scripts)
+# You can verify by checking logs
+docker-compose logs auth-service | grep "Database is ready"
 ```
 
-3. **Set up Passport**
+3. **Set up services using setup scripts (Recommended)**
+```bash
+# Set up each service (includes migrations, Passport setup, seeding)
+./setup-auth-service.sh
+./setup-tournament-service.sh
+./setup-team-service.sh
+./setup-match-service.sh
+./setup-results-service.sh
+
+```
+
+#### Manual Setup (Alternative)
+
+If you prefer manual setup:
+
+1. **Run migrations for all services**
+```bash
+docker-compose exec auth-service php artisan migrate --force
+docker-compose exec tournament-service php artisan migrate --force
+docker-compose exec team-service php artisan migrate --force
+docker-compose exec match-service php artisan migrate --force
+docker-compose exec results-service php artisan migrate --force
+```
+
+2. **Set up Passport (Auth Service only)**
 ```bash
 docker-compose exec auth-service php artisan passport:install --force
+docker-compose exec auth-service php artisan passport:keys --force
+docker-compose exec auth-service php artisan passport:client --personal --name="Personal Access Client" --no-interaction
+```
+
+3. **Seed databases**
+```bash
+docker-compose exec auth-service php artisan db:seed --force
+docker-compose exec tournament-service php artisan db:seed --force
+docker-compose exec team-service php artisan db:seed --force
+docker-compose exec match-service php artisan db:seed --force
+docker-compose exec results-service php artisan db:seed --force
+```
+
+#### Updating Services
+
+When you make code changes:
+
+1. **Rebuild and restart specific service**
+```bash
+docker-compose build match-service
+docker-compose up -d --force-recreate match-service
+```
+
+2. **Clear cache after updates**
+```bash
+docker-compose exec match-service php artisan cache:clear
+docker-compose exec match-service php artisan config:clear
+docker-compose exec match-service php artisan route:clear
+docker-compose exec match-service php artisan view:clear
+```
+
+3. **Rebuild all services**
+```bash
+docker-compose build
+docker-compose up -d
 ```
 
 ### Production Considerations

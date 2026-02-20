@@ -23,7 +23,7 @@ class TournamentServiceClient extends ServiceClient
     }
 
     /**
-     * Get public tournament details from Tournament Service with caching.
+     * Get public tournament details from Tournament Service with caching and retry logic.
      *
      * @param int $tournamentId
      * @return array|null
@@ -34,23 +34,70 @@ class TournamentServiceClient extends ServiceClient
         $cacheTtl = 300; // 5 minutes
 
         return Cache::remember($cacheKey, $cacheTtl, function () use ($tournamentId) {
-            try {
-                $response = $this->get("/api/public/tournaments/{$tournamentId}");
-                if (isset($response['success']) && $response['success'] && isset($response['data'])) {
-                    return $response['data'];
+            $maxRetries = 3;
+            $retryDelay = 1; // seconds
+            
+            for ($attempt = 1; $attempt <= $maxRetries; $attempt++) {
+                try {
+                    $response = $this->get("/api/public/tournaments/{$tournamentId}");
+                    if (isset($response['success']) && $response['success'] && isset($response['data'])) {
+                        return $response['data'];
+                    }
+                    
+                    // If it's a 404, don't retry - clear cache and return null
+                    if (isset($response['error_code']) && $response['error_code'] === 'TOURNAMENT_NOT_FOUND') {
+                        Log::warning('Tournament not found in Tournament Service', [
+                            'tournament_id' => $tournamentId,
+                            'response' => $response
+                        ]);
+                        // Clear cache to avoid caching null results
+                        Cache::forget($cacheKey);
+                        return null;
+                    }
+                    
+                    // For other errors, retry
+                    if ($attempt < $maxRetries) {
+                        Log::warning('Tournament Service returned unsuccessful response, retrying', [
+                            'tournament_id' => $tournamentId,
+                            'attempt' => $attempt,
+                            'max_retries' => $maxRetries,
+                            'response' => $response
+                        ]);
+                        sleep($retryDelay);
+                        continue;
+                    }
+                    
+                    Log::warning('Tournament Service returned unsuccessful response after all retries', [
+                        'tournament_id' => $tournamentId,
+                        'response' => $response
+                    ]);
+                    // Clear cache on final failure
+                    Cache::forget($cacheKey);
+                    return null;
+                } catch (\Exception $e) {
+                    // Retry on connection errors
+                    if ($attempt < $maxRetries) {
+                        Log::warning('Failed to fetch public tournament, retrying', [
+                            'tournament_id' => $tournamentId,
+                            'attempt' => $attempt,
+                            'max_retries' => $maxRetries,
+                            'error' => $e->getMessage()
+                        ]);
+                        sleep($retryDelay);
+                        continue;
+                    }
+                    
+                    Log::error('Failed to fetch public tournament from Tournament Service after all retries', [
+                        'tournament_id' => $tournamentId,
+                        'error' => $e->getMessage()
+                    ]);
+                    // Clear cache on final failure
+                    Cache::forget($cacheKey);
+                    return null;
                 }
-                Log::warning('Tournament Service returned unsuccessful response for public tournament', [
-                    'tournament_id' => $tournamentId,
-                    'response' => $response
-                ]);
-                return null;
-            } catch (\Exception $e) {
-                Log::error('Failed to fetch public tournament from Tournament Service', [
-                    'tournament_id' => $tournamentId,
-                    'error' => $e->getMessage()
-                ]);
-                return null;
             }
+            
+            return null;
         });
     }
 

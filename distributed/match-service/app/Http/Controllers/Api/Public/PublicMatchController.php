@@ -65,10 +65,13 @@ class PublicMatchController extends PublicApiController
     public function tournamentMatches(Request $request, int $tournamentId): JsonResponse
     {
         try {
-            // Validate tournament exists
+            // Try to validate tournament exists, but don't fail if validation fails
+            // We'll check if matches exist instead - if matches exist, tournament must exist
             $tournament = $this->tournamentServiceClient->getPublicTournament($tournamentId);
             if (!$tournament) {
-                return $this->errorResponse('Tournament not found', 404, null, 'TOURNAMENT_NOT_FOUND');
+                Log::warning('Tournament validation failed, but will still check for matches', [
+                    'tournament_id' => $tournamentId
+                ]);
             }
 
             $validator = Validator::make($request->all(), [
@@ -90,6 +93,13 @@ class PublicMatchController extends PublicApiController
             $data = $this->cacheService->remember($cacheKey, $ttl, function () use ($tournamentId, $filters) {
                 return $this->fetchTournamentMatches($tournamentId, $filters);
             }, $tags, 'live');
+
+            // If no matches found and tournament validation also failed, return 404
+            // Check if matches array is empty (fetchTournamentMatches returns ['matches' => [], 'count' => 0])
+            $matchesCount = isset($data['matches']) ? count($data['matches']) : (isset($data['count']) ? $data['count'] : 0);
+            if ($matchesCount === 0 && !$tournament) {
+                return $this->errorResponse('Tournament not found', 404, null, 'TOURNAMENT_NOT_FOUND');
+            }
 
             return $this->successResponse($data, 'Tournament matches retrieved successfully', 200, $ttl);
         } catch (Throwable $e) {

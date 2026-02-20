@@ -184,7 +184,28 @@ else
     fi
 fi
 
-# Step 3.5: Clear config cache to ensure new .env values are loaded
+# Step 3.5: Ensure .env file exists in container
+echo -e "${YELLOW}📝 Ensuring .env file exists in container...${NC}"
+# First, try to create from .env.example if .env doesn't exist in container
+docker-compose exec -T $SERVICE_NAME bash -c "if [ ! -f .env ]; then cp .env.example .env 2>/dev/null || touch .env; fi" || true
+
+# If .env exists on host, copy it to container (overwrite if needed)
+if [ -f "auth-service/.env" ]; then
+    docker cp auth-service/.env ${SERVICE_NAME}:/var/www/html/.env 2>/dev/null || true
+    # Verify the file was copied
+    if docker-compose exec -T $SERVICE_NAME test -f .env 2>/dev/null; then
+        echo -e "${GREEN}✅ .env file exists in container${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Warning: Could not verify .env file in container, will try to create it${NC}"
+        docker-compose exec -T $SERVICE_NAME bash -c "cp .env.example .env 2>/dev/null || touch .env" || true
+    fi
+else
+    echo -e "${YELLOW}⚠️  auth-service/.env not found on host, using .env.example from container${NC}"
+    docker-compose exec -T $SERVICE_NAME bash -c "if [ ! -f .env ]; then cp .env.example .env 2>/dev/null || touch .env; fi" || true
+fi
+echo ""
+
+# Step 3.6: Clear config cache to ensure new .env values are loaded
 echo -e "${YELLOW}🔄 Clearing Laravel config cache...${NC}"
 docker-compose exec -T $SERVICE_NAME php artisan config:clear >/dev/null 2>&1 || true
 docker-compose exec -T $SERVICE_NAME php artisan cache:clear >/dev/null 2>&1 || true

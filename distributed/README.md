@@ -397,11 +397,6 @@ The easiest way to set up each service is using the provided setup scripts:
 ./setup-results-service.sh
 ```
 
-**Or set up all services at once:**
-```bash
-./seed-all.sh
-```
-
 > **⚠️ Error Handling**: If any setup script encounters an error, it will automatically clean up the service resources:
 > - Stops and removes the service containers
 > - Removes the service Docker images
@@ -870,6 +865,21 @@ docker-compose ps
 ./setup-results-service.sh
 
 ```
+#### Database connection errors during setup
+If you encounter the following error during `./setup-auth-service.sh`:
+```
+❌ Error: Running database migrations failed
+[2026-02-20 01:35:13] production.ERROR: SQLSTATE[HY000] [2002] Connection refused
+```
+
+**Solution:**
+1. Stop all containers: `docker-compose down`
+2. Restart all containers: `docker-compose up -d`
+3. Wait 30 seconds for databases to initialize
+4. Run the setup script again: `./setup-auth-service.sh`
+
+This error occurs when the database containers haven't fully initialized before the migration attempts to connect.
+
 
 #### Manual Setup (Alternative)
 
@@ -954,21 +964,6 @@ curl http://localhost:8005/api/health
 - Check database containers are running: `docker-compose ps`
 - Verify database credentials in `.env` files
 - Check network connectivity: `docker-compose exec auth-service ping auth-db`
-
-#### Database connection errors during setup
-If you encounter the following error during `./setup-auth-service.sh`:
-```
-❌ Error: Running database migrations failed
-[2026-02-20 01:35:13] production.ERROR: SQLSTATE[HY000] [2002] Connection refused
-```
-
-**Solution:**
-1. Stop all containers: `docker-compose down`
-2. Restart all containers: `docker-compose up -d`
-3. Wait 30 seconds for databases to initialize
-4. Run the setup script again: `./setup-auth-service.sh`
-
-This error occurs when the database containers haven't fully initialized before the migration attempts to connect.
 
 #### Redis connection errors
 - Ensure Redis container is running

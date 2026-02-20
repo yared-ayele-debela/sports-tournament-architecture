@@ -9,9 +9,34 @@ done
 
 echo "Database is ready!"
 
-# Generate application key if not set
+# Ensure .env file exists
 if [ ! -f .env ]; then
-  cp .env.example .env 2>/dev/null || true
+  if [ -f .env.example ]; then
+    cp .env.example .env
+  else
+    # Create minimal .env file if .env.example doesn't exist
+    cat > .env <<EOF
+APP_NAME=Laravel
+APP_ENV=production
+APP_KEY=
+APP_DEBUG=false
+APP_URL=http://localhost
+
+DB_CONNECTION=${DB_CONNECTION:-mysql}
+DB_HOST=${DB_HOST:-match-db}
+DB_PORT=${DB_PORT:-3306}
+DB_DATABASE=${DB_DATABASE:-match_db}
+DB_USERNAME=${DB_USERNAME:-root}
+DB_PASSWORD=${DB_PASSWORD:-rootpassword}
+
+CACHE_DRIVER=${CACHE_STORE:-redis}
+QUEUE_CONNECTION=${QUEUE_CONNECTION:-redis}
+
+REDIS_HOST=${REDIS_HOST:-redis}
+REDIS_PASSWORD=${REDIS_PASSWORD:-null}
+REDIS_PORT=${REDIS_PORT:-6379}
+EOF
+  fi
 fi
 
 php artisan key:generate --force || true

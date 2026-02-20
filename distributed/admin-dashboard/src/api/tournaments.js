@@ -116,6 +116,24 @@ export const tournamentsService = {
       throw handleApiError(error);
     }
   },
+
+  getSettings: async (id) => {
+    try {
+      const response = await tournamentApi.get(`/tournaments/${id}/settings`);
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  updateSettings: async (id, data) => {
+    try {
+      const response = await tournamentApi.post(`/tournaments/${id}/settings`, data);
+      return extractData(response);
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
 };
 
 export const sportsService = {

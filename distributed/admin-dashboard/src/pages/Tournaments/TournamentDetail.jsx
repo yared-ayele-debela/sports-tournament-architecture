@@ -5,14 +5,16 @@ import { tournamentsService } from '../../api/tournaments';
 import { resultsService } from '../../api/results';
 import { useToast } from '../../context/ToastContext';
 import { usePermissions } from '../../hooks/usePermissions';
-import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Trophy, BarChart3, Users, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, Calendar, MapPin, Trophy, BarChart3, Users, RefreshCw, Settings } from 'lucide-react';
 import ConfirmDialog from '../../components/common/ConfirmDialog';
+import TournamentSettings from './TournamentSettings';
 
 const TABS = [
   { id: 'overview', label: 'Overview', icon: Trophy },
   { id: 'matches', label: 'Matches', icon: Calendar },
   { id: 'teams', label: 'Teams', icon: Users },
   { id: 'standings', label: 'Standings', icon: BarChart3 },
+  { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
 const STATUS_OPTIONS = [
@@ -500,6 +502,10 @@ const team = standing.team?.data || standing.team || {};
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <TournamentSettings tournamentId={id} />
         )}
       </div>
 

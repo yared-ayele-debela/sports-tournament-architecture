@@ -402,6 +402,13 @@ The easiest way to set up each service is using the provided setup scripts:
 ./seed-all.sh
 ```
 
+> **⚠️ Error Handling**: If any setup script encounters an error, it will automatically clean up the service resources:
+> - Stops and removes the service containers
+> - Removes the service Docker images
+> - Removes the database volume
+> 
+> This ensures a clean state for retrying the setup. You can simply run the setup script again after fixing any issues.
+
 4. **Access the services**
 - **Auth Service**: http://localhost:8001
 - **Tournament Service**: http://localhost:8002
@@ -552,6 +559,48 @@ docker image prune
 
 # Full cleanup (containers, volumes, networks, images)
 docker-compose down -v --rmi all
+
+# Remove specific service resources (e.g., auth-service)
+docker-compose stop auth-service auth-db
+docker-compose rm -f auth-service auth-db
+docker rmi distributed-auth-service 2>/dev/null || true
+docker volume rm distributed_auth_db_data 2>/dev/null || true
+```
+
+#### Error Handling and Cleanup
+
+If a setup script encounters an error, it will automatically clean up the service resources:
+
+**What gets cleaned up:**
+- Service containers (e.g., `auth-service`, `auth-db`)
+- Service Docker images
+- Database volumes (e.g., `distributed_auth_db_data`)
+
+**Example error cleanup for auth-service:**
+```bash
+# If setup-auth-service.sh fails, it automatically runs:
+docker-compose stop auth-service auth-db
+docker-compose rm -f auth-service auth-db
+docker rmi distributed-auth-service
+docker volume rm distributed_auth_db_data
+```
+
+**After cleanup, you can:**
+1. Fix the issue that caused the error
+2. Run the setup script again: `./setup-auth-service.sh`
+3. The script will start fresh with clean resources
+
+**Manual cleanup (if needed):**
+```bash
+# Remove auth-service resources manually
+docker-compose stop auth-service auth-db
+docker-compose rm -f auth-service auth-db
+docker rmi distributed-auth-service 2>/dev/null || true
+docker volume rm distributed_auth_db_data 2>/dev/null || true
+
+# Remove all service resources
+docker-compose down -v
+docker-compose rm -f
 ```
 
 ### Manual Setup (Alternative to Setup Scripts)

@@ -810,10 +810,6 @@ docker-compose up -d --build
 # Check service status
 docker-compose ps
 
-# Wait for databases to be ready (services wait automatically via entrypoint scripts)
-# You can verify by checking logs
-docker-compose logs auth-service | grep "Database is ready"
-```
 
 3. **Set up services using setup scripts (Recommended)**
 ```bash

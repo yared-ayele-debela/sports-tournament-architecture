@@ -132,17 +132,6 @@ run_command() {
 # Step 1: Wait for database
 wait_for_database
 
-# Step 2: Install Composer Dependencies
-if ! run_command "Installing Composer dependencies" \
-    docker-compose exec -T $SERVICE_NAME composer install; then
-    echo -e "${YELLOW}⚠️  Composer install failed, retrying once...${NC}"
-    sleep 2
-    if ! run_command "Retrying Composer dependencies installation" \
-        docker-compose exec -T $SERVICE_NAME composer install; then
-        echo -e "${RED}❌ Fatal: Failed to install Composer dependencies after retry${NC}"
-        exit 1
-    fi
-fi
 
 # Step 3: Verify and fix results-service .env file
 echo -e "${YELLOW}🔍 Checking results-service .env file...${NC}"
@@ -184,7 +173,28 @@ else
     fi
 fi
 
-# Step 3.5: Clear config cache to ensure new .env values are loaded
+# Step 3.5: Ensure .env file exists in container
+echo -e "${YELLOW}📝 Ensuring .env file exists in container...${NC}"
+# First, try to create from .env.example if .env doesn't exist in container
+docker-compose exec -T $SERVICE_NAME bash -c "if [ ! -f .env ]; then cp .env.example .env 2>/dev/null || touch .env; fi" || true
+
+# If .env exists on host, copy it to container (overwrite if needed)
+if [ -f "results-service/.env" ]; then
+    docker cp results-service/.env ${SERVICE_NAME}:/var/www/html/.env 2>/dev/null || true
+    # Verify the file was copied
+    if docker-compose exec -T $SERVICE_NAME test -f .env 2>/dev/null; then
+        echo -e "${GREEN}✅ .env file exists in container${NC}"
+    else
+        echo -e "${YELLOW}⚠️  Warning: Could not verify .env file in container, will try to create it${NC}"
+        docker-compose exec -T $SERVICE_NAME bash -c "cp .env.example .env 2>/dev/null || touch .env" || true
+    fi
+else
+    echo -e "${YELLOW}⚠️  results-service/.env not found on host, using .env.example from container${NC}"
+    docker-compose exec -T $SERVICE_NAME bash -c "if [ ! -f .env ]; then cp .env.example .env 2>/dev/null || touch .env; fi" || true
+fi
+echo ""
+
+# Step 3.6: Clear config cache to ensure new .env values are loaded
 echo -e "${YELLOW}🔄 Clearing Laravel config cache...${NC}"
 docker-compose exec -T $SERVICE_NAME php artisan config:clear >/dev/null 2>&1 || true
 docker-compose exec -T $SERVICE_NAME php artisan cache:clear >/dev/null 2>&1 || true

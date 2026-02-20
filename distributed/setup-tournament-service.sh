@@ -132,17 +132,7 @@ run_command() {
 # Step 1: Wait for database
 wait_for_database
 
-# Step 2: Install Composer Dependencies
-if ! run_command "Installing Composer dependencies" \
-    docker-compose exec -T $SERVICE_NAME composer install; then
-    echo -e "${YELLOW}⚠️  Composer install failed, retrying once...${NC}"
-    sleep 2
-    if ! run_command "Retrying Composer dependencies installation" \
-        docker-compose exec -T $SERVICE_NAME composer install; then
-        echo -e "${RED}❌ Fatal: Failed to install Composer dependencies after retry${NC}"
-        exit 1
-    fi
-fi
+
 
 # Step 3: Verify and fix tournament-service .env file
 echo -e "${YELLOW}🔍 Checking tournament-service .env file...${NC}"

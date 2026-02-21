@@ -1,5 +1,5 @@
 #!/bin/bash
-c
+
 # Script to setup Auth Service
 # This script automates the complete setup process for the auth-service
 # Usage: ./setup-auth-service.sh
@@ -25,7 +25,7 @@ MAX_WAIT_TIME=90  # Maximum time to wait for database (in seconds)
 
 echo -e "${BLUE}========================================${NC}"
 echo -e "${BLUE}  Auth Service Setup Script${NC}"
-echo -e "${BLUE}========================================${NC}"c
+echo -e "${BLUE}========================================${NC}"
 echo ""
 
 # Function to check if database is ready

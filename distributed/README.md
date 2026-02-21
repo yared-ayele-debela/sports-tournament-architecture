@@ -376,33 +376,18 @@ docker-compose up -d
 
 This will start all services, databases, and Redis in detached mode.
 
-3. **Set up services using setup scripts**
+3. **Set up services manually**
 
-The easiest way to set up each service is using the provided setup scripts:
+> **📖 For detailed step-by-step setup instructions, see [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)**
 
-```bash
-# Set up Auth Service (includes migrations, Passport installation, seeding)
-./setup-auth-service.sh
-
-# Set up Tournament Service
-./setup-tournament-service.sh
-
-# Set up Team Service
-./setup-team-service.sh
-
-# Set up Match Service
-./setup-match-service.sh
-
-# Set up Results Service
-./setup-results-service.sh
-```
-
-> **⚠️ Error Handling**: If any setup script encounters an error, it will automatically clean up the service resources:
-> - Stops and removes the service containers
-> - Removes the service Docker images
-> - Removes the database volume
-> 
-> This ensures a clean state for retrying the setup. You can simply run the setup script again after fixing any issues.
+Follow the manual setup guide in `DOCKER_SETUP_GUIDE.md` to set up each service. The guide includes:
+- Database setup and waiting
+- Composer dependency installation
+- Environment file configuration
+- Application key generation
+- Database migrations
+- Service-specific setup (Passport for Auth Service)
+- Database seeding
 
 4. **Access the services**
 - **Auth Service**: http://localhost:8001
@@ -564,7 +549,7 @@ docker volume rm distributed_auth_db_data 2>/dev/null || true
 
 #### Error Handling and Cleanup
 
-If a setup script encounters an error, it will automatically clean up the service resources:
+If setup encounters an error, you may need to clean up service resources:
 
 **What gets cleaned up:**
 - Service containers (e.g., `auth-service`, `auth-db`)
@@ -573,7 +558,7 @@ If a setup script encounters an error, it will automatically clean up the servic
 
 **Example error cleanup for auth-service:**
 ```bash
-# If setup-auth-service.sh fails, it automatically runs:
+# If setup fails, you can manually clean up:
 docker-compose stop auth-service auth-db
 docker-compose rm -f auth-service auth-db
 docker rmi distributed-auth-service
@@ -582,7 +567,7 @@ docker volume rm distributed_auth_db_data
 
 **After cleanup, you can:**
 1. Fix the issue that caused the error
-2. Run the setup script again: `./setup-auth-service.sh`
+2. Retry the setup steps from the [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)
 3. The script will start fresh with clean resources
 
 **Manual cleanup (if needed):**
@@ -598,27 +583,55 @@ docker-compose down -v
 docker-compose rm -f
 ```
 
-### Manual Setup (Alternative to Setup Scripts)
+### Manual Setup
 
-If you prefer to set up services manually:
+> **📖 For complete step-by-step instructions, see [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)**
 
-1. **Run migrations**
+The manual setup process includes:
+
+1. **Copy .env.example to .env for each service**
 ```bash
-docker-compose exec auth-service php artisan migrate --force
-docker-compose exec tournament-service php artisan migrate --force
-docker-compose exec team-service php artisan migrate --force
-docker-compose exec match-service php artisan migrate --force
-docker-compose exec results-service php artisan migrate --force
+docker-compose exec auth-service cp .env.example .env
+docker-compose exec tournament-service cp .env.example .env
+docker-compose exec team-service cp .env.example .env
+docker-compose exec match-service cp .env.example .env
+docker-compose exec results-service cp .env.example .env
 ```
 
-2. **Install Passport (Auth Service only)**
+2. **Install Composer dependencies**
+```bash
+docker-compose exec auth-service composer install --no-interaction
+docker-compose exec tournament-service composer install --no-interaction
+docker-compose exec team-service composer install --no-interaction
+docker-compose exec match-service composer install --no-interaction
+docker-compose exec results-service composer install --no-interaction
+```
+
+3. **Generate application keys**
+```bash
+docker-compose exec auth-service php artisan key:generate --force
+docker-compose exec tournament-service php artisan key:generate --force
+docker-compose exec team-service php artisan key:generate --force
+docker-compose exec match-service php artisan key:generate --force
+docker-compose exec results-service php artisan key:generate --force
+```
+
+4. **Run migrations**
+```bash
+docker-compose exec auth-service php artisan migrate:fresh --force
+docker-compose exec tournament-service php artisan migrate:fresh --force
+docker-compose exec team-service php artisan migrate:fresh --force
+docker-compose exec match-service php artisan migrate:fresh --force
+docker-compose exec results-service php artisan migrate:fresh --force
+```
+
+5. **Install Passport (Auth Service only)**
 ```bash
 docker-compose exec auth-service php artisan passport:install --force
-docker-compose exec auth-service php artisan passport:keys --force
 docker-compose exec auth-service php artisan passport:client --personal --name="Personal Access Client" --no-interaction
 ```
 
-3. **Seed databases**
+6. **Seed databases**
 ```bash
 docker-compose exec auth-service php artisan db:seed --force
 docker-compose exec tournament-service php artisan db:seed --force
@@ -626,6 +639,17 @@ docker-compose exec team-service php artisan db:seed --force
 docker-compose exec match-service php artisan db:seed --force
 docker-compose exec results-service php artisan db:seed --force
 ```
+
+7. **Clear cache**
+```bash
+docker-compose exec auth-service php artisan optimize:clear
+docker-compose exec tournament-service php artisan optimize:clear
+docker-compose exec team-service php artisan optimize:clear
+docker-compose exec match-service php artisan optimize:clear
+docker-compose exec results-service php artisan optimize:clear
+```
+
+> **Note**: Services must be set up in dependency order. See [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md) for the correct order and detailed instructions.
 
 ### Local Development Setup
 
@@ -853,20 +877,24 @@ docker-compose up -d --build
 ```bash
 # Check service status
 docker-compose ps
-
-
-3. **Set up services using setup scripts (Recommended)**
-```bash
-# Set up each service (includes migrations, Passport setup, seeding)
-./setup-auth-service.sh
-./setup-tournament-service.sh
-./setup-team-service.sh
-./setup-match-service.sh
-./setup-results-service.sh
-
 ```
+
+3. **Set up services manually**
+
+> **📖 For detailed step-by-step setup instructions, see [DOCKER_SETUP_GUIDE.md](./DOCKER_SETUP_GUIDE.md)**
+
+Follow the manual setup guide which includes:
+- Copying .env.example to .env for each service
+- Installing Composer dependencies
+- Generating application keys
+- Running database migrations
+- Setting up Passport (Auth Service)
+- Running database seeders
+- Clearing cache
+
 #### Database connection errors during setup
-If you encounter the following error during `./setup-auth-service.sh`:
+
+If you encounter database connection errors:
 ```
 ❌ Error: Running database migrations failed
 [2026-02-20 01:35:13] production.ERROR: SQLSTATE[HY000] [2002] Connection refused
@@ -876,27 +904,9 @@ If you encounter the following error during `./setup-auth-service.sh`:
 1. Stop all containers: `docker-compose down`
 2. Restart all containers: `docker-compose up -d`
 3. Wait 30 seconds for databases to initialize
-4. Run the setup script again: `./setup-auth-service.sh`
+4. Retry the setup steps
 
 This error occurs when the database containers haven't fully initialized before the migration attempts to connect.
-
-
-#### Manual Setup (Alternative)
-
-If you prefer manual setup:
-
-1. **Run migrations for all services**
-```bash
-docker-compose exec auth-service php artisan migrate --force
-docker-compose exec tournament-service php artisan migrate --force
-docker-compose exec team-service php artisan migrate --force
-docker-compose exec match-service php artisan migrate --force
-docker-compose exec results-service php artisan migrate --force
-```
-
-2. **Set up Passport (Auth Service only)**
-```bash
-docker-compose exec auth-service php artisan passport:install --force
 docker-compose exec auth-service php artisan passport:keys --force
 docker-compose exec auth-service php artisan passport:client --personal --name="Personal Access Client" --no-interaction
 ```

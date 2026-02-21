@@ -79,14 +79,6 @@ Note: If you see "already exists" errors for Passport tables, this is normal if 
 
 ### 2.7 Install Passport Keys
 
-Check if keys exist:
-
-```bash
-docker-compose exec auth-service test -f storage/oauth-private.key && echo "Keys exist" || echo "Keys missing"
-```
-
-If keys don't exist, generate them:
-
 ```bash
 docker-compose exec auth-service php artisan passport:install --force
 ```
@@ -363,16 +355,8 @@ docker-compose exec match-service composer require pusher/pusher-php-server
 
 ### 7.2 Install WebSocket Dependencies in Frontend
 
-Choose one of the following options:
 
-**Option A: Install locally (recommended)**
-```bash
-cd public-view
-npm install laravel-echo pusher-js
-cd ..
-```
-
-**Option B: Install in container**
+**Install in container**
 ```bash
 docker-compose exec public-view npm install laravel-echo pusher-js
 ```

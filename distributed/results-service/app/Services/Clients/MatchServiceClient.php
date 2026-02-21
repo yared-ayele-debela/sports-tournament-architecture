@@ -22,12 +22,31 @@ class MatchServiceClient extends ServiceClient
         Log::info("Fetching completed matches for tournament {$tournamentId}");
         $response = $this->get("/api/public/tournaments/{$tournamentId}/matches?status=completed");
 
-        // Handle paginated response - extract data if paginated
-        if (is_array($response) && isset($response['data'])) {
-            return $response['data'];
+        // Handle different response structures
+        if (is_array($response)) {
+            // If response has 'data' key
+            if (isset($response['data'])) {
+                // Check if data has 'matches' key (nested structure)
+                if (isset($response['data']['matches']) && is_array($response['data']['matches'])) {
+                    return $response['data']['matches'];
+                }
+                // If data is directly an array, return it
+                if (is_array($response['data'])) {
+                    return $response['data'];
+                }
+            }
+            // If response is directly an array of matches
+            if (isset($response[0]) && is_array($response[0])) {
+                return $response;
+            }
         }
 
-        return $response;
+        Log::warning("Unexpected response structure from match service", [
+            'tournament_id' => $tournamentId,
+            'response_structure' => is_array($response) ? array_keys($response) : gettype($response)
+        ]);
+
+        return [];
     }
 
     /**

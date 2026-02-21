@@ -39,7 +39,7 @@ class StandingsController extends Controller
         $items = collect($paginator->items())
             ->map(function ($standing, $index) {
                 $standing->goal_difference = $standing->goals_for - $standing->goals_against;
-                
+
                 // Try to get team, but handle gracefully if team doesn't exist
                 try {
                     $standing->team = $standing->getTeam();
@@ -66,7 +66,7 @@ class StandingsController extends Controller
                     ]);
                     $standing->team = null;
                 }
-                
+
                 $standing->position = $index + 1;
                 return $standing;
             })
@@ -80,10 +80,9 @@ class StandingsController extends Controller
     public function recalculate(Request $request, int $tournamentId): JsonResponse
     {
         // Check if user has admin permissions (simplified for now)
-        // In a real implementation, you'd check user roles/permissions
-        
-        $this->standingsCalculator->recalculateForTournament($tournamentId);
 
-        return ApiResponse::success(null, 'Standings recalculated successfully');
+        $standings = $this->standingsCalculator->recalculateForTournament($tournamentId);
+
+        return ApiResponse::success($standings, 'Standings recalculated successfully');
     }
 }

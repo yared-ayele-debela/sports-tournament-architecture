@@ -104,7 +104,7 @@ class StandingsCalculator
         }
     }
 
-    public function recalculateForTournament(int $tournamentId): void
+    public function recalculateForTournament(int $tournamentId): array
     {
         // Reset standings for tournament
         Standing::where('tournament_id', $tournamentId)->delete();
@@ -112,7 +112,19 @@ class StandingsCalculator
         // Fetch all completed matches from Match Service
         $matches = $this->matchService->getCompletedMatches($tournamentId);
 
+        // Ensure matches is an array
+        if (!is_array($matches)) {
+            Log::error("Invalid matches data structure", [
+                'tournament_id' => $tournamentId,
+                'matches_type' => gettype($matches),
+                'matches' => $matches
+            ]);
+            $matches = [];
+        }
+
         Log::info("Recalculating standings for tournament {$tournamentId} with " . count($matches) . " matches.");
+
+        $processedMatches = 0;
         foreach ($matches as $match) {
             // Debug the match structure
             Log::info("Match data: " . json_encode($match));
@@ -125,18 +137,82 @@ class StandingsCalculator
                 continue;
             }
 
+            // Handle different team ID structures (flat or nested)
+            $homeTeamId = $match['home_team_id'] ?? $match['home_team']['id'] ?? null;
+            $awayTeamId = $match['away_team_id'] ?? $match['away_team']['id'] ?? null;
+
+            if (!$homeTeamId || !$awayTeamId) {
+                Log::error("Team IDs not found in match data", [
+                    'match_id' => $matchId,
+                    'match' => $match,
+                    'home_team_id' => $homeTeamId,
+                    'away_team_id' => $awayTeamId
+                ]);
+                continue;
+            }
+
+            // Handle score data
+            $homeScore = $match['home_score'] ?? null;
+            $awayScore = $match['away_score'] ?? null;
+
+            if ($homeScore === null || $awayScore === null) {
+                Log::error("Scores not found in match data", [
+                    'match_id' => $matchId,
+                    'home_score' => $homeScore,
+                    'away_score' => $awayScore
+                ]);
+                continue;
+            }
+
             $matchResult = new MatchResult([
                 'match_id' => $matchId,
                 'tournament_id' => $tournamentId,
-                'home_team_id' => $match['home_team_id'],
-                'away_team_id' => $match['away_team_id'],
-                'home_score' => $match['home_score'],
-                'away_score' => $match['away_score'],
-                'completed_at' => $match['completed_at']?? now(),
+                'home_team_id' => $homeTeamId,
+                'away_team_id' => $awayTeamId,
+                'home_score' => $homeScore,
+                'away_score' => $awayScore,
+                'completed_at' => $match['completed_at'] ?? $match['match_date'] ?? now(),
             ]);
 
             $this->updateStandingsFromMatch($matchResult);
+            $processedMatches++;
         }
+
+        // Clear cache after recalculation
+        $this->clearTournamentCache($tournamentId);
+
+        // Get and return the recalculated standings
+        $standings = Standing::where('tournament_id', $tournamentId)
+            ->orderBy('points', 'desc')
+            ->orderBy('goal_difference', 'desc')
+            ->orderBy('goals_for', 'desc')
+            ->get()
+            ->map(function ($standing, $index) {
+                $standing->goal_difference = $standing->goals_for - $standing->goals_against;
+                $standing->position = $index + 1;
+
+                // Try to get team, but handle gracefully if team doesn't exist
+                try {
+                    $standing->team = $standing->getTeam();
+                } catch (\Exception $e) {
+                    Log::warning('Failed to fetch team for standing', [
+                        'team_id' => $standing->team_id,
+                        'error' => $e->getMessage(),
+                    ]);
+                    $standing->team = null;
+                }
+
+                return $standing;
+            })
+            ->values()
+            ->toArray();
+
+        Log::info("Standings recalculated for tournament {$tournamentId}", [
+            'processed_matches' => $processedMatches,
+            'total_standings' => count($standings)
+        ]);
+
+        return $standings;
     }
 
     public function getTournamentStandings(int $tournamentId): array
@@ -182,7 +258,7 @@ class StandingsCalculator
     {
         // Clear internal Redis cache key
         Redis::del("tournament_standings:{$tournamentId}");
-        
+
         // Also invalidate public API cache tags immediately
         if ($this->cacheService) {
             try {
@@ -194,13 +270,13 @@ class StandingsCalculator
                     "public:tournament:{$tournamentId}:standings",
                     "public:tournament:{$tournamentId}:statistics",
                 ];
-                
+
                 $this->cacheService->forgetByTags($tags);
-                
+
                 // Also invalidate specific cache keys
                 $cacheKey = $this->cacheService->generateKey("tournament:{$tournamentId}:standings");
                 $this->cacheService->forget($cacheKey);
-                
+
                 Log::info('Tournament standings cache invalidated', [
                     'tournament_id' => $tournamentId,
                     'tags' => $tags,

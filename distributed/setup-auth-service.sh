@@ -96,6 +96,16 @@ grep -q "^DB_PASSWORD=" auth-service/.env  || echo "DB_PASSWORD=rootpassword" >>
 echo -e "${GREEN}✅ auth-service/.env is configured${NC}"
 echo ""
 
+# Step 1.5: Copy .env file to container
+echo -e "${YELLOW}Step 1.5: Copying .env file to container...${NC}"
+if docker cp auth-service/.env ${SERVICE_NAME}:/var/www/html/.env 2>/dev/null; then
+    echo -e "${GREEN}✅ .env file copied to container${NC}"
+else
+    echo -e "${YELLOW}⚠️  Could not copy .env to container (container may not be running yet)${NC}"
+    echo -e "${YELLOW}   Will retry after container is ready...${NC}"
+fi
+echo ""
+
 # Step 2.1: Wait for database
 wait_for_database
 
@@ -109,16 +119,72 @@ else
 fi
 echo ""
 
-# Step 2.3: Generate Application Key
+# Step 2.3: Generate Application Key (ensure .env exists first)
 echo -e "${YELLOW}Step 2.3: Generating application key...${NC}"
-if docker-compose exec -T $SERVICE_NAME php artisan key:generate --force 2>/dev/null; then
+
+# Ensure .env file exists in container - try multiple methods
+echo -e "${YELLOW}   Ensuring .env file exists in container...${NC}"
+
+# Method 1: Try to copy from host
+if [ -f "auth-service/.env" ]; then
+    if docker cp auth-service/.env ${SERVICE_NAME}:/var/www/html/.env 2>/dev/null; then
+        # Verify it was copied
+        if docker-compose exec -T $SERVICE_NAME test -f /var/www/html/.env 2>/dev/null; then
+            echo -e "${GREEN}✅ .env file copied to container${NC}"
+        else
+            echo -e "${YELLOW}   Copy succeeded but file not found, trying alternative method...${NC}"
+            # Method 2: Try copying via docker-compose exec
+            docker-compose exec -T $SERVICE_NAME bash -c "cat > /var/www/html/.env" < auth-service/.env 2>/dev/null || true
+        fi
+    else
+        echo -e "${YELLOW}   Direct copy failed, trying alternative method...${NC}"
+        # Method 2: Use docker-compose exec to write file
+        docker-compose exec -T $SERVICE_NAME bash -c "cat > /var/www/html/.env" < auth-service/.env 2>/dev/null || true
+    fi
+fi
+
+# Method 3: If still not found, try creating from .env.example in container
+if ! docker-compose exec -T $SERVICE_NAME test -f /var/www/html/.env 2>/dev/null; then
+    echo -e "${YELLOW}   .env still not found, trying to create from .env.example in container...${NC}"
+    docker-compose exec -T $SERVICE_NAME bash -c "if [ -f .env.example ]; then cp .env.example .env; else touch .env; fi" 2>/dev/null || true
+fi
+
+# Final verification - if still not found, create minimal .env
+if ! docker-compose exec -T $SERVICE_NAME test -f /var/www/html/.env 2>/dev/null; then
+    echo -e "${YELLOW}   Creating minimal .env file in container...${NC}"
+    docker-compose exec -T $SERVICE_NAME bash -c "echo 'APP_NAME=Laravel' > /var/www/html/.env && echo 'APP_ENV=local' >> /var/www/html/.env && echo 'APP_KEY=' >> /var/www/html/.env" 2>/dev/null || true
+fi
+
+# Verify .env exists before proceeding
+if docker-compose exec -T $SERVICE_NAME test -f /var/www/html/.env 2>/dev/null; then
+    echo -e "${GREEN}✅ .env file confirmed in container${NC}"
+else
+    echo -e "${RED}❌ Failed to ensure .env file exists in container${NC}"
+    echo -e "${RED}   Please manually copy auth-service/.env to the container${NC}"
+    exit 1
+fi
+
+# Now generate the key
+echo -e "${YELLOW}   Running key:generate command...${NC}"
+key_gen_output=$(docker-compose exec -T $SERVICE_NAME php artisan key:generate --force 2>&1)
+key_gen_exit=$?
+
+if [ $key_gen_exit -eq 0 ]; then
     echo -e "${GREEN}✅ Application key generated${NC}"
 else
-    echo -e "${YELLOW}⚠️  Key generation may have failed or key already exists${NC}"
+    # Check if key already exists (key generation might fail if key exists but that's OK)
+    if docker-compose exec -T $SERVICE_NAME grep -q "APP_KEY=base64:" /var/www/html/.env 2>/dev/null || \
+       docker-compose exec -T $SERVICE_NAME grep -q "^APP_KEY=" /var/www/html/.env 2>/dev/null; then
+        echo -e "${GREEN}✅ Application key already exists in .env${NC}"
+    else
+        echo -e "${RED}❌ Failed to generate application key${NC}"
+        echo -e "${RED}   Error output: ${key_gen_output}${NC}"
+        exit 1
+    fi
 fi
 echo ""
 
-# Step 2.4: Check if Laravel Passport is installed
+# Step 2.4: Install Laravel Passport (if not already installed)
 echo -e "${YELLOW}Step 2.4: Checking if Laravel Passport is installed...${NC}"
 if docker-compose exec -T $SERVICE_NAME composer show laravel/passport 2>/dev/null | grep -q "laravel/passport"; then
     echo -e "${GREEN}✅ Laravel Passport is already installed${NC}"
@@ -142,8 +208,8 @@ else
 fi
 echo ""
 
-# Step 2.6: Check if Passport keys exist and install if needed
-echo -e "${YELLOW}Step 2.6: Checking Passport keys...${NC}"
+# Step 2.6: Install Passport Keys
+echo -e "${YELLOW}Step 2.6: Checking if Passport keys exist...${NC}"
 if docker-compose exec -T $SERVICE_NAME test -f storage/oauth-private.key 2>/dev/null; then
     echo -e "${GREEN}✅ Passport keys already exist${NC}"
 else
@@ -176,7 +242,7 @@ else
 fi
 echo ""
 
-# Step 2.9: Clear cache
+# Step 2.9: Clear cache (after running seeders)
 echo -e "${YELLOW}Step 2.9: Clearing application cache...${NC}"
 if docker-compose exec -T $SERVICE_NAME php artisan optimize:clear 2>/dev/null; then
     echo -e "${GREEN}✅ Cache cleared${NC}"

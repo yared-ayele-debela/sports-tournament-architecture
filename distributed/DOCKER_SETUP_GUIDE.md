@@ -112,13 +112,19 @@ docker-compose exec auth-service composer install --no-interaction
 
 If network timeout occurs, retry the command.
 
-### 2.3 Generate Application Key
+### 2.3 Copy .env.example to .env
+
+```bash
+docker-compose exec auth-service cp .env.example .env
+```
+
+### 2.4 Generate Application Key
 
 ```bash
 docker-compose exec auth-service php artisan key:generate --force
 ```
 
-### 2.4 Install Laravel Passport (if not already installed)
+### 2.5 Install Laravel Passport (if not already installed)
 
 Check if Passport is installed:
 
@@ -132,7 +138,7 @@ If not installed, install it:
 docker-compose exec auth-service composer require laravel/passport --no-interaction
 ```
 
-### 2.5 Run Migrations
+### 2.6 Run Migrations
 
 ```bash
 docker-compose exec auth-service php artisan migrate:fresh --force
@@ -140,7 +146,7 @@ docker-compose exec auth-service php artisan migrate:fresh --force
 
 Note: If you see "already exists" errors for Passport tables, this is normal if Passport was previously installed.
 
-### 2.6 Install Passport Keys
+### 2.7 Install Passport Keys
 
 Check if keys exist:
 
@@ -154,7 +160,7 @@ If keys don't exist, generate them:
 docker-compose exec auth-service php artisan passport:install --force
 ```
 
-### 2.7 Create Personal Access Client
+### 2.8 Create Personal Access Client
 
 ```bash
 docker-compose exec auth-service php artisan passport:client --personal --name="Personal Access Client" --no-interaction
@@ -162,7 +168,7 @@ docker-compose exec auth-service php artisan passport:client --personal --name="
 
 Note: If client already exists, you'll see an error - this is fine.
 
-### 2.8 Run Database Seeders
+### 2.9 Run Database Seeders
 
 ```bash
 docker-compose exec auth-service php artisan db:seed --force
@@ -191,19 +197,25 @@ docker-compose exec tournament-db mysqladmin ping -h localhost -uroot -prootpass
 docker-compose exec tournament-service composer install --no-interaction
 ```
 
-### 3.3 Generate Application Key
+### 3.3 Copy .env.example to .env
+
+```bash
+docker-compose exec tournament-service cp .env.example .env
+```
+
+### 3.4 Generate Application Key
 
 ```bash
 docker-compose exec tournament-service php artisan key:generate --force
 ```
 
-### 3.4 Run Migrations
+### 3.5 Run Migrations
 
 ```bash
 docker-compose exec tournament-service php artisan migrate:fresh --force
 ```
 
-### 3.5 Run Database Seeders
+### 3.6 Run Database Seeders
 
 ```bash
 docker-compose exec tournament-service php artisan db:seed --force
@@ -215,7 +227,7 @@ After running the database seeders, it's good practice to clear any cached data 
 docker-compose exec tournament-service php artisan optimize:clear
 ```
 
-### 3.6 Verify Service is Running
+### 3.7 Verify Service is Running
 
 Check if the service is responding:
 
@@ -259,19 +271,25 @@ curl http://localhost:8002/api/tournaments
 docker-compose exec team-service composer install --no-interaction
 ```
 
-### 4.4 Generate Application Key
+### 4.4 Copy .env.example to .env
+
+```bash
+docker-compose exec team-service cp .env.example .env
+```
+
+### 4.5 Generate Application Key
 
 ```bash
 docker-compose exec team-service php artisan key:generate --force
 ```
 
-### 4.5 Run Migrations
+### 4.6 Run Migrations
 
 ```bash
 docker-compose exec team-service php artisan migrate:fresh --force
 ```
 
-### 4.6 Run Database Seeders
+### 4.7 Run Database Seeders
 
 ```bash
 docker-compose exec team-service php artisan db:seed --force
@@ -303,19 +321,25 @@ docker-compose exec match-db mysqladmin ping -h localhost -uroot -prootpassword 
 docker-compose exec match-service composer install --no-interaction
 ```
 
-### 5.3 Generate Application Key
+### 5.3 Copy .env.example to .env
+
+```bash
+docker-compose exec match-service cp .env.example .env
+```
+
+### 5.4 Generate Application Key
 
 ```bash
 docker-compose exec match-service php artisan key:generate --force
 ```
 
-### 5.4 Run Migrations
+### 5.5 Run Migrations
 
 ```bash
 docker-compose exec match-service php artisan migrate:fresh --force
 ```
 
-### 5.5 Run Database Seeders
+### 5.6 Run Database Seeders
 
 ```bash
 docker-compose exec match-service php artisan db:seed --force
@@ -361,19 +385,25 @@ curl http://localhost:8003/api/health
 docker-compose exec results-service composer install --no-interaction
 ```
 
-### 6.4 Generate Application Key
+### 6.4 Copy .env.example to .env
+
+```bash
+docker-compose exec results-service cp .env.example .env
+```
+
+### 6.5 Generate Application Key
 
 ```bash
 docker-compose exec results-service php artisan key:generate --force
 ```
 
-### 6.5 Run Migrations
+### 6.6 Run Migrations
 
 ```bash
 docker-compose exec results-service php artisan migrate:fresh --force
 ```
 
-### 6.6 Run Database Seeders
+### 6.7 Run Database Seeders
 
 ```bash
 docker-compose exec results-service php artisan db:seed --force
@@ -438,6 +468,7 @@ docker-compose exec match-service php artisan tinker
 => "pusher"
 >>> config('broadcasting.connections.pusher.key')
 => "8d9785b428b83e896400"
+>>> exit 
 ```
 
 **Check Frontend:**

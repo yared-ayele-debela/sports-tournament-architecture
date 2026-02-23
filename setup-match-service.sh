@@ -201,7 +201,27 @@ docker-compose exec -T $SERVICE_NAME php artisan cache:clear >/dev/null 2>&1 || 
 echo -e "${GREEN}✅ Config cache cleared${NC}"
 echo ""
 
-# Step 4: Generate Application Key
+# Step 4: Ensure .env exists in container before generating key
+echo -e "${YELLOW}🔍 Verifying .env file exists in container before key generation...${NC}"
+if ! docker-compose exec -T $SERVICE_NAME test -f /var/www/html/.env 2>/dev/null; then
+    echo -e "${YELLOW}   .env file not found in container, copying from host...${NC}"
+    if [ -f "match-service/.env" ]; then
+        if docker cp match-service/.env ${SERVICE_NAME}:/var/www/html/.env 2>/dev/null; then
+            echo -e "${GREEN}✅ .env file copied to container${NC}"
+        else
+            echo -e "${RED}❌ Failed to copy .env file to container${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${RED}❌ .env file not found on host and not in container${NC}"
+        exit 1
+    fi
+else
+    echo -e "${GREEN}✅ .env file exists in container${NC}"
+fi
+echo ""
+
+# Step 4.5: Generate Application Key
 if ! run_command "Generating application key" \
     docker-compose exec -T $SERVICE_NAME php artisan key:generate --force; then
     echo -e "${RED}❌ Fatal: Failed to generate application key${NC}"
